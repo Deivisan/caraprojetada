@@ -1,0 +1,504 @@
+/* ============================================
+   CaraProjetada - Design System
+============================================ */
+
+:root {
+  --primary: #008CBA;
+  --primary-dark: #006699;
+  --secondary: #4CAF50;
+  --danger: #f44336;
+  --warning: #ff9800;
+  --dark: #1a1a1a;
+  --dark-gray: #2d2d2d;
+  --gray: #444;
+  --light: #f5f5f5;
+  --white: #fff;
+  --border-radius: 12px;
+  --shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  --transition: all 0.3s ease;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, var(--dark) 0%, var(--dark-gray) 100%);
+  color: var(--light);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* Header */
+.header {
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
+  padding: 1rem 2rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.header__container {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header__logo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.header__logo img {
+  height: 40px;
+  width: auto;
+}
+
+.header__logo h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--white);
+}
+
+.header__nav ul {
+  display: flex;
+  list-style: none;
+  gap: 2rem;
+}
+
+.header__nav a {
+  color: var(--light);
+  text-decoration: none;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  border-radius: var(--border-radius);
+  transition: var(--transition);
+}
+
+.header__nav a:hover,
+.header__nav a.active {
+  color: var(--white);
+  background: var(--primary);
+}
+
+/* Main Container */
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+/* Hero Section */
+.hero {
+  text-align: center;
+  padding: 4rem 2rem;
+  margin-bottom: 3rem;
+  background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.7)), url('https://raw.githubusercontent.com/Deivisan/caraprojetada/main/assets/images/rk3229-tv-box.jpg') center/cover no-repeat;
+  border-radius: var(--border-radius);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+}
+
+.hero__content {
+  position: relative;
+  z-index: 1;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.hero__title {
+  font-size: 3rem;
+  font-weight: 800;
+  margin-bottom: 1rem;
+  color: var(--white);
+}
+
+.hero__subtitle {
+  font-size: 1.5rem;
+  color: #ccc;
+  margin-bottom: 2rem;
+}
+
+.hero__buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: var(--border-radius);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: var(--transition);
+  text-align: center;
+}
+
+.btn--primary {
+  background: var(--primary);
+  color: var(--white);
+}
+
+.btn--primary:hover {
+  background: var(--primary-dark);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.btn--secondary {
+  background: transparent;
+  color: var(--light);
+  border: 2px solid var(--light);
+}
+
+.btn--secondary:hover {
+  background: var(--white);
+  color: var(--dark);
+  transform: translateY(-2px);
+}
+
+/* Section Titles */
+.section-title {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.section-title h2 {
+  font-size: 2.5rem;
+  color: var(--white);
+  margin-bottom: 1rem;
+}
+
+.section-title p {
+  color: #888;
+  font-size: 1.1rem;
+}
+
+/* Cards Grid */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  margin-bottom: 3rem;
+}
+
+.card {
+  background: rgba(255,255,255,0.05);
+  border-radius: var(--border-radius);
+  padding: 2rem;
+  border: 1px solid rgba(255,255,255,0.1);
+  transition: var(--transition);
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow);
+  border-color: var(--primary);
+}
+
+.card__icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.card__title {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  color: var(--white);
+}
+
+.card__text {
+  color: #aaa;
+  margin-bottom: 1.5rem;
+}
+
+/* Architecture Diagram */
+.architecture {
+  margin: 4rem 0;
+}
+
+.arch-diagram {
+  background: rgba(255,255,255,0.02);
+  border-radius: var(--border-radius);
+  padding: 2rem;
+  overflow-x: auto;
+}
+
+.arch-diagram pre {
+  font-family: 'Fira Code', monospace;
+  color: #00d4ff;
+  font-size: 0.9rem;
+  line-height: 1.8;
+}
+
+/* Features Table */
+.features-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 2rem 0;
+  background: rgba(255,255,255,0.02);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+}
+
+.features-table th,
+.features-table td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.features-table th {
+  background: rgba(0,140,186,0.2);
+  color: var(--white);
+  font-weight: 600;
+}
+
+.features-table tr:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+/* Roadmap */
+.roadmap {
+  margin: 3rem 0;
+}
+
+.roadmap-item {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: rgba(255,255,255,0.02);
+  border-radius: var(--border-radius);
+  border-left: 4px solid var(--primary);
+}
+
+.roadmap-item--current {
+  border-left-color: var(--warning);
+}
+
+.roadmap-item--done {
+  border-left-color: var(--secondary);
+}
+
+.roadmap-item__status {
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  letter-spacing: 1px;
+}
+
+.roadmap-item--done .roadmap-item__status {
+  color: var(--secondary);
+}
+
+.roadmap-item--current .roadmap-item__status {
+  color: var(--warning);
+}
+
+/* Tutorials */
+.tutorial-card {
+  background: rgba(255,255,255,0.05);
+  border-radius: var(--border-radius);
+  padding: 2rem;
+  margin-bottom: 2rem;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.tutorial-card h3 {
+  color: var(--primary);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tutorial-steps {
+  counter-reset: step;
+  margin: 1.5rem 0;
+}
+
+.tutorial-steps li {
+  counter-increment: step;
+  margin-bottom: 1rem;
+  padding-left: 2rem;
+  position: relative;
+  list-style: none;
+}
+
+.tutorial-steps li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0;
+  background: var(--primary);
+  color: var(--white);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+/* Code Blocks */
+.code-block {
+  background: #1e1e1e;
+  border-radius: var(--border-radius);
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+  overflow-x: auto;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.code-block pre {
+  color: #d4d4d4;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.code-block .comment {
+  color: #6a9955;
+}
+
+.code-block .keyword {
+  color: #569cd6;
+}
+
+.code-block .string {
+  color: #ce9178;
+}
+
+/* Footer */
+.footer {
+  background: rgba(0,0,0,0.3);
+  padding: 3rem 2rem 2rem;
+  margin-top: 4rem;
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+.footer__container {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 2rem;
+}
+
+.footer__column h4 {
+  color: var(--white);
+  margin-bottom: 1rem;
+}
+
+.footer__column ul {
+  list-style: none;
+}
+
+.footer__column ul li {
+  margin-bottom: 0.5rem;
+}
+
+.footer__column ul li a {
+  color: #888;
+  text-decoration: none;
+  transition: var(--transition);
+}
+
+.footer__column ul li a:hover {
+  color: var(--primary);
+}
+
+.footer__bottom {
+  max-width: 1400px;
+  margin: 2rem auto 0;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  text-align: center;
+  color: #666;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .header__nav ul {
+    display: none;
+  }
+  
+  .hero__title {
+    font-size: 2rem;
+  }
+  
+  .hero__subtitle {
+    font-size: 1.1rem;
+  }
+  
+  .section-title h2 {
+    font-size: 2rem;
+  }
+  
+  .cards-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.6s ease-out;
+}
+
+/* Status Badges */
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.badge--success {
+  background: rgba(76, 175, 80, 0.2);
+  color: var(--secondary);
+}
+
+.badge--warning {
+  background: rgba(255, 152, 0, 0.2);
+  color: var(--warning);
+}
+
+.badge--danger {
+  background: rgba(244, 67, 54, 0.2);
+  color: var(--danger);
+}

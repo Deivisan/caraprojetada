@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CaraProjetada - Subsistema Inteligente de Projetores</title>
+  <meta name="description" content="Subsistema inteligente de projetores multi-sala com autenticação institucional e transmissão de tela via VNC">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header__container">
+      <div class="header__logo">
+        <img src="https://raw.githubusercontent.com/Deivisan/caraprojetada/main/assets/images/logo.svg" alt="CaraProjetada">
+        <h1>CaraProjetada</h1>
+      </div>
+      <nav class="header__nav">
+        <ul>
+          <li><a href="#inicio" class="active">Início</a></li>
+          <li><a href="#arquitetura">Arquitetura</a></li>
+          <li><a href="#funcionalidades">Funcionalidades</a></li>
+          <li><a href="#tutoriais">Tutoriais</a></li>
+          <li><a href="#setup">Instalação</a></li>
+          <li><a href="#roadmap">Roadmap</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero" id="inicio">
+    <div class="hero__content">
+      <h1 class="hero__title">🎯 CaraProjetada</h1>
+      <p class="hero__subtitle">Subsistema inteligente de projetores multi-sala com autenticação institucional e transmissão de tela em tempo real</p>
+      <div class="hero__buttons">
+        <a href="#tutoriais" class="btn btn--primary"><i class="fas fa-play-circle"></i> Começar a usar</a>
+        <a href="https://github.com/Deivisan/caraprojetada" class="btn btn--secondary"><i class="fab fa-github"></i> Ver no GitHub</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section class="container" id="funcionalidades">
+    <div class="section-title">
+      <h2>✨ Funcionalidades</h2>
+      <p>Tudo que você precisa para gerenciar projetores de forma inteligente</p>
+    </div>
+    
+    <div class="cards-grid">
+      <div class="card fade-in">
+        <div class="card__icon"><i class="fas fa-shield-alt"></i></div>
+        <h3 class="card__title">Autenticação AD/LDAP</h3>
+        <p class="card__text">Login institucional com seu usuário e senha da organização. Segurança garantida através do Active Directory.</p>
+        <span class="badge badge--success">Disponível</span>
+      </div>
+      
+      <div class="card fade-in">
+        <div class="card__icon"><i class="fas fa-projector"></i></div>
+        <h3 class="card__title">Controle de Projetores</h3>
+        <p class="card__text">Conecte e desconecte telas remotamente. Controle múltiplos projetores simultaneamente.</p>
+        <span class="badge badge--success">Disponível</span>
+      </div>
+      
+      <div class="card fade-in">
+        <div class="card__icon"><i class="fas fa-video"></i></div>
+        <h3 class="card__title">Transmissão VNC</h3>
+        <p class="card__text">Transmissão de tela em tempo real via VNC. Qualidade e performance otimizadas.</p>
+        <span class="badge badge--success">Disponível</span>
+      </div>
+      
+      <div class="card fade-in">
+        <div class="card__icon"><i class="fas fa-mobile-alt"></i></div>
+        <h3 class="card__title">Cliente Windows</h3>
+        <p class="card__text">Suporte a clientes Windows com UltraVNC. Instalação automática e configuração simplificada.</p>
+        <span class="badge badge--warning">Em desenvolvimento</span>
+      </div>
+      
+      <div class="card fade-in">
+        <div class="card__icon"><i class="fas fa-chart-line"></i></div>
+        <h3 class="card__title">Dashboard Central</h3>
+        <p class="card__text">Painel web para monitoramento de todos os projetores. Status online/offline em tempo real.</p>
+        <span class="badge badge--warning">Em desenvolvimento</span>
+      </div>
+      
+      <div class="card fade-in">
+        <div class="card__icon"><i class="fas fa-cloud"></i></div>
+        <h3 class="card__title">Streaming RTSP</h3>
+        <p class="card__text">Transmissão de vídeo via RTSP. Ideal para integração com sistemas de segurança.</p>
+        <span class="badge badge--success">Disponível</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Architecture Section -->
+  <section class="container" id="arquitetura">
+    <div class="section-title">
+      <h2>🏗️ Arquitetura do Sistema</h2>
+      <p>Como o CaraProjetada funciona na prática</p>
+    </div>
+    
+    <div class="architecture">
+      <div class="arch-diagram">
+<pre>
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        DASHBOARD CENTRAL (Web)                             │
+│                   http://projetores.intranet.ufrb.edu.br                    │
+│                                                                             │
+│  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌────────────┐          │
+│  │   SALA A   │  │   SALA B   │  │   SALA C   │  │   SALA D   │          │
+│  │  172.17.x.x│  │ 172.17.x.x │  │ 172.17.x.x │  │ 172.17.x.x │          │
+│  │   [ONLINE] │  │  [ONLINE]  │  │  [OFFLINE] │  │   [ONLINE] │          │
+│  │ [CONECTAR] │  │ [CONECTAR] │  │ [CONECTAR] │  │ [CONECTAR] │          │
+│  └──────┬─────┘  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘          │
+└─────────┼───────────────┼─────────────────┼─────────────────┼─────────────────┘
+          ▼               ▼                 ▼                 ▼
+┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+│   PROJETOR A    │ │   PROJETOR B    │ │   PROJETOR C    │ │   PROJETOR D    │
+│   RK3229        │ │   RK3229        │ │   RK3229        │ │   RK3229        │
+│   192.168.1.101 │ │   192.168.1.102 │ │   192.168.1.103 │ │   192.168.1.104 │
+│   ┌───────────┐ │ │   ┌───────────┐ │ │   ┌───────────┐ │ │   ┌───────────┐ │
+│   │ xtightvnc │ │ │   │ xtightvnc │ │ │   │ xtightvnc │ │ │   │ xtightvnc │ │
+│   │ viewer    │ │ │   │ viewer    │ │ │   │ viewer    │ │ │   │ viewer    │ │
+│   └─────┬─────┘ │ │   └─────┬─────┘ │ │   └─────┬─────┘ │ │   └─────┬─────┘ │
+│         ▼       │ │         ▼       │ │         ▼       │ │         ▼       │
+│   ┌───────────┐ │ │   ┌───────────┐ │ │   ┌───────────┐ │ │   ┌───────────┐ │
+│   │ Flask API │ │ │   │ Flask API │ │ │   │ Flask API │ │ │   │ Flask API │ │
+│   │ (porta 80)│ │ │   │ (porta 80)│ │ │   │ (porta 80)│ │ │   │ (porta 80)│ │
+│   └─────┬─────┘ │ │   └─────┬─────┘ │ │   └─────┬─────┘ │ │   └─────┬─────┘ │
+│         ▼       │ │         ▼       │ │         ▼       │ │         ▼       │
+│   ┌───────────┐ │ │   ┌───────────┐ │ │   ┌───────────┐ │ │   ┌───────────┐ │
+│   │ LightDM   │ │ │   │ LightDM   │ │ │   │ LightDM   │ │ │   │ LightDM   │ │
+│   │ Xorg :0   │ │ │   │ Xorg :0   │ │ │   │ Xorg :0   │ │ │   │ Xorg :0   │ │
+│   └───────────┘ │ │   └───────────┘ │ │   └───────────┘ │ │   └───────────┘ │
+└─────────────────┘ └─────────────────┘ └─────────────────┘ └─────────────────┘
+</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- Hardware Section -->
+  <section class="container">
+    <div class="section-title">
+      <h2>💻 Hardware Suportado</h2>
+      <p>TV Boxes otimizadas para o CaraProjetada</p>
+    </div>
+    
+    <div class="cards-grid">
+      <div class="card fade-in">
+        <div class="card__icon"><i class="fas fa-chip"></i></div>
+        <h3 class="card__title">Rockchip RK3229</h3>
+        <table class="features-table">
+          <tr><td>CPU</td><td>4x Cortex-A7 @ 1.5 GHz</td></tr>
+          <tr><td>GPU</td><td>Mali-400 MP2</td></tr>
+          <tr><td>RAM</td><td>1 GB DDR3</td></tr>
+          <tr><td>Armazenamento</td><td>8 GB eMMC</td></tr>
+          <tr><td>Rede</td><td>Ethernet + Wi-Fi</td></tr>
+          <tr><td>Vídeo</td><td>HDMI 2.0 (4K@60fps)</td></tr>
+        </table>
+        <span class="badge badge--success">Principal target</span>
+      </div>
+      
+      <div class="card fade-in">
+        <div class="card__icon"><i class="fas fa-image"></i></div>
+        <h3 class="card__title">Visualização</h3>
+        <p>Conecte seu projetor via HDMI e use a interface web para controlar a exibição. Interface moderna e responsiva, funcional em qualquer navegador.</p>
+        <img src="https://raw.githubusercontent.com/Deivisan/caraprojetada/main/assets/images/rk3229-tv-box.jpg" alt="RK3229 TV Box" style="width: 100%; border-radius: 8px; margin-top: 1rem;">
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer__container">
+      <div class="footer__column">
+        <h4>CaraProjetada</h4>
+        <p>Subsistema inteligente de projetores multi-sala com autenticação institucional.</p>
+      </div>
+      <div class="footer__column">
+        <h4>Links Rápidos</h4>
+        <ul>
+          <li><a href="#inicio">Início</a></li>
+          <li><a href="#arquitetura">Arquitetura</a></li>
+          <li><a href="#tutoriais">Tutoriais</a></li>
+          <li><a href="#setup">Instalação</a></li>
+        </ul>
+      </div>
+      <div class="footer__column">
+        <h4>Recursos</h4>
+        <ul>
+          <li><a href="https://github.com/Deivisan/caraprojetada">GitHub</a></li>
+          <li><a href="docs/SETUP.md">Documentação</a></li>
+          <li><a href="docs/TROUBLESHOOTING.md">Suporte</a></li>
+        </ul>
+      </div>
+      <div class="footer__column">
+        <h4>Licença</h4>
+        <p>Mit licença. Uso livre para desenvolvimento e produção.</p>
+      </div>
+    </div>
+    <div class="footer__bottom">
+      <p>© 2024 CaraProjetada - Desenvolvido com ❤️ para a comunidade</p>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+</body>
+</html>

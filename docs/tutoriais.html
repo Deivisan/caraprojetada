@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tutoriais - CaraProjetada</title>
+  <meta name="description" content="Tutoriais passo a passo para usar o CaraProjetada">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header__container">
+      <div class="header__logo">
+        <img src="https://raw.githubusercontent.com/Deivisan/caraprojetada/main/assets/images/logo.svg" alt="CaraProjetada">
+        <h1>CaraProjetada</h1>
+      </div>
+      <nav class="header__nav">
+        <ul>
+          <li><a href="index.html">Início</a></li>
+          <li><a href="arquitetura.html">Arquitetura</a></li>
+          <li><a href="tutoriais.html" class="active">Tutoriais</a></li>
+          <li><a href="setup.html">Instalação</a></li>
+          <li><a href="roadmap.html">Roadmap</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Content -->
+  <section class="container">
+    <div class="section-title">
+      <h2>📚 Tutoriais</h2>
+      <p>Aprenda a usar o CaraProjetada passo a passo</p>
+    </div>
+
+    <!-- Tutorial 1: Login -->
+    <div class="tutorial-card">
+      <h3><i class="fas fa-user-shield"></i> Tutorial 1: Fazer Login no Sistema</h3>
+      <p>Guarde esse tutorial para referência rápida!</p>
+      
+      <ul class="tutorial-steps">
+        <li><strong>Acesse o Dashboard:</strong> Abra o navegador e acesse: <code>http://projetores.intranet.ufrb.edu.br</code></li>
+        <li><strong>Insira suas credenciais:</strong> 
+          <ul style="margin-top: 0.5rem; margin-left: 1rem;">
+            <li>Usuário: Seu login institucional (ex: <code>joao.silva</code>)</li>
+            <li>Senha: Sua senha do domínio</li>
+          </ul>
+        </li>
+        <li><strong>Clique em "ACESSAR"</strong></li>
+        <li><strong>Pronto!</strong> Você será redirecionado para o dashboard com a lista de salas disponíveis.</li>
+      </ul>
+    </div>
+
+    <!-- Tutorial 2: Conectar -->
+    <div class="tutorial-card">
+      <h3><i class="fas fa-projector"></i> Tutorial 2: Conectar seu Notebook ao Projetor</h3>
+      
+      <h4 style="margin: 1.5rem 0 1rem; color: var(--primary);">Passo 1: Preparar o Notebook</h4>
+      <div class="code-block">
+        <pre><span class="comment"># Windows - Instale o UltraVNC</span>
+msiexec.exe /i UltraVNC-2.8.87.msi /VERYSILENT /SUPPRESSMSGBOXES
+
+<span class="comment"># Configure a senha (via registry ou manualmente)</span>
+<span class="comment"># Senha: 123456</span></pre>
+      </div>
+      
+      <h4 style="margin: 1.5rem 0 1rem; color: var(--primary);">Passo 2: Iniciar o Servidor VNC</h4>
+      <div class="code-block">
+        <pre><span class="comment"># Iniciar o serviço VNC</span>
+services.msc  <span class="comment"># Procure por "UltraVNC Server"</span>
+
+<span class="comment"># Ou via linha de comando</span>
+winvnc.exe -shared -accept_connections -desktop</pre>
+      </div>
+      
+      <h4 style="margin: 1.5rem 0 1rem; color: var(--primary);">Passo 3: Verificar IP do Notebook</h4>
+      <div class="code-block">
+        <pre>ipconfig
+
+<span class="comment"># Anote o IPv4 (ex: 172.17.28.50)</span></pre>
+      </div>
+      
+      <h4 style="margin: 1.5rem 0 1rem; color: var(--primary);">Passo 4: Conectar via Dashboard</h4>
+      <ol>
+        <li>Acesse o dashboard do CaraProjetada</li>
+        <li>Selecione a sala desejada</li>
+        <li>Clique em <strong>"CONECTAR TELA"</strong></li>
+        <li>Digite o IP do seu notebook quando solicitado</li>
+        <li>Pronto! Sua tela aparecerá no projetor</li>
+      </ol>
+    </div>
+
+    <!-- Tutorial 3: Manutenção -->
+    <div class="tutorial-card">
+      <h3><i class="fas fa-tools"></i> Tutorial 3: Manutenção do Projetor</h3>
+      
+      <h4 style="margin: 1.5rem 0 1rem; color: var(--primary);">Verificar status dos serviços</h4>
+      <div class="code-block">
+        <pre>ssh caraprojetada@172.17.28.179
+
+<span class="comment"># Verificar serviços</span>
+systemctl status projetor
+systemctl status stream-cam
+
+<span class="comment"># Ver logs em tempo real</span>
+tail -f /var/log/syslog</pre>
+      </div>
+      
+      <h4 style="margin: 1.5rem 0 1rem; color: var(--primary);">Reiniciar serviços</h4>
+      <div class="code-block">
+        <pre><span class="comment"># Reiniciar o serviço principal</span>
+sudo systemctl restart projetor
+
+<span class="comment"># Reiniciar o streaming (se tiver câmera)</span>
+sudo systemctl restart stream-cam</pre>
+      </div>
+      
+      <h4 style="margin: 1.5rem 0 1rem; color: var(--primary);">Reset de emergência</h4>
+      <div class="code-block">
+        <pre><span class="comment"># Execute o script de reset</span>
+/home/carapreta/totem_reset.sh
+
+<span class="comment"># Ou manualmente:</span>
+sudo pkill -9 xtightvncviewer
+sudo systemctl restart projetor</pre>
+      </div>
+    </div>
+
+    <!-- Tutorial 4: Cose TV Box -->
+    <div class="tutorial-card">
+      <h3><i class="fas fa-box"></i> Tutorial 4: Configurando Cose TV Box</h3>
+      
+      <p>Esta seção é específica para a <strong>Cose TV Box</strong>, uma variação otimizada do CaraProjetada.</p>
+      
+      <h4 style="margin: 1.5rem 0 1rem; color: var(--primary);">Passo 1: Identificar a TV Box na rede</h4>
+      <div class="code-block">
+        <pre><span class="comment"># No dashboard, procure por "Cose TV Box" na lista de salas</span>
+<span class="comment"># Ou use o IP atribuído pelo DHCP (ex: 172.17.28.200)</span></pre>
+      </div>
+      
+      <h4 style="margin: 1.5rem 0 1rem; color: var(--primary);">Passo 2: Configuração de rede</h4>
+      <div class="code-block">
+        <pre><span class="comment"># Acesse a interface web da Cose TV Box</span>
+http://172.17.28.200:8080/config
+
+<span class="comment"># Configure:</span>
+- Nome da sala: "Sala 1 - Cose"
+- IP do servidor AD: 10.198.1.2
+- Domínio: intranet.ufrb.edu.br</pre>
+      </div>
+      
+      <h4 style="margin: 1.5rem 0 1rem; color: var(--primary);">Passo 3: Testar conexão</h4>
+      <div class="code-block">
+        <pre><span class="comment"># Após configurar, reinicie a TV Box</span>
+sudo reboot
+
+<span class="comment"># Aguarde 2 minutos e acesse o dashboard</span>
+<span class="comment"># A TV Box deve aparecer como "online"</span></pre>
+      </div>
+    </div>
+
+    <!-- FAQ -->
+    <div class="tutorial-card">
+      <h3><i class="fas fa-question-circle"></i> Perguntas Frequentes</h3>
+      
+      <div style="margin-bottom: 1.5rem;">
+        <h4 style="color: var(--primary);">Como esquecer a senha do VNC?</h4>
+        <p>A senha padrão é <strong>123456</strong>. Para alterar, edite o arquivo <code>~/.vnc_pass</code> no projetor.</p>
+      </div>
+      
+      <div style="margin-bottom: 1.5rem;">
+        <h4 style="color: var(--primary);">O que acontece se o projetor não aparecer no dashboard?</h4>
+        <p>Verifique: 1) Se o servidor está ligado, 2) Se está na mesma rede (172.17.x.x), 3) Se o serviço <code>projetor</code> está rodando.</p>
+      </div>
+      
+      <div style="margin-bottom: 1.5rem;">
+        <h4 style="color: var(--primary);">Como transmitir apenas uma janela específica?</h4>
+        <p>Use o recurso de seleção de área do UltraVNC. Clique com o botão direito e selecione "Select Area".</p>
+      </div>
+      
+      <div>
+        <h4 style="color: var(--primary);">Posso usar outro cliente VNC?</h4>
+        <p>Sim! O CaraProjetada funciona com qualquer cliente VNC compatível com o protocolo RFB. Recomendamos o TightVNC ou RealVNC.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer__container">
+      <div class="footer__column">
+        <h4>CaraProjetada</h4>
+        <p>Subsistema inteligente de projetores.</p>
+      </div>
+      <div class="footer__column">
+        <h4>Links</h4>
+        <ul>
+          <li><a href="index.html">Início</a></li>
+          <li><a href="roadmap.html">Roadmap</a></li>
+          <li><a href="https://github.com/Deivisan/caraprojetada/issues">Suporte</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer__bottom">
+      <p>© 2024 CaraProjetada - MIT License</p>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+</body>
+</html>

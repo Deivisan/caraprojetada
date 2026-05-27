@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Roadmap - CaraProjetada</title>
+  <meta name="description" content="Roadmap de desenvolvimento do CaraProjetada">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header__container">
+      <div class="header__logo">
+        <img src="https://raw.githubusercontent.com/Deivisan/caraprojetada/main/assets/images/logo.svg" alt="CaraProjetada">
+        <h1>CaraProjetada</h1>
+      </div>
+      <nav class="header__nav">
+        <ul>
+          <li><a href="index.html">Início</a></li>
+          <li><a href="arquitetura.html">Arquitetura</a></li>
+          <li><a href="tutoriais.html">Tutoriais</a></li>
+          <li><a href="setup.html">Instalação</a></li>
+          <li><a href="roadmap.html" class="active">Roadmap</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Content -->
+  <section class="container">
+    <div class="section-title">
+      <h2>🗺️ Roadmap de Desenvolvimento</h2>
+      <p>Plano de ação e evolução do CaraProjetada</p>
+    </div>
+
+    <!-- Fase 1 -->
+    <div class="roadmap">
+      <div class="roadmap-item roadmap-item--done">
+        <div>
+          <span class="roadmap-item__status">✅ Concluído</span>
+          <h3 style="margin-top: 0.5rem;">Fase 1: Baseline</h3>
+          <ul style="margin-top: 1rem; margin-left: 1rem;">
+            <li>Flask app com autenticação AD</li>
+            <li>Conexão VNC reversa</li>
+            <li>Kiosk Chromium</li>
+            <li>Watchdog e Guardian</li>
+            <li>Streaming RTSP</li>
+            <li>Serviços systemd</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Fase 2 -->
+      <div class="roadmap-item roadmap-item--current">
+        <div>
+          <span class="roadmap-item__status">🔄 Em Andamento</span>
+          <h3 style="margin-top: 0.5rem;">Fase 2: Estabilização</h3>
+          <ul style="margin-top: 1rem; margin-left: 1rem;">
+            <li>Migrar para kernel 6.6+ (via CaraAzul)</li>
+            <li>Substituir xfwm4 por window manager mais leve (openbox?)</li>
+            <li>Adicionar fallback ethernet quando wifi falha</li>
+            <li>Logs centralizados (syslog remoto)</li>
+            <li>Script de backup automático das configurações</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Fase 3 -->
+      <div class="roadmap-item">
+        <div>
+          <span class="roadmap-item__status">📋 Planejado</span>
+          <h3 style="margin-top: 0.5rem;">Fase 3: Multi-Projetor</h3>
+          <ul style="margin-top: 1rem; margin-left: 1rem;">
+            <li>Dashboard central com status de todos os projetores</li>
+            <li>Descoberta automática na rede (mDNS/Bonjour)</li>
+            <li>Configuração remota via API</li>
+            <li>Agendamento de horários (ligar/desligar)</li>
+            <li>Monitoramento de temperatura do SoC</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Fase 4 -->
+      <div class="roadmap-item">
+        <div>
+          <span class="roadmap-item__status">🔒 Planejado</span>
+          <h3 style="margin-top: 0.5rem;">Fase 4: Segurança e Robustez</h3>
+          <ul style="margin-top: 1rem; margin-left: 1rem;">
+            <li>HTTPS com certificado auto-assinado</li>
+            <li>Rate limiting no login</li>
+            <li>Logs de auditoria de acesso</li>
+            <li>Fail2ban para proteção SSH</li>
+            <li>Atualização OTA via git pull</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Fase 5 -->
+      <div class="roadmap-item">
+        <div>
+          <span class="roadmap-item__status">🚀 Futuro</span>
+          <h3 style="margin-top: 0.5rem;">Fase 5: Features Avançadas</h3>
+          <ul style="margin-top: 1rem; margin-left: 1rem;">
+            <li>Suporte a múltiplos usuários simultaneos</li>
+            <li>Streaming de áudio via VNC</li>
+            <li>Modo apresentação (slides + anotações)</li>
+            <li>Compatibilidade com Miracast/AirPlay</li>
+            <li>App mobile para controle</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Plan of Action -->
+    <div class="section-title">
+      <h3>📋 Plano de Ação Atual</h3>
+    </div>
+
+    <div class="card">
+      <h4 style="color: var(--primary); margin-bottom: 1rem;">Prioridades Imediatas (Fase 2):</h4>
+      <table class="features-table">
+        <thead>
+          <tr>
+            <th>Tarefa</th>
+            <th>Status</th>
+            <th>Responsável</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Migrar para kernel 6.6+ (CaraAzul)</td>
+            <td><span class="badge badge--warning">Em desenvolvimento</span></td>
+            <td>Deivison Santana</td>
+          </tr>
+          <tr>
+            <td>Substituir xfwm4 por openbox</td>
+            <td><span class="badge badge--warning">Em desenvolvimento</span></td>
+            <td>Deivison Santana</td>
+          </tr>
+          <tr>
+            <td>Fallback ethernet/wifi</td>
+            <td><span class="badge badge--danger">Pendente</span></td>
+            <td>Equipe</td>
+          </tr>
+          <tr>
+            <td>Logs centralizados</td>
+            <td><span class="badge badge--danger">Pendente</span></td>
+            <td>Equipe</td>
+          </tr>
+          <tr>
+            <td>Backup automático</td>
+            <td><span class="badge badge--danger">Pendente</span></td>
+            <td>Equipe</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Structure -->
+    <div class="section-title">
+      <h3>🏗️ Estrutura do Projeto</h3>
+    </div>
+
+    <div class="arch-diagram">
+      <pre>
+caraprojetada/
+├── app/
+│   ├── app.py              # Flask server + VNC control + AD auth
+│   └── requirements.txt    # Flask, LDAP3
+├── scripts/
+│   ├── kiosk.sh            # Chromium kiosk mode
+│   ├── totem_guardian.sh   # System health guardian
+│   ├── totem_watchdog.sh   # Periodic watchdog
+│   ├── totem_reset.sh      # Emergency reset
+│   ├── start_rtsp.sh       # RTSP camera streaming
+│   └── build-kernel.sh     # Kernel building (CaraAzul)
+├── systemd/
+│   ├── projetor.service    # Flask service (port 80)
+│   └── stream-cam.service  # RTSP streaming service
+├── docs/
+│   ├── ARCHITECTURE.md     # Arquitetura detalhada
+│   ├── CLIENT_WINDOWS.md   # Guia cliente Windows
+│   ├── SETUP.md            # Guia de implantação
+│   └── TROUBLESHOOTING.md  # Solução de problemas
+├── assets/
+│   └── images/             # Imagens do hardware
+└── README.md</pre>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer__container">
+      <div class="footer__column">
+        <h4>CaraProjetada</h4>
+        <p>Roadmap em constante evolução.</p>
+      </div>
+      <div class="footer__column">
+        <h4>Contribua</h4>
+        <ul>
+          <li><a href="https://github.com/Deivisan/caraprojetada/issues">Issue Tracker</a></li>
+          <li><a href="https://github.com/Deivisan/caraprojetada/pulls">Pull Requests</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer__bottom">
+      <p>© 2024 CaraProjetada - Desenvolvido com ❤️</p>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+</body>
+</html>

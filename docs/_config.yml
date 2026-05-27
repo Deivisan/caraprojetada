@@ -1,0 +1,6 @@
+# GitHub Pages configuration
+title: [CaraProjetada]
+markdown: gfm
+theme: minima
+plugins:
+  - jekyll-feed
