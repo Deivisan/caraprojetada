@@ -1,148 +1,207 @@
-# CaraProjetada - Projector VNC Subsystem
+# CaraProjetada — Especificação Técnica
 
-## 🎯 Objetivo
+## 1. Dispositivo Alvo
 
-Transformar um TV Box Rockchip RK322x em um **controlador de projetor inteligente** com:
-- Autenticação institucional via Active Directory (LDAP)
-- Conexão reversa VNC para espelhamento de tela
-- Modo kiosk para exibição de conteúdo web
-- Auto-recuperação com watchdog
-- Streaming de câmera USB via RTSP
+| Item | Valor |
+|------|-------|
+| **SoC** | Rockchip RK3229 (RK3228 compatível) |
+| **CPU** | 4× ARM Cortex-A7 @ 1.5 GHz, 28nm |
+| **ISA** | ARMv7 32-bit (armhf) com NEON/VFPv4 |
+| **GPU** | Mali-400 MP2 |
+| **RAM** | 1 GB DDR3 (2 GB em alguns modelos) |
+| **eMMC** | 8 GB (7.3 GB utilizáveis) |
+| **Rede** | 10/100 Ethernet + Wi-Fi 802.11 b/g/n (Espressif ESP8089) |
+| **USB** | 3× USB 2.0 + 1× USB OTG |
+| **Vídeo** | HDMI 2.0 até 4K@60fps, CVBS |
+| **Áudio** | DAC integrado, SPDIF, AV composto |
+| **Armazenamento externo** | Micro SD até 128 GB |
 
-## 📋 Hardware
-
-### Dispositivo Alvo
-- **SoC**: Rockchip RK3228 / RK3229 (ARM Cortex-A7 quad-core)
-- **Arquitetura**: ARMv7 32-bit (armhf)
-- **RAM**: 1-2GB DDR3
-- **GPU**: Mali-400 MP4
-- **Rede**: Ethernet RTL8201F (10/100) + Wi-Fi (Realtek/Broadcom)
-- **Saída**: HDMI para projetor/TV
-- **Câmera**: USB compatível com V4L2 (opcional)
-
-## 🏗️ Stack de Software
+## 2. Stack de Software
 
 ### Sistema Operacional
-- **Base**: Armbian (Bullseye) ou Arch Linux ARM
-- **Kernel**: 4.4.194-rk322x (ou 6.6+ com CaraAzul)
+- **OS**: Armbian 21.08.8 (Debian Bullseye)
+- **Kernel**: 4.4.194-rk322x (legacy branch)
 - **Init**: systemd
-- **Display**: Xorg + LightDM
-- **WM**: xfwm4 (window manager mínimo)
+- **Display**: Xorg + LightDM + xfwm4
+- **Shell**: bash 5.x
 
-### Dependências
-
+### Dependências Core
 ```bash
-# Core
-sudo apt install -y \
-  python3 python3-flask python3-ldap3 \
-  xtightvncviewer chromium x11-utils \
-  xserver-xorg-core xfwm4 lightdm \
-  vlc vlc-bin               # para streaming RTSP
+# Web server + auth
+python3 python3-flask python3-ldap3
+
+# VNC
+xtightvncviewer
+
+# Display
+xserver-xorg-core xfwm4 lightdm x11-utils
+
+# Kiosk
+chromium
+
+# Streaming (opcional)
+vlc vlc-bin
 
 # Manutenção
-sudo apt install -y \
-  x11-xserver-utils \
-  xfce4-panel               # gerenciado pelo guardian
+x11-xserver-utils
 ```
 
-## 📦 Repositório
+### Serviços Ativos
+| Serviço | Porta | Status | Descrição |
+|---------|-------|--------|-----------|
+| `projetor` | 80 | ✅ Ativo | Flask: controle VNC + AD |
+| `sshd` | 22 | ✅ Ativo | Acesso remoto |
+| `lightdm` | — | ✅ Ativo | Gerenciador de display |
+| `stream-cam` | 8554 | ✅ Ativo | Streaming RTSP (câmera) |
+| `NetworkManager` | — | ✅ Ativo | Gerenciamento de rede |
 
-### Estrutura
-```
-caraprojetada/
-├── app/
-│   └── app.py              # Flask server (porta 80)
-├── scripts/
-│   ├── kiosk.sh            # Modo kiosk Chromium
-│   ├── totem_guardian.sh   # Guardião de saúde
-│   ├── totem_watchdog.sh   # Watchdog periódico
-│   ├── totem_reset.sh      # Reset de emergência
-│   └── start_rtsp.sh       # Streaming RTSP
-├── systemd/
-│   ├── projetor.service    # Serviço Flask
-│   └── stream-cam.service  # Serviço de streaming
-├── docs/
-│   ├── SETUP.md            # Guia de implantação
-│   └── TROUBLESHOOTING.md  # Resolução de problemas
-├── toolchain/              # Scripts de setup
-├── images/                 # Imagens de boot
-└── exports/                # Configs exportadas
-```
+## 3. API REST
 
-## 🔐 Fluxo de Autenticação
+### `GET /`
+- **Descrição**: Página inicial
+- **Resposta**: HTML (tela de login ou painel de controle)
 
-```
-Usuário → HTTP GET / → Login page → POST /login (user+pass)
-         → LDAP bind no AD → Sessão criada → Painel de controle
-         → POST /conectar → xtightvncviewer <user_ip>:0
-```
+### `POST /login`
+- **Parâmetros**: `username` (string), `password` (string)
+- **Autenticação**: LDAP bind contra Active Directory
+- **Resposta sucesso**: Redirect para `/`
+- **Resposta erro**: HTML com mensagem de erro
 
-### Configurações do AD no app.py
+### `POST /logout`
+- **Descrição**: Encerra sessão
+- **Resposta**: Redirect para `/`
 
+### `POST /conectar`
+- **Parâmetros**: `ip` (string, IP do cliente)
+- **Ação**: Executa `xtightvncviewer <ip>:0 -autopass`
+- **Senha VNC**: 123456
+
+### `POST /desconectar`
+- **Ação**: Mata processo `xtightvncviewer`
+
+## 4. LDAP / Active Directory
+
+### Configuração
+| Parâmetro | Valor |
+|-----------|-------|
+| Server | `ldap://10.198.1.2` |
+| Domain | `intranet.ufrb.edu.br` |
+| Porta | 389 (LDAP padrão) |
+| User Principal | `username@intranet.ufrb.edu.br` |
+| Autenticação | SIMPLE bind |
+
+### Fluxo
 ```python
-AD_SERVER = 'ldap://10.198.1.2'
-AD_DOMAIN = 'intranet.ufrb.edu.br'
+user_principal = f"{username}@{AD_DOMAIN}"
+server = Server(AD_SERVER, get_info=ALL)
+conn = Connection(server, user=user_principal, 
+                  password=password, authentication='SIMPLE')
+return conn.bind()
 ```
 
-## 🖥️ Conexão VNC
+## 5. VNC (Remote Framebuffer)
 
-O projetor age como **cliente VNC reverso**:
-1. Usuário loga no painel web
-2. Usuário clica "CONECTAR TELA"
-3. Projetor executa: `xtightvncviewer <ip_do_usuario>:0`
-4. Senha VNC hardcoded: `123456`
+### Modelo: VNC Reverso
+- O projetor é **cliente** VNC (não servidor)
+- O usuário deve ter um **servidor** VNC rodando em sua máquina
+- O projetor conecta no IP do usuário porta 5900 (:0)
 
-**Requisito**: O notebook do usuário precisa ter um servidor VNC rodando (ex: TigerVNC, TightVNC Server)
+### Comando Executado
+```bash
+echo "123456" | DISPLAY=:0 sudo /usr/bin/xtightvncviewer <user_ip>:0 -autopass
+```
 
-## 📹 Streaming RTSP
+### Display
+- `:0` — Display Xorg principal
+- Resolução atual: **1360×768** (nativa do projetor conectado)
+- Suporta: 1920×1080i, 1280×720, 1024×768, 800×600, 640×480
 
-- Usa VLC para capturar `/dev/video0`
-- Transcodifica para H.264
-- Disponibiliza em `rtsp://<ip>:8554/stream`
+## 6. Sistema de Watchdog
 
-## 🛡️ Sistema de Watchdog
+### Cron Jobs
+```
+* * * * * /home/carapreta/totem_guardian.sh
+* * * * * sleep 30 && /home/carapreta/totem_watchdog.sh
+*/30 * * * * /home/carapreta/totem_watchdog.sh
+```
 
-### totem_guardian.sh (todo minuto via cron)
-- Verifica IP da wlan0 — tenta dhclient se sem IP
-- Verifica Xorg — restart lightdm se morto
-- Verifica xfwm4 — reinstala/inicia se ausente
-- Remove painéis XFCE que cobrem o kiosk
-- Força resolução 1920x1080
-- Verifica Chromium em kiosk — reinicia se URL errada
-- Desliga screensaver e DPMS
+### totem_guardian.sh (1 minuto)
+1. Verifica IP da wlan0 → dhclient se necessário
+2. Verifica Xorg → restart lightdm
+3. Verifica xfwm4 → reinstala/inicia
+4. Remove painéis XFCE
+5. Força resolução 1920×1080
+6. Verifica Chromium kiosk
+7. Desliga screensaver
 
-### totem_watchdog.sh (a cada 30min + 30s delay)
-- Verifica rede (wlan0)
-- Verifica lightdm
-- Verifica xfwm4 e xfce4-session
-- Verifica Chromium kiosk
-- Verifica resolução
+### totem_watchdog.sh (30 minutos)
+1. Verifica rede
+2. Verifica lightdm
+3. Verifica xfwm4/xfce4-session
+4. Verifica Chromium
+5. Verifica resolução
 
-## 📡 Serviços Systemd
+## 7. Streaming RTSP
 
-### projetor.service
-- Executa `app.py` na porta 80
-- Restart automático em 5s
-- Sobe após rede
+### Especificação
+| Parâmetro | Valor |
+|-----------|-------|
+| Dispositivo | `/dev/video0` |
+| Resolução | 640×360 |
+| FPS | 10 |
+| Codec | H.264 (ultrafast) |
+| Bitrate | 512 kbps |
+| Áudio | Nenhum |
+| URL | `rtsp://<ip>:8554/stream` |
 
-### stream-cam.service
-- Executa `start_rtsp.sh`
-- Restart automático em 5s
-- Depende de rede
+## 8. Rede
 
-## 🔧 Próximos Passos
+### Configuração Atual
+```
+Interface: wlan0 (Wi-Fi)
+IP: 172.17.28.179/16
+Gateway: 172.17.0.1
+DNS: DHCP
+Hostname: carapreta-box
+```
 
-1. **Deploy inicial** — Copiar app.py e scripts para o box
-2. **Configurar AD** — Ajustar AD_SERVER e AD_DOMAIN no app.py
-3. **Ativar serviços** — systemctl enable projetor stream-cam
-4. **Configurar cron** — watchdog e guardian
-5. **Testar VNC** — Conectar de notebook com VNC server
-6. **Documentar** — Completar docs com troubleshooting
+### Fallback
+- Ethernet (eth0) disponível mas não configurada como primária
+- O watchdog tenta `dhclient wlan0` se perder IP
 
-## 📝 Notas
+## 9. Armazenamento
 
-- O xfwm4 é crítico — sem ele, o cursor vira um "X"
-- O guardian roda a cada minuto via cron para recuperação rápida
-- O watchdog roda a cada 30min para verificações pesadas
-- Chromium em kiosk usa `--incognito` para evitar cache
-- A senha VNC está em `~/.vnc_pass` (atual: 123456)
+### Partições
+```
+Device          Size  Used  Mount
+mmcblk2p1      7.1G  4.7G  /
+zram0 (swap)   481M    0B  [SWAP]
+zram1 (log)     50M   48M  /var/log
+```
+
+### Boot
+```
+/boot/
+├── armbianEnv.txt
+├── boot.cmd / boot.scr
+├── vmlinuz-4.4.194-rk322x
+├── uInitrd-4.4.194-rk322x
+└── dtb/ → dtb-4.4.194-rk322x/
+    └── rk322x-box.dtb
+```
+
+## 10. Segurança
+
+### Atual
+- ✅ Autenticação LDAP/AD (credenciais institucionais)
+- ✅ Sessões Flask com cookie assinado
+- ⚠️ HTTP (sem HTTPS)
+- ⚠️ Senha VNC fixa (123456)
+- ❌ Sem rate limiting no login
+
+### Recomendado
+- [ ] HTTPS com certificado auto-assinado
+- [ ] Rate limiting no /login
+- [ ] Fail2ban para SSH
+- [ ] Senha VNC configurável por sessão
+- [ ] Logs de auditoria
