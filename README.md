@@ -13,7 +13,22 @@
   <a href="#"><img src="https://img.shields.io/badge/SoC-RK3229%20(ARMv7)-blue?style=flat"></a>
   <a href="#"><img src="https://img.shields.io/badge/VNC-UltraVNC-orange?style=flat"></a>
   <a href="#"><img src="https://img.shields.io/badge/auth-AD%20LDAP-1f6feb?style=flat"></a>
+  <a href="https://dave-san.github.io/caraprojetada"><img src="https://img.shields.io/badge/docs-online-purple?style=flat"></a>
 </p>
+
+---
+
+## 🌐 Documentação Online
+
+Acesse a documentação completa e interativa:
+
+| Página | Descrição |
+|--------|-----------|
+| **[🏠 Início](docs/index.html)** | Visão geral e funcionalidades |
+| **[🏗️ Arquitetura](docs/arquitetura.html)** | Diagramas e fluxos técnicos |
+| **[📚 Tutoriais](docs/tutoriais.html)** | Passo a passo para usuários |
+| **[🚀 Instalação](docs/setup.html)** | Deploy e configuração |
+| **[🗺️ Roadmap](docs/roadmap.html)** | Plano de desenvolvimento |
 
 ---
 
@@ -38,8 +53,8 @@
 │   RK3229        │ │   RK3229        │ │   RK3229        │ │   RK3229        │
 │   192.168.1.101 │ │   192.168.1.102 │ │   192.168.1.103 │ │   192.168.1.104 │
 │   ┌───────────┐ │ │   ┌───────────┐ │ │   ┌───────────┐ │ │   ┌───────────┐ │
-│   │ xtightvnc│ │ │   │ xtightvnc│ │ │   │ xtightvnc│ │ │   │ xtightvnc│ │
-│   │ viewer    │ │ │   │ viewer    │ │ │   │ viewer    │ │ │   │ viewer    │
+│   │ xtightvnc │ │ │   │ xtightvnc │ │ │   │ xtightvnc │ │ │   │ xtightvnc │ │
+│   │ viewer    │ │ │   │ viewer    │ │ │   │ viewer    │ │ │   │ viewer    │ │
 │   └─────┬─────┘ │ │   └─────┬─────┘ │ │   └─────┬─────┘ │ │   └─────┬─────┘ │
 │         ▼       │ │         ▼       │ │         ▼       │ │         ▼       │
 │   ┌───────────┐ │ │   ┌───────────┐ │ │   ┌───────────┐ │ │   ┌───────────┐ │
@@ -54,11 +69,7 @@
 └─────────────────┘ └─────────────────┘ └─────────────────┘ └─────────────────┘
 ```
 
----
-
-## 🔐 Fluxo de Autenticação
-
-### Dashboard Central
+### 🔐 Fluxo de Autenticação
 
 ```
 Usuario          Dashboard            AD Server
@@ -66,19 +77,19 @@ Usuario          Dashboard            AD Server
    │  1. GET /          │                    │
    │ ───────────────────►│                    │
    │                 │  2. HTML Login        │
-   │  ◄───────────────────│                    │
+   │ ◄───────────────────│                    │
    │                 │                    │
    │  3. POST /login      │                    │
    │ ───────────────────►│                    │
    │                 │  4. LDAP bind          │
    │                 │ ───────────────►       │
    │                 │ ◄──────────────OK       │
-   │  ◄───────────────────│                    │
+   │ ◄───────────────────│                    │
    │                 │  5. HTML Dashboard     │
    │                 │  (lista salas)          │
 ```
 
-### Conexão a uma Sala
+### 🖥️ Fluxo de Conexão VNC
 
 ```
 Usuario          Projetor (A)
@@ -136,39 +147,65 @@ caraprojetada/
 │   ├── projetor.service    # Flask service (port 80)
 │   └── stream-cam.service  # RTSP streaming service
 ├── docs/
-│   ├── ARCHITECTURE.md     # Arquitetura detalhada
-│   ├── CLIENT_WINDOWS.md   # Guia cliente Windows
-│   ├── SETUP.md            # Guia de implantação
-│   └── TROUBLESHOOTING.md  # Solução de problemas
-└── assets/
-    └── images/             # Imagens do hardware
+│   ├── index.html          # Landing page
+│   ├── arquitetura.html    # Documentação técnica
+│   ├── tutoriais.html      # Tutoriais de uso
+│   ├── setup.html          # Guia de instalação
+│   ├── roadmap.html        # Roadmap de desenvolvimento
+│   ├── css/style.css       # Estilos
+│   ├── js/main.js          # JavaScript
+│   ├── _config.yml         # GitHub Pages config
+│   └── .nojekyll           # Bypass Jekyll
+├── assets/
+│   └── images/             # Imagens do hardware
+├── exports/                # Configurações exportadas
+└── README.md
 ```
 
 ---
 
-## 🎯 Roadmap
+## 🎯 Como Construir uma Imagem SD
 
-### Fase 1: Projetor Único (Atual)
+### Passo 1: Baixar o Armbian
 
-✅ SSH keyless access (`ssh caraprojetada`)  
-✅ Flask + LDAP auth  
-✅ VNC reverse via xtightvncviewer  
-✅ Watchdog + Guardian  
-✅ Streaming RTSP  
+```bash
+# Acesse: https://www.armbian.com/
+# Baixe a imagem para RK3229
+wget https://apt.armbian.com/armbian.key
+sudo apt-key add armbian.key
+echo "deb http://apt.armbian.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/armbian.list
+```
 
-### Fase 2: Multi-Sala
+### Passo 2: Flash da Imagem
 
-- [ ] Dashboard central web com lista de salas
-- [ ] Registry de projetores (IP + status)
-- [ ] API `/api/salas` para descoberta
-- [ ] Compatibilidade UltraVNC <-> xtightvncviewer
+```bash
+# Instale o balenaEtcher ou use dd
+sudo dd if=armbian-rk3229.img of=/dev/sdX bs=4M status=progress
+sync
+```
 
-### Fase 3: Cliente Windows
+### Passo 3: Primeiro Boot
 
-- [ ] Instalador automático UltraVNC
-- [ ] Configuração senha headless (123456)
-- [ ] Auto-descoberta via dashboard
-- [ ] Botão "Transmitir para Projetor"
+```bash
+# Conecte HDMI, teclado e rede
+# Aguarde 2-3 minutos
+# Acesse via SSH:
+ssh root@192.168.1.100
+# Senha padrão: 123456
+```
+
+### Passo 4: Configuração Inicial
+
+```bash
+# Altere a senha
+passwd
+
+# Configure a rede
+nano /etc/network/interfaces
+
+# Atualize o sistema
+apt update && apt upgrade -y
+```
 
 ---
 
@@ -176,7 +213,7 @@ caraprojetada/
 
 ```bash
 # SSH direto
-caraprojetada
+ssh caraprojetada@172.17.28.179
 
 # Status do projetor
 ssh caraprojetada 'systemctl status projetor'
@@ -186,39 +223,74 @@ ssh caraprojetada 'tail -f /var/log/vnc.log'
 
 # Kiosk manual
 ssh caraprojetada 'DISPLAY=:0 chromium --kiosk https://www.uol.com.br/'
+
+# Verificar IP
+ip a
 ```
 
 ---
 
-## 📋 Perguntas para Arquitetura Final
+## 📋 Roadmap de Desenvolvimento
 
-### P1: Descoberta
-**Resposta do usuário**: Dashboard web com salas listadas - o usuário clica em "CONECTAR"
+### Fase 1: Baseline (✅ Concluída)
+- [x] Flask app com autenticação AD
+- [x] Conexão VNC reversa
+- [x] Kiosk Chromium
+- [x] Watchdog e Guardian
+- [x] Streaming RTSP
 
-**Implementação**:
-- Endpoint `/api/salas` retorna JSON com projetores ativos
-- Frontend mostra cards de salas com status online/offline
-- Ao clicar, chama `/sala/{id}/conectar`
+### Fase 2: Estabilização (🔄 Em Andamento)
+- [ ] Migrar para kernel 6.6+ (via CaraAzul)
+- [ ] Substituir xfwm4 por openbox
+- [ ] Adicionar fallback ethernet
+- [ ] Logs centralizados
+- [ ] Backup automático
 
-### P2: Autenticação
-**Resposta do usuário**: AD/LDAP
+### Fase 3: Multi-Projetor (📋 Planejado)
+- [ ] Dashboard central web
+- [ ] Descoberta automática (mDNS)
+- [ ] Configuração remota via API
+- [ ] Agendamento de horários
 
-### P3: Conexão
-**Resposta do usuário**: Botão manual
+### Fase 4: Segurança (🔒 Planejado)
+- [ ] HTTPS com certificado
+- [ ] Rate limiting no login
+- [ ] Logs de auditoria
+- [ ] Fail2ban SSH
 
-### P4: Protocolo
-**Resposta do usuário**: UltraVNC
+### Fase 5: Features Avançadas (🚀 Futuro)
+- [ ] Múltiplos usuários simultâneos
+- [ ] Streaming de áudio
+- [ ] Modo apresentação
+- [ ] Miracast/AirPlay
+- [ ] App mobile
 
 ---
 
-## 🌐 Documentação Online
+## 🤝 Como Contribuir
 
-Acesse a landing page completa:
-- **📖 Documentação**: [docs/index.html](docs/index.html)
-- **🏗️ Arquitetura**: [docs/arquitetura.html](docs/arquitetura.html)
-- **📚 Tutoriais**: [docs/tutoriais.html](docs/tutoriais.html)
-- **🚀 Instalação**: [docs/setup.html](docs/setup.html)
-- **🗺️ Roadmap**: [docs/roadmap.html](docs/roadmap.html)
+1. **Fork o repositório**
+2. **Clone localmente**
+   ```bash
+   git clone https://github.com/seu-usuario/caraprojetada.git
+   ```
+3. **Crie uma branch**
+   ```bash
+   git checkout -b feature/nova-feature
+   ```
+4. **Faça suas alterações**
+5. **Commit e push**
+   ```bash
+   git commit -m "feat: descrição da feature"
+   git push origin feature/nova-feature
+   ```
+6. **Abra um Pull Request**
+
+---
+
+## 📄 Licença
+
+MIT License - use livremente para desenvolvimento e produção.
 
 ---
 
