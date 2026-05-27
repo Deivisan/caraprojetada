@@ -1,0 +1,4 @@
+<!-- Necessário para GitHub Pages - ignora processamento Jekyll -->
+/assets
+/css
+/js
