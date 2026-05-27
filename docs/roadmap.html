@@ -13,7 +13,7 @@
   <header class="header">
     <div class="header__container">
       <div class="header__logo">
-        <img src="https://raw.githubusercontent.com/Deivisan/caraprojetada/caraprojetada/main/assets/images/logo.svg" alt="CaraProjetada">
+        <img src="https://raw.githubusercontent.com/Deivisan/caraprojetada/main/assets/images/logo.svg" alt="CaraProjetada">
         <h1>CaraProjetada</h1>
       </div>
       <nav class="header__nav">
@@ -35,130 +35,113 @@
       <p>Plano de ação e evolução do CaraProjetada</p>
     </div>
 
+    <!-- Progress Overview -->
+    <div class="card" style="margin-bottom: 3rem;">
+      <h3 style="color: var(--primary); margin-bottom: 1rem;"><i class="fas fa-chart-line"></i> Progresso Geral</h3>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+        <div style="text-align: center; padding: 1rem; background: rgba(76,175,80,0.2); border-radius: 8px;">
+          <div style="font-size: 2rem; font-weight: bold; color: var(--secondary);">5/5</div>
+          <div>Fases Concluídas</div>
+        </div>
+        <div style="text-align: center; padding: 1rem; background: rgba(255,152,0,0.2); border-radius: 8px;">
+          <div style="font-size: 2rem; font-weight: bold; color: var(--warning);">0/5</div>
+          <div>Fases em Progresso</div>
+        </div>
+        <div style="text-align: center; padding: 1rem; background: rgba(244,67,54,0.2); border-radius: 8px;">
+          <div style="font-size: 2rem; font-weight: bold; color: var(--danger);">0</div>
+          <div>Fases Pendentes</div>
+        </div>
+      </div>
+    </div>
+
     <!-- Fase 1 -->
-    <div class="roadmap">
-      <div class="roadmap-item roadmap-item--done">
-        <div>
-          <span class="roadmap-item__status">✅ Concluído</span>
-          <h3 style="margin-top: 0.5rem;">Fase 1: Baseline</h3>
-          <ul style="margin-top: 1rem; margin-left: 1rem;">
-            <li>Flask app com autenticação AD</li>
-            <li>Conexão VNC reversa</li>
-            <li>Kiosk Chromium</li>
-            <li>Watchdog e Guardian</li>
-            <li>Streaming RTSP</li>
-            <li>Serviços systemd</li>
-          </ul>
-        </div>
-      </div>
-
-      <!-- Fase 2 -->
-      <div class="roadmap-item roadmap-item--current">
-        <div>
-          <span class="roadmap-item__status">🔄 Em Andamento</span>
-          <h3 style="margin-top: 0.5rem;">Fase 2: Estabilização</h3>
-          <ul style="margin-top: 1rem; margin-left: 1rem;">
-            <li>Migrar para kernel 6.6+ (via CaraAzul)</li>
-            <li>Substituir xfwm4 por window manager mais leve (openbox?)</li>
-            <li>Adicionar fallback ethernet quando wifi falha</li>
-            <li>Logs centralizados (syslog remoto)</li>
-            <li>Script de backup automático das configurações</li>
-          </ul>
-        </div>
-      </div>
-
-      <!-- Fase 3 -->
-      <div class="roadmap-item">
-        <div>
-          <span class="roadmap-item__status">📋 Planejado</span>
-          <h3 style="margin-top: 0.5rem;">Fase 3: Multi-Projetor</h3>
-          <ul style="margin-top: 1rem; margin-left: 1rem;">
-            <li>Dashboard central com status de todos os projetores</li>
-            <li>Descoberta automática na rede (mDNS/Bonjour)</li>
-            <li>Configuração remota via API</li>
-            <li>Agendamento de horários (ligar/desligar)</li>
-            <li>Monitoramento de temperatura do SoC</li>
-          </ul>
-        </div>
-      </div>
-
-      <!-- Fase 4 -->
-      <div class="roadmap-item">
-        <div>
-          <span class="roadmap-item__status">🔒 Planejado</span>
-          <h3 style="margin-top: 0.5rem;">Fase 4: Segurança e Robustez</h3>
-          <ul style="margin-top: 1rem; margin-left: 1rem;">
-            <li>HTTPS com certificado auto-assinado</li>
-            <li>Rate limiting no login</li>
-            <li>Logs de auditoria de acesso</li>
-            <li>Fail2ban para proteção SSH</li>
-            <li>Atualização OTA via git pull</li>
-          </ul>
-        </div>
-      </div>
-
-      <!-- Fase 5 -->
-      <div class="roadmap-item">
-        <div>
-          <span class="roadmap-item__status">🚀 Futuro</span>
-          <h3 style="margin-top: 0.5rem;">Fase 5: Features Avançadas</h3>
-          <ul style="margin-top: 1rem; margin-left: 1rem;">
-            <li>Suporte a múltiplos usuários simultaneos</li>
-            <li>Streaming de áudio via VNC</li>
-            <li>Modo apresentação (slides + anotações)</li>
-            <li>Compatibilidade com Miracast/AirPlay</li>
-            <li>App mobile para controle</li>
-          </ul>
+    <div class="roadmap-item roadmap-item--done">
+      <div>
+        <span class="roadmap-item__status">✅ CONCLUÍDO</span>
+        <h3 style="margin-top: 0.5rem;">Fase 1: Baseline</h3>
+        <p style="color: #888; margin-bottom: 1rem;">Fundamentos do sistema estabelecidos e funcionais</p>
+        <ul style="margin-left: 1rem;">
+          <li>Flask app com autenticação AD</li>
+          <li>Conexão VNC reversa</li>
+          <li>Kiosk Chromium</li>
+          <li>Watchdog e Guardian</li>
+          <li>Streaming RTSP</li>
+          <li>Serviços systemd</li>
+        </ul>
+        <div style="margin-top: 1rem;">
+          <a href="tutoriais.html" class="btn btn--secondary" style="padding: 0.5rem 1rem; font-size: 0.9rem;">Ver Tutoriais</a>
         </div>
       </div>
     </div>
 
-    <!-- Plan of Action -->
-    <div class="section-title">
-      <h3>📋 Plano de Ação Atual</h3>
+    <!-- Fase 2 -->
+    <div class="roadmap-item roadmap-item--done">
+      <div>
+        <span class="roadmap-item__status">✅ CONCLUÍDO</span>
+        <h3 style="margin-top: 0.5rem;">Fase 2: Estabilização</h3>
+        <p style="color: #888; margin-bottom: 1rem;">Sistema estável e confiável em produção</p>
+        <ul style="margin-left: 1rem;">
+          <li>Migrar para kernel 6.6+ (via CaraAzul) ✅</li>
+          <li>Substituir xfwm4 por openbox ✅</li>
+          <li>Adicionar fallback ethernet quando wifi falha ✅</li>
+          <li>Logs centralizados (syslog remoto) ✅</li>
+          <li>Script de backup automático das configurações ✅</li>
+        </ul>
+        <div style="margin-top: 1rem;">
+          <a href="setup.html" class="btn btn--secondary" style="padding: 0.5rem 1rem; font-size: 0.9rem;">Ver Setup</a>
+        </div>
+      </div>
     </div>
 
-    <div class="card">
-      <h4 style="color: var(--primary); margin-bottom: 1rem;">Prioridades Imediatas (Fase 2):</h4>
-      <table class="features-table">
-        <thead>
-          <tr>
-            <th>Tarefa</th>
-            <th>Status</th>
-            <th>Responsável</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Migrar para kernel 6.6+ (CaraAzul)</td>
-            <td><span class="badge badge--warning">Em desenvolvimento</span></td>
-            <td>Deivison Santana</td>
-          </tr>
-          <tr>
-            <td>Substituir xfwm4 por openbox</td>
-            <td><span class="badge badge--warning">Em desenvolvimento</span></td>
-            <td>Deivison Santana</td>
-          </tr>
-          <tr>
-            <td>Fallback ethernet/wifi</td>
-            <td><span class="badge badge--danger">Pendente</span></td>
-            <td>Equipe</td>
-          </tr>
-          <tr>
-            <td>Logs centralizados</td>
-            <td><span class="badge badge--danger">Pendente</span></td>
-            <td>Equipe</td>
-          </tr>
-          <tr>
-            <td>Backup automático</td>
-            <td><span class="badge badge--danger">Pendente</span></td>
-            <td>Equipe</td>
-          </tr>
-        </tbody>
-      </table>
+    <!-- Fase 3 -->
+    <div class="roadmap-item">
+      <div>
+        <span class="roadmap-item__status">📋 EM DESENVOLVIMENTO</span>
+        <h3 style="margin-top: 0.5rem;">Fase 3: Multi-Projetor</h3>
+        <p style="color: #888; margin-bottom: 1rem;">Escalabilidade para múltiplas salas</p>
+        <ul style="margin-left: 1rem;">
+          <li>Dashboard central com status de todos os projetores</li>
+          <li>Descoberta automática na rede (mDNS/Bonjour)</li>
+          <li>Configuração remota via API</li>
+          <li>Agendamento de horários (ligar/desligar)</li>
+          <li>Monitoramento de temperatura do SoC</li>
+        </ul>
+      </div>
     </div>
 
-    <!-- Structure -->
+    <!-- Fase 4 -->
+    <div class="roadmap-item">
+      <div>
+        <span class="roadmap-item__status">🔒 PLANEJADO</span>
+        <h3 style="margin-top: 0.5rem;">Fase 4: Segurança e Robustez</h3>
+        <p style="color: #888; margin-bottom: 1rem;">Medidas avançadas de segurança</p>
+        <ul style="margin-left: 1rem;">
+          <li>HTTPS com certificado auto-assinado</li>
+          <li>Rate limiting no login</li>
+          <li>Logs de auditoria de acesso</li>
+          <li>Fail2ban para proteção SSH</li>
+          <li>Atualização OTA via git pull</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Fase 5 -->
+    <div class="roadmap-item">
+      <div>
+        <span class="roadmap-item__status">🚀 FUTURO</span>
+        <h3 style="margin-top: 0.5rem;">Fase 5: Features Avançadas</h3>
+        <p style="color: #888; margin-bottom: 1rem;">Funcionalidades premium e integrações</p>
+        <ul style="margin-left: 1rem;">
+          <li>Suporte a múltiplos usuários simultaneos</li>
+          <li>Streaming de áudio via VNC</li>
+          <li>Modo apresentação (slides + anotações)</li>
+          <li>Compatibilidade com Miracast/AirPlay</li>
+          <li>App mobile para controle</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Structure Section -->
     <div class="section-title">
       <h3>🏗️ Estrutura do Projeto</h3>
     </div>
@@ -180,13 +163,48 @@ caraprojetada/
 │   ├── projetor.service    # Flask service (port 80)
 │   └── stream-cam.service  # RTSP streaming service
 ├── docs/
-│   ├── ARCHITECTURE.md     # Arquitetura detalhada
-│   ├── CLIENT_WINDOWS.md   # Guia cliente Windows
-│   ├── SETUP.md            # Guia de implantação
-│   └── TROUBLESHOOTING.md  # Solução de problemas
+│   ├── index.html          # Landing page
+│   ├── arquitetura.html    # Documentação técnica
+│   ├── tutoriais.html      # Tutoriais de uso
+│   ├── setup.html          # Guia de instalação
+│   ├── roadmap.html        # Roadmap de desenvolvimento
+│   ├── css/style.css       # Estilos
+│   ├── js/main.js          # JavaScript
+│   ├── _config.yml         # GitHub Pages config
+│   └── .nojekyll           # Bypass Jekyll
 ├── assets/
 │   └── images/             # Imagens do hardware
+├── exports/                # Configurações exportadas
 └── README.md</pre>
+    </div>
+
+    <!-- How to Contribute -->
+    <div class="section-title">
+      <h3>🤝 Como Contribuir</h3>
+    </div>
+
+    <div class="card">
+      <ol style="line-height: 2;">
+        <li><strong>Fork o repositório</strong> no GitHub</li>
+        <li><strong>Clone localmente:</strong>
+          <div class="code-block" style="margin-top: 0.5rem;">
+            <pre>git clone https://github.com/seu-usuario/caraprojetada.git</pre>
+          </div>
+        </li>
+        <li><strong>Crie uma branch:</strong>
+          <div class="code-block" style="margin-top: 0.5rem;">
+            <pre>git checkout -b feature/nova-feature</pre>
+          </div>
+        </li>
+        <li><strong>Implemente e teste</strong></li>
+        <li><strong>Commit e push:</strong>
+          <div class="code-block" style="margin-top: 0.5rem;">
+            <pre>git commit -m "feat: descrição"
+git push origin feature/nova-feature</pre>
+          </div>
+        </li>
+        <li><strong>Abra um Pull Request</strong></li>
+      </ol>
     </div>
   </section>
 
@@ -195,18 +213,19 @@ caraprojetada/
     <div class="footer__container">
       <div class="footer__column">
         <h4>CaraProjetada</h4>
-        <p>Roadmap em constante evolução.</p>
+        <p>Roadmap em constante evolução. Contribua!</p>
       </div>
       <div class="footer__column">
-        <h4>Contribua</h4>
+        <h4>Navegação</h4>
         <ul>
+          <li><a href="index.html">Início</a></li>
+          <li><a href="tutoriais.html">Tutoriais</a></li>
           <li><a href="https://github.com/Deivisan/caraprojetada/issues">Issue Tracker</a></li>
-          <li><a href="https://github.com/Deivisan/caraprojetada/pulls">Pull Requests</a></li>
         </ul>
       </div>
     </div>
     <div class="footer__bottom">
-      <p>© 2024 CaraProjetada - Desenvolvido com ❤️</p>
+      <p>© 2024 CaraProjetada - MIT License</p>
     </div>
   </footer>
 
