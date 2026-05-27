@@ -1,0 +1,14 @@
+[Unit]
+Description=Streaming da Webcam via VLC
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=carapreta
+ExecStart=/home/carapreta/start_rtsp.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

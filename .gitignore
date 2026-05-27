@@ -1,0 +1,27 @@
+# Imagens
+/images/*.img
+/images/*.img.xz
+/images/*.img.zst
+/images/*.iso
+
+# Kernel
+/kernels/*.tar.gz
+/kernels/*.tar.xz
+
+# Exports
+/exports/*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# Logs
+*.log
+
+# System
+.DS_Store
+Thumbs.db
+*.swp
+*.swo

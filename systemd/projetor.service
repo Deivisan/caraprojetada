@@ -1,0 +1,14 @@
+[Unit]
+Description=Servico Web de Controle do Projetor VNC
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/carapreta
+ExecStart=/usr/bin/python3 /home/carapreta/app.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
