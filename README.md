@@ -211,6 +211,17 @@ ssh caraprojetada 'DISPLAY=:0 chromium --kiosk https://www.uol.com.br/'
 
 ---
 
+## 🌐 Documentação Online
+
+Acesse a landing page completa:
+- **📖 Documentação**: [docs/index.html](docs/index.html)
+- **🏗️ Arquitetura**: [docs/arquitetura.html](docs/arquitetura.html)
+- **📚 Tutoriais**: [docs/tutoriais.html](docs/tutoriais.html)
+- **🚀 Instalação**: [docs/setup.html](docs/setup.html)
+- **🗺️ Roadmap**: [docs/roadmap.html](docs/roadmap.html)
+
+---
+
 <p align="center">
   <a href="https://github.com/Deivisan/caraprojetada">github.com/Deivisan/caraprojetada</a>
 </p>
