@@ -1,0 +1,26 @@
+# COMANDOS PARA EXECUTAR NO WINDOWS 11 (PowerShell como ADMIN)
+
+## PASSO 1: Verificar instalação
+Get-Package -Name "*VNC*" | Select-Object Name, Version
+Get-Service -Name "*VNC*" | Select-Object Name, Status
+
+## PASSO 2: Configurar UltraVNC 1.8.22
+cd "C:\Program Files\UltraVNC"
+.\winvnc.exe -service
+.\winvnc.exe -storepassword "123456"
+
+## PASSO 3: Iniciar serviço
+Restart-Service -Name "UltraVNC*" -Force
+
+## PASSO 4: Abrir firewall
+netsh advfirewall firewall add rule name="UltraVNC Server" dir=in action=allow protocol=TCP localport=5900
+
+## PASSO 5: Verificar porta
+netstat -an | findstr 5900
+
+## PASSO 6: Verificar IP
+ipconfig | findstr "IPv4"
+
+## PASSO 7: Redirecionar (se necessário)
+# No Arch Linux execute:
+# sudo virsh qemu-monitor-command win11-ufrb --hmp --cmd "hostfwd_add tcp::5901-:5900"

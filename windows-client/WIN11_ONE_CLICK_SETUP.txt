@@ -1,0 +1,15 @@
+# CARAPROJETADA - ONE CLICK SETUP WINDOWS 11
+# Copie e cole no PowerShell (COMO ADMINISTRADOR)
+
+# ===== TUDO EM 1 COMANDO =====
+$w = "C:\Program Files\UltraVNC"; cd $w; .\winvnc.exe -service; .\winvnc.exe -storepassword "123456"; netsh advfirewall firewall add rule name="UltraVNC" dir=in action=allow protocol=TCP localport=5900; Restart-Service -Name "UltraVNC*" -Force -ErrorAction SilentlyContinue
+
+# ===== VERIFICAÇÃO =====
+Write-Host ""; Write-Host "=== STATUS ===" -ForegroundColor Green; netstat -an | findstr 5900; Get-Service -Name "*VNC*" | Format-Table Name, Status -AutoSize
+
+# ===== SE DER ERRADO =====
+# Instalar manualmente:
+# winget install -e --id UltraVNC.UltraVNC
+# cd "C:\Program Files\UltraVNC"
+# .\winvnc.exe -install
+# .\winvnc.exe -storepassword "123456"

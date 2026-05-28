@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<unattend xmlns="urn:schemas-microsoft-com:unattend">
+    <settings pass="specialize">
+        <component name="Microsoft-Windows-Shell-Setup">
+            <RegisteredOrganization>UFRB</RegisteredOrganization>
+            <RegisteredOwner>CaraProjetada</RegisteredOwner>
+        </component>
+        <component name="Microsoft-Windows-TerminalServices-LocalSessionManager">
+            <fDenyTSConnections>false</fDenyTSConnections>
+        </component>
+    </settings>
+    <settings pass="oobeSystem">
+        <component name="Microsoft-Windows-Shell-Setup">
+            <FirstLogonCommands>
+                <SynchronousCommand wcm:action="add">
+                    <CommandLine>powershell -ExecutionPolicy Bypass -File D:\install_caraprojetada.ps1</CommandON>
+                    <Description>Install CaraProjetada Client</Description>
+                    <Order>1</Order>
+                </SynchronousCommand>
+            </FirstLogonCommands>
+        </component>
+    </settings>
+</unattend>
