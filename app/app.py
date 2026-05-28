@@ -221,13 +221,10 @@ LOGIN_HTML = """<!DOCTYPE html>
     <div class="login-wrapper">
         <div class="login-card">
             <div class="brand">
-                <div style="display:flex;justify-content:center;align-items:center;gap:20px;flex-wrap:wrap;margin-bottom:16px;">
+                <div style="display:flex;justify-content:center;align-items:center;margin-bottom:16px;">
                     <img src="/static/UFRB-20_assinatura_principal_preto.png"
                          alt="UFRB"
                          style="max-height:52px;width:auto;">
-                    <img src="https://ufrb.edu.br/cetens/images/cetens.png"
-                         alt="CETENS"
-                         style="max-height:52px;width:auto;border-radius:4px;">
                 </div>
                 <h1>Sistema de Proje&ccedil;&otilde;es</h1>
                 <div class="sub"><strong>CETENS</strong> &middot; UFRB &middot; Feira de Santana</div>
