@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Deivisan/caraprojetada/main/assets/images/logo.svg" alt="CaraProjetada" width="120">
+  <img src="./assets/images/logo.svg" alt="CaraProjetada" width="120">
 </p>
 
 <h1 align="center">🎯 CaraProjetada</h1>
@@ -125,7 +125,7 @@ Usuario          Projetor (A)
 | **USB** | 3x USB 2.0 |
 | **Vídeo** | HDMI 2.0 (4K@60fps) |
 
-<img src="https://raw.githubusercontent.com/Deivisan/caraprojetada/main/assets/images/rk3229-tv-box.jpg" width="400" alt="RK3229 TV Box">
+<img src="./assets/images/rk3229-tv-box.jpg" width="400" alt="RK3229 TV Box">
 
 ---
 
