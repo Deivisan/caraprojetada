@@ -369,15 +369,8 @@ CONTROL_HTML = """<!DOCTYPE html>
             margin-bottom: 24px;
             flex-wrap: wrap; gap: 12px;
         }
-        .header-left { display: flex; align-items: center; gap: 14px; }
-        .header-left .shield {
-            width: 44px; height: 44px;
-            background: linear-gradient(135deg, #003366, #6A1B9A);
-            border-radius: 10px;
-            display: flex; align-items: center; justify-content: center;
-            color: #fff; font-weight: 700; font-size: 18px;
-        }
-        .header-left h1 {
+.header-left { display: flex; align-items: center; gap: 0; }
+.header-left h1 {
             font-size: 18px; color: #003366; font-weight: 700;
             line-height: 1.2;
         }
@@ -536,13 +529,12 @@ CONTROL_HTML = """<!DOCTYPE html>
     <div class="panel-wrapper">
         <div class="panel-card">
             <div class="header">
-                <div class="header-left">
-                    <div class="shield">SP</div>
-                    <div>
-                        <h1>Sistema de Proje&ccedil;&otilde;es</h1>
-                        <div class="sub">UFRB &middot; CETENS</div>
-                    </div>
-                </div>
+  <div class="header-left">
+   <div>
+   <h1>Sistema de Proje&ccedil;&otilde;es</h1>
+   <div class="sub">UFRB &middot; CETENS{% if dev_mode %} <span style="color:#FFB300;font-weight:600;">&middot; DEV</span>{% endif %}</div>
+   </div>
+  </div>
                 <div class="user-badge" title="{{ user_fullname }}">&#128100; {{ user_fullname }}</div>
             </div>
 
@@ -588,14 +580,19 @@ CONTROL_HTML = """<!DOCTYPE html>
                     </button>
                 </form>
 
-                {% if session_active and session_user == username %}
-                <div class="btn-group">
-                    <form action="/desconectar" method="post" style="display:inline;width:100%;">
-                        <button type="submit" class="btn btn-danger" style="width:100%;">
-                            &#9632; Desconectar do Projetor
-                        </button>
-                    </form>
-                </div>
+ {% if session_active and session_user == username %}
+ <div class="btn-group">
+  {% if dev_mode %}
+  <a href="/vnc-view" class="btn btn-outline" style="text-decoration:none;text-align:center;">
+   🖥️ Ver Tela VNC (DEV)
+  </a>
+  {% endif %}
+  <form action="/desconectar" method="post" style="display:inline;width:100%;">
+  <button type="submit" class="btn btn-danger" style="width:100%;">
+  &#9632; Desconectar do Projetor
+  </button>
+  </form>
+ </div>
                 {% endif %}
             </div>
 
@@ -611,41 +608,672 @@ CONTROL_HTML = """<!DOCTYPE html>
                 </form>
             </div>
 
-            <div class="footer">
-                <strong>UFRB</strong> &bull; Universidade Federal do Rec&ocirc;ncavo da Bahia<br>
-                CETENS &bull; Centro de Ci&ecirc;ncia e Tecnologia em Energia e Sustentabilidade<br>
-                Sistema de Proje&ccedil;&otilde;es
-            </div>
+ <div class="footer">
+ <strong>UFRB</strong> &bull; Universidade Federal do Rec&ocirc;ncavo da Bahia<br>
+ CETENS &bull; Centro de Ci&ecirc;ncia e Tecnologia em Energia e Sustentabilidade<br>
+ Sistema de Proje&ccedil;&otilde;es &bull; <a href="/projetor" style="color:#008B9E;">Tela do Projetor</a>
+ </div>
         </div>
     </div>
 </body>
 </html>"""
 
 
-# ── ROTAS ────────────────────────────────────────────────────────
+# ── TELA DO PROJETOR (IDLE SCREEN 24/7) ────────────────────────────
+PROJECTOR_IDLE_HTML = """<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Projetor — Sistema de Projeções</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; }
+body {
+ font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+ background: linear-gradient(135deg, #001a33 0%, #003366 35%, #005580 65%, #002233 100%);
+ color: #fff;
+ display: flex;
+ align-items: center;
+ justify-content: center;
+ cursor: none;
+ user-select: none;
+}
+.scene {
+ width: 100%; height: 100%;
+ display: flex; flex-direction: column;
+ align-items: center; justify-content: center;
+ position: relative;
+}
+
+/* ── Partículas animadas (fundo) ── */
+.particles {
+ position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+ pointer-events: none; overflow: hidden;
+}
+.particle {
+ position: absolute;
+ width: 4px; height: 4px;
+ background: rgba(255,179,0,0.3);
+ border-radius: 50%;
+ animation: floatUp linear infinite;
+}
+@keyframes floatUp {
+ 0% { transform: translateY(100vh) scale(0); opacity: 0; }
+ 10% { opacity: 1; }
+ 90% { opacity: 1; }
+ 100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+}
+
+/* ── Logo / Identidade ── */
+.identity {
+ text-align: center;
+ margin-bottom: 48px;
+ position: relative;
+ z-index: 2;
+}
+.identity .logo-icon {
+ width: 80px; height: 80px;
+ margin: 0 auto 20px;
+ background: linear-gradient(135deg, #FFB300, #FF8F00);
+ border-radius: 20px;
+ display: flex; align-items: center; justify-content: center;
+ font-size: 40px;
+ box-shadow: 0 8px 32px rgba(255,179,0,0.3);
+ animation: pulse 3s ease-in-out infinite;
+}
+@keyframes pulse {
+ 0%, 100% { transform: scale(1); box-shadow: 0 8px 32px rgba(255,179,0,0.3); }
+ 50% { transform: scale(1.05); box-shadow: 0 12px 48px rgba(255,179,0,0.5); }
+}
+.identity h1 {
+ font-size: 36px;
+ font-weight: 900;
+ letter-spacing: -1px;
+ text-shadow: 0 2px 12px rgba(0,0,0,0.3);
+}
+.identity .org {
+ font-size: 16px;
+ font-weight: 300;
+ color: rgba(255,255,255,0.7);
+ margin-top: 6px;
+ letter-spacing: 2px;
+ text-transform: uppercase;
+}
+
+/* ── Instruções de conexão ── */
+.connect-info {
+ text-align: center;
+ position: relative; z-index: 2;
+ max-width: 700px;
+}
+.connect-info .step-grid {
+ display: grid;
+ grid-template-columns: repeat(3, 1fr);
+ gap: 24px;
+ margin-bottom: 40px;
+}
+.step-card {
+ background: rgba(255,255,255,0.08);
+ backdrop-filter: blur(10px);
+ border: 1px solid rgba(255,255,255,0.12);
+ border-radius: 16px;
+ padding: 24px 16px;
+ text-align: center;
+ transition: all 0.3s;
+}
+.step-card:hover {
+ background: rgba(255,255,255,0.14);
+ transform: translateY(-2px);
+}
+.step-num {
+ width: 32px; height: 32px;
+ background: linear-gradient(135deg, #FFB300, #FF8F00);
+ border-radius: 50%;
+ display: flex; align-items: center; justify-content: center;
+ font-weight: 700; font-size: 14px; color: #003366;
+ margin: 0 auto 12px;
+}
+.step-card h3 {
+ font-size: 14px; font-weight: 600;
+ margin-bottom: 6px;
+}
+.step-card p {
+ font-size: 12px; color: rgba(255,255,255,0.6);
+ line-height: 1.5;
+}
+
+/* ── URL grande ── */
+.url-display {
+ background: rgba(0,0,0,0.3);
+ border: 2px solid rgba(255,179,0,0.4);
+ border-radius: 16px;
+ padding: 20px 32px;
+ display: inline-block;
+ margin-bottom: 24px;
+ animation: glow 4s ease-in-out infinite;
+}
+@keyframes glow {
+ 0%, 100% { border-color: rgba(255,179,0,0.3); box-shadow: 0 0 20px rgba(255,179,0,0.1); }
+ 50% { border-color: rgba(255,179,0,0.7); box-shadow: 0 0 40px rgba(255,179,0,0.2); }
+}
+.url-display .url-label {
+ font-size: 11px; text-transform: uppercase;
+ letter-spacing: 2px; color: rgba(255,255,255,0.5);
+ margin-bottom: 6px;
+}
+.url-display .url-value {
+ font-size: 28px; font-weight: 700;
+ font-family: 'Courier New', monospace;
+ color: #FFB300;
+ letter-spacing: 1px;
+}
+.url-display .url-hint {
+ font-size: 11px; color: rgba(255,255,255,0.4);
+ margin-top: 4px;
+}
+
+/* ── Status ── */
+.status-bar {
+ position: absolute;
+ bottom: 32px;
+ left: 50%; transform: translateX(-50%);
+ display: flex; align-items: center; gap: 10px;
+ background: rgba(0,0,0,0.25);
+ padding: 8px 20px;
+ border-radius: 20px;
+ font-size: 12px;
+}
+.status-dot {
+ width: 8px; height: 8px;
+ border-radius: 50%;
+ animation: blink 2s ease-in-out infinite;
+}
+.status-dot.available { background: #16a34a; }
+.status-dot.in-use { background: #eab308; }
+@keyframes blink {
+ 0%, 100% { opacity: 1; }
+ 50% { opacity: 0.4; }
+}
+.status-text { color: rgba(255,255,255,0.6); }
+
+/* ── Hora ── */
+.clock {
+ position: absolute;
+ top: 24px; right: 32px;
+ font-size: 14px;
+ font-weight: 300;
+ color: rgba(255,255,255,0.3);
+ font-family: 'Courier New', monospace;
+}
+
+/* ── Responsivo ── */
+@media (max-width: 768px) {
+ .connect-info .step-grid { grid-template-columns: 1fr; gap: 12px; }
+ .identity h1 { font-size: 24px; }
+ .url-display .url-value { font-size: 18px; }
+ .step-card { padding: 16px 12px; }
+}
+</style>
+</head>
+<body>
+<div class="scene">
+ <!-- Partículas -->
+ <div class="particles" id="particles"></div>
+
+ <!-- Relógio -->
+ <div class="clock" id="clock"></div>
+
+ <!-- Identidade -->
+ <div class="identity">
+  <div class="logo-icon">🎬</div>
+  <h1>Sistema de Projeções</h1>
+  <div class="org">UFRB · CETENS · Feira de Santana</div>
+ </div>
+
+ <!-- Instruções -->
+ <div class="connect-info">
+  <div class="step-grid">
+   <div class="step-card">
+    <div class="step-num">1</div>
+    <h3>Acesse o endereço</h3>
+    <p>Abra o navegador do seu computador e digite o endereço abaixo</p>
+   </div>
+   <div class="step-card">
+    <div class="step-num">2</div>
+    <h3>Faça login</h3>
+    <p>Use seu SIAPE e senha institucional da rede UFRB</p>
+   </div>
+   <div class="step-card">
+    <div class="step-num">3</div>
+    <h3>Conecte ao projetor</h3>
+    <p>Clique em "Conectar Tela" e sua tela será espelhada automaticamente</p>
+   </div>
+  </div>
+
+  <div class="url-display">
+   <div class="url-label">Endereço de acesso</div>
+   <div class="url-value">http://{{ projector_ip }}</div>
+   <div class="url-hint">Digite no navegador do seu computador na rede UFRB</div>
+  </div>
+ </div>
+
+ <!-- Status -->
+ <div class="status-bar">
+  <span class="status-dot {% if session_active %}in-use{% else %}available{% endif %}"></span>
+  <span class="status-text">
+   {% if session_active %}
+    Projetor em uso por {{ session_user_full }} · desde {{ session_start }}
+   {% else %}
+    Projetor disponível · Aguardando conexão
+   {% endif %}
+  </span>
+ </div>
+</div>
+
+<script>
+// Partículas animadas
+(function() {
+ const container = document.getElementById('particles');
+ for (let i = 0; i < 30; i++) {
+  const p = document.createElement('div');
+  p.className = 'particle';
+  p.style.left = Math.random() * 100 + '%';
+  p.style.animationDuration = (8 + Math.random() * 12) + 's';
+  p.style.animationDelay = Math.random() * 10 + 's';
+  p.style.width = p.style.height = (2 + Math.random() * 4) + 'px';
+  container.appendChild(p);
+ }
+})();
+
+// Relógio
+function updateClock() {
+ const now = new Date();
+ document.getElementById('clock').textContent =
+  now.toLocaleDateString('pt-BR') + '  ' +
+  now.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+}
+updateClock();
+setInterval(updateClock, 30000);
+
+// Polling de status a cada 30s
+setInterval(function() {
+ fetch('/api/v1/status').then(r => r.json()).then(data => {
+  location.reload();
+ }).catch(() => {});
+}, 30000);
+</script>
+</body>
+</html>"""
+
+# ── EMULAÇÃO VNC (MODO DEV) ──────────────────────────────────────
+VNC_VIEWER_HTML = """<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VNC Viewer — Emulação DEV</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
+body {
+ font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+ display: flex; flex-direction: column;
+}
+
+/* ── Barra VNC superior ── */
+.vnc-toolbar {
+ background: linear-gradient(180deg, #1a1a2e, #16213e);
+ padding: 8px 16px;
+ display: flex; align-items: center; gap: 12px;
+ border-bottom: 1px solid rgba(255,255,255,0.1);
+ flex-shrink: 0;
+ z-index: 10;
+}
+.vnc-toolbar .vnc-icon {
+ width: 28px; height: 28px;
+ background: linear-gradient(135deg, #003366, #005580);
+ border-radius: 6px;
+ display: flex; align-items: center; justify-content: center;
+ font-size: 14px;
+}
+.vnc-toolbar .vnc-title {
+ color: #fff; font-size: 13px; font-weight: 600;
+}
+.vnc-toolbar .vnc-subtitle {
+ color: rgba(255,255,255,0.5); font-size: 11px;
+}
+.vnc-toolbar .vnc-status {
+ margin-left: auto;
+ display: flex; align-items: center; gap: 6px;
+}
+.vnc-toolbar .vnc-dot {
+ width: 8px; height: 8px;
+ border-radius: 50%;
+ background: #16a34a;
+ animation: vncBlink 2s ease-in-out infinite;
+}
+@keyframes vncBlink {
+ 0%, 100% { opacity: 1; box-shadow: 0 0 6px rgba(22,163,74,0.5); }
+ 50% { opacity: 0.5; box-shadow: none; }
+}
+.vnc-toolbar .vnc-status-text {
+ color: rgba(255,255,255,0.6); font-size: 11px;
+}
+.vnc-toolbar .btn-vnc {
+ background: rgba(255,255,255,0.1);
+ color: #fff; border: 1px solid rgba(255,255,255,0.15);
+ border-radius: 6px; padding: 4px 12px;
+ font-size: 11px; cursor: pointer;
+ transition: all 0.15s;
+}
+.vnc-toolbar .btn-vnc:hover { background: rgba(255,255,255,0.2); }
+.vnc-toolbar .btn-vnc.danger { color: #f87171; border-color: rgba(248,113,113,0.3); }
+.vnc-toolbar .btn-vnc.danger:hover { background: rgba(248,113,113,0.15); }
+
+/* ── Área da tela simulada ── */
+.vnc-screen {
+ flex: 1;
+ display: flex;
+ align-items: center;
+ justify-content: center;
+ position: relative;
+ background: #0a0a1a;
+ overflow: hidden;
+}
+
+/* Desktop simulado */
+.desktop-sim {
+ width: 100%; height: 100%;
+ background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+ display: flex; flex-direction: column;
+ align-items: center; justify-content: center;
+ position: relative;
+}
+
+/* Scanline VNC */
+.scanline {
+ position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+ background: repeating-linear-gradient(
+  0deg,
+  transparent, transparent 2px,
+  rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px
+ );
+ pointer-events: none;
+ z-index: 5;
+}
+
+/* Conteúdo do desktop */
+.desktop-content {
+ text-align: center;
+ z-index: 2;
+ max-width: 600px;
+ padding: 40px;
+}
+.desktop-content .vnc-badge {
+ display: inline-flex;
+ align-items: center; gap: 8px;
+ background: rgba(22,163,74,0.2);
+ border: 1px solid rgba(22,163,74,0.4);
+ border-radius: 20px;
+ padding: 6px 16px;
+ font-size: 12px;
+ color: #4ade80;
+ margin-bottom: 24px;
+}
+.desktop-content .vnc-badge .dot {
+ width: 6px; height: 6px;
+ border-radius: 50%;
+ background: #4ade80;
+ animation: vncBlink 1.5s ease-in-out infinite;
+}
+.desktop-content h2 {
+ font-size: 22px; font-weight: 700;
+ color: #fff;
+ margin-bottom: 8px;
+ text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.desktop-content .user-info {
+ font-size: 14px; color: rgba(255,255,255,0.6);
+ margin-bottom: 32px;
+}
+.desktop-content .desktop-preview {
+ background: rgba(255,255,255,0.05);
+ border: 1px solid rgba(255,255,255,0.1);
+ border-radius: 12px;
+ padding: 32px;
+ width: 400px;
+ margin: 0 auto;
+}
+.desktop-preview .screen-icon {
+ font-size: 48px;
+ margin-bottom: 12px;
+}
+.desktop-preview p {
+ color: rgba(255,255,255,0.4);
+ font-size: 13px;
+ line-height: 1.6;
+}
+.desktop-preview .note {
+ color: #FFB300;
+ font-size: 11px;
+ margin-top: 12px;
+}
+
+/* Barra de tarefas simulada */
+.taskbar {
+ position: absolute;
+ bottom: 0; left: 0; width: 100%;
+ background: rgba(10,10,26,0.95);
+ border-top: 1px solid rgba(255,255,255,0.08);
+ padding: 4px 16px;
+ display: flex; align-items: center;
+ gap: 12px; z-index: 6;
+}
+.taskbar .tb-start {
+ background: linear-gradient(135deg, #003366, #005580);
+ color: #fff; border: none;
+ border-radius: 4px; padding: 4px 12px;
+ font-size: 11px; font-weight: 600;
+ cursor: default;
+}
+.taskbar .tb-app {
+ display: flex; align-items: center; gap: 4px;
+ background: rgba(255,255,255,0.08);
+ border: 1px solid rgba(255,255,255,0.1);
+ border-radius: 4px; padding: 3px 10px;
+ font-size: 10px; color: rgba(255,255,255,0.7);
+}
+.taskbar .tb-app.active {
+ background: rgba(0,51,102,0.3);
+ border-color: rgba(0,85,128,0.5);
+ color: #fff;
+}
+.taskbar .tb-clock {
+ margin-left: auto;
+ font-size: 11px;
+ color: rgba(255,255,255,0.5);
+ font-family: 'Courier New', monospace;
+}
+
+/* ── DEV watermark ── */
+.dev-watermark {
+ position: absolute;
+ top: 50%; left: 50%;
+ transform: translate(-50%, -50%) rotate(-30deg);
+ font-size: 120px;
+ font-weight: 900;
+ color: rgba(255,179,0,0.05);
+ pointer-events: none;
+ white-space: nowrap;
+ z-index: 3;
+ letter-spacing: 10px;
+}
+</style>
+</head>
+<body>
+<!-- Toolbar VNC -->
+<div class="vnc-toolbar">
+ <div class="vnc-icon">🖥️</div>
+ <div>
+  <div class="vnc-title">TightVNC Viewer</div>
+  <div class="vnc-subtitle">{{ connected_ip }}:{{ vnc_display }}</div>
+ </div>
+ <div class="vnc-status">
+  <span class="vnc-dot"></span>
+  <span class="vnc-status-text">Conectado · {{ elapsed_time }}</span>
+ </div>
+ <button class="btn-vnc" onclick="window.open('/','_blank')">🧩 Painel</button>
+ <form action="/desconectar" method="post" style="display:inline;">
+  <button type="submit" class="btn-vnc danger">⏹ Desconectar</button>
+ </form>
+</div>
+
+<!-- Tela VNC -->
+<div class="vnc-screen">
+ <div class="dev-watermark">DEV MODE</div>
+ <div class="scanline"></div>
+
+ <div class="desktop-sim">
+  <div class="desktop-content">
+   <div class="vnc-badge">
+    <span class="dot"></span>
+    Conexão VNC ativa — Tela sendo espelhada no projetor
+   </div>
+   <h2>Tela de {{ user_fullname }}</h2>
+   <div class="user-info">
+    SIAPE: {{ username }} · IP: {{ connected_ip }} · {{ os_type }}
+   </div>
+
+   <div class="desktop-preview">
+    <div class="screen-icon">💻</div>
+    <p>
+     <strong>Em produção</strong>, esta área mostraria a tela real
+     do computador do usuário, capturada via VNC e exibida
+     no projetor em fullscreen.
+    </p>
+    <p class="note">
+     ⚡ Modo DEV: a conexão VNC é simulada.<br>
+     O comando real seria:<br>
+     <code style="font-size:10px;background:rgba(0,0,0,0.3);padding:2px 6px;border-radius:3px;">
+      xtightvncviewer {{ connected_ip }}:{{ vnc_display }} -autopass
+     </code>
+    </p>
+   </div>
+  </div>
+
+  <!-- Taskbar simulada -->
+  <div class="taskbar">
+   <div class="tb-start">⚑ Iniciar</div>
+   <div class="tb-app active">🖥️ VNC — {{ connected_ip }}</div>
+   <div class="tb-app">📁 Arquivos</div>
+   <div class="tb-app">🌐 Navegador</div>
+   <div class="tb-clock" id="tb-clock"></div>
+  </div>
+ </div>
+</div>
+
+<script>
+// Relógio da taskbar
+function updateClock() {
+ const now = new Date();
+ document.getElementById('tb-clock').textContent =
+  now.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) + ' · ' +
+  now.toLocaleDateString('pt-BR');
+}
+updateClock();
+setInterval(updateClock, 10000);
+
+// Atualizar tempo decorrido
+const startTime = new Date('{{ started_iso }}');
+function updateElapsed() {
+ const diff = Math.floor((Date.now() - startTime.getTime()) / 1000);
+ const m = Math.floor(diff / 60);
+ const s = diff % 60;
+ const h = Math.floor(m / 60);
+ // Atualizar texto se existir
+ const statusText = document.querySelector('.vnc-status-text');
+ if (statusText) {
+  const elapsed = h > 0 ? h + 'h ' + (m%60) + 'min' : m + 'min ' + s + 's';
+  statusText.textContent = 'Conectado · ' + elapsed;
+ }
+}
+setInterval(updateElapsed, 1000);
+updateElapsed();
+</script>
+</body>
+</html>"""
+
+
+ # ── ROTAS ────────────────────────────────────────────────────────
 
 @app.route('/')
 def index():
-    if 'username' not in session:
-        return render_template_string(LOGIN_HTML)
+ if 'username' not in session:
+  return render_template_string(LOGIN_HTML)
 
-    disp, os_name = detect_os(request.headers.get('User-Agent', ''))
-    fullname = session.get('user_fullname', session['username'])
+ disp, os_name = detect_os(request.headers.get('User-Agent', ''))
+ fullname = session.get('user_fullname', session['username'])
 
-    return render_template_string(CONTROL_HTML,
-        user_ip=request.remote_addr,
-        username=session['username'],
-        user_fullname=fullname,
-        os_detect=os_name,
-        dev_mode=DEV_MODE,
-        session_active=current_session['active'],
-        session_user=current_session.get('username', ''),
-        session_user_full=current_session.get('user_fullname', current_session.get('username', '')),
-        session_start=current_session.get('started_at', ''),
-        session_display=current_session.get('display', ''),
-        session_os=current_session.get('os_type', ''),
-        session_ip=current_session.get('user_ip', ''),
-        msg='')
+ return render_template_string(CONTROL_HTML,
+  user_ip=request.remote_addr,
+  username=session['username'],
+  user_fullname=fullname,
+  os_detect=os_name,
+  dev_mode=DEV_MODE,
+  session_active=current_session['active'],
+  session_user=current_session.get('username', ''),
+  session_user_full=current_session.get('user_fullname', current_session.get('username', '')),
+  session_start=current_session.get('started_at', ''),
+  session_display=current_session.get('display', ''),
+  session_os=current_session.get('os_type', ''),
+  session_ip=current_session.get('user_ip', ''),
+  msg='')
+
+# ── TELA DO PROJETOR (IDLE SCREEN) ────────────────────────────────
+@app.route('/projetor')
+def projetor_idle():
+ """Idle screen do projetor — fica 24/7 em fullscreen mostrando como conectar."""
+ projector_ip = request.host
+ return render_template_string(PROJECTOR_IDLE_HTML,
+  projector_ip=projector_ip,
+  session_active=current_session['active'],
+  session_user_full=current_session.get('user_fullname', current_session.get('username', '')),
+  session_start=current_session.get('started_at', ''))
+
+# ── EMULAÇÃO VNC (MODO DEV) ──────────────────────────────────────
+@app.route('/vnc-view')
+def vnc_view():
+ """Emulação visual da conexão VNC — mostra o que o projetor exibiria."""
+ if not DEV_MODE:
+  return redirect('/')
+ if 'username' not in session and not current_session['active']:
+  return redirect('/')
+
+ elapsed = ''
+ started_iso = datetime.now().isoformat()
+ if current_session.get('started_at'):
+  try:
+   started_dt = datetime.strptime(current_session['started_at'], '%d/%m/%Y %H:%M')
+   started_iso = started_dt.isoformat()
+   diff = datetime.now() - started_dt
+   total_sec = int(diff.total_seconds())
+   m, s = divmod(total_sec, 60)
+   h, m = divmod(m, 60)
+   elapsed = f'{h}h {m}min' if h > 0 else f'{m}min {s}s'
+  except:
+   elapsed = '0min 0s'
+
+ return render_template_string(VNC_VIEWER_HTML,
+  connected_ip=current_session.get('user_ip', request.remote_addr),
+  vnc_display=current_session.get('display', '0'),
+  user_fullname=current_session.get('user_fullname', current_session.get('username', '')),
+  username=current_session.get('username', ''),
+  os_type=current_session.get('os_type', ''),
+  elapsed_time=elapsed,
+  started_iso=started_iso)
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -729,22 +1357,7 @@ def conectar():
     subprocess.run('sudo pkill -9 xtightvncviewer', shell=True)
     comando = f'echo "123456" | DISPLAY=:0 sudo /usr/bin/xtightvncviewer {notebook_ip}:{vnc_display} -autopass'
 
-    if DEV_MODE:
-        registrar_log('VNC_SIMULADO', f'comando="{comando}"')
-        msg = (
-            '<strong>&#9989; MODO DEV — Conexão simulada!</strong><br>'
-            f'Comando que seria executado:<br>'
-            f'<code style="font-size:12px;background:#f0f0f0;padding:4px 8px;border-radius:4px;">'
-            f'{comando}</code>'
-        )
-    else:
-        try:
-            subprocess.Popen(comando, shell=True)
-            msg = '<strong>&#9989; Conectado com sucesso!</strong> Sua tela est&aacute; sendo exibida no projetor.'
-        except Exception as e:
-            registrar_log('ERRO_CONECTAR', f'SIAPE={user} erro={str(e)}')
-            msg = f'<strong>Erro ao conectar:</strong> {str(e)}'
-
+    # Atualiza sessão ANTES de qualquer redirect
     current_session['active'] = True
     current_session['username'] = user
     current_session['user_fullname'] = fullname
@@ -753,6 +1366,18 @@ def conectar():
     current_session['os_type'] = os_name
     current_session['started_at'] = datetime.now().strftime('%d/%m/%Y %H:%M')
     registrar_log('CONECTOU', f'SIAPE={user} nome="{fullname}" IP={notebook_ip} OS={os_name} display={vnc_display}')
+
+    if DEV_MODE:
+        registrar_log('VNC_SIMULADO', f'comando="{comando}"')
+        # Redireciona para a emulação visual VNC
+        return redirect('/vnc-view')
+    else:
+        try:
+            subprocess.Popen(comando, shell=True)
+            msg = '<strong>&#9989; Conectado com sucesso!</strong> Sua tela est&aacute; sendo exibida no projetor.'
+        except Exception as e:
+            registrar_log('ERRO_CONECTAR', f'SIAPE={user} erro={str(e)}')
+            msg = f'<strong>Erro ao conectar:</strong> {str(e)}'
 
     return render_template_string(CONTROL_HTML,
         user_ip=notebook_ip, username=user, user_fullname=fullname,
