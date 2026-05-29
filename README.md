@@ -1,64 +1,88 @@
-# 🎯 caraprojetada
+<p align="center">
+  <img src="./assets/images/logo.svg" alt="caraprojetada" width="110">
+</p>
 
-subsistema embarcado para transformar uma tv box rk3229 em um ponto de projeção institucional com login ad/ldap, controle vnc reverso, tela de projetor 24/7 e modo dev com emulação visual da experiência real.
+<h1 align="center">🎯 caraprojetada</h1>
 
-> branch atual: `dev`  
-> estado: desenvolvimento ativo, com modo dev local, emulação vnc e tela idle do projetor.
+<p align="center">
+  <strong>projetor institucional embarcado em rk3229 · flask · vnc reverso · ad/ldap</strong>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/branch-dev-6A1B9A?style=for-the-badge" alt="branch dev">
+  <img src="https://img.shields.io/badge/status-em%20desenvolvimento-FFB300?style=for-the-badge" alt="status">
+  <img src="https://img.shields.io/badge/hardware-rk3229%20armv7-003366?style=for-the-badge" alt="rk3229">
+  <img src="https://img.shields.io/badge/flask-python-008B9E?style=for-the-badge" alt="flask">
+  <img src="https://img.shields.io/badge/vnc-dev%20simulado-orange?style=for-the-badge" alt="vnc dev">
+</p>
+
+<p align="center">
+  <a href="#-visão-geral">visão geral</a> ·
+  <a href="#-modo-dev-local">modo dev</a> ·
+  <a href="#-rotas-principais">rotas</a> ·
+  <a href="#-desempenho">desempenho</a> ·
+  <a href="#-próximos-passos">próximos passos</a>
+</p>
 
 ---
 
-## visão rápida
+## ✨ visão geral
 
-| área | estado na branch dev |
-|---|---|
-| app web | flask em `app/app.py` |
-| auth | mock em dev, ad/ldap em produção |
-| vnc | simulado em dev, `xtightvncviewer` em produção |
-| tela do projetor | `/projetor`, fullscreen, 24/7 |
-| emulação vnc | `/vnc-view`, somente dev |
-| wm alvo | migração preparada para openbox, com fallback xfwm4 |
-| hardware alvo | rockchip rk3229, armv7, 1 gb ram |
+`caraprojetada` transforma uma tv box **rockchip rk3229** em um ponto de projeção institucional: o usuário acessa uma interface web, autentica com credenciais institucionais e espelha a tela do notebook no projetor via **vnc reverso**.
+
+esta branch `dev` contém o laboratório atual: **modo dev local**, **emulação visual da conexão vnc**, **tela idle 24/7 do projetor** e scripts preparados para migração de `xfwm4` para `openbox`.
+
+> ⚠️ `main` continua sendo a linha segura/produção. daqui para frente, a migração será feita aos poucos após testes na rede 172 e no hardware real.
 
 ---
 
-## arquitetura atual
+## 🧭 mapa do sistema
+
+```mermaid
+flowchart LR
+  user[notebook do usuário<br/>servidor vnc ativo] --> web[painel web flask]
+  web --> auth[auth mock dev<br/>ad/ldap em prod]
+  web --> connect[/conectar]
+  connect --> devview[/vnc-view<br/>emulação dev]
+  connect --> viewer[xtightvncviewer<br/>produção]
+  idle[/projetor<br/>arte 24/7] --> hdmi[projetor hdmi]
+  devview --> hdmi
+  viewer --> hdmi
+```
+
+se o github não renderizar o diagrama acima, a arquitetura equivalente é:
 
 ```text
-notebook do usuário
-  ├─ acessa http://<ip-da-box>/
-  ├─ autentica com siape/senha
-  └─ roda servidor vnc local
-              │
-              ▼
-carapreta-box / rk3229
-  ├─ flask :80 em produção / :5000 em dev
-  ├─ /              login + painel de controle
-  ├─ /projetor      arte idle 24/7 para o projetor
-  ├─ /conectar      inicia/simula conexão vnc
-  ├─ /vnc-view      emulação visual da conexão (dev)
-  ├─ /api/v1/status status json
-  ├─ xorg :0 + lightdm
-  ├─ openbox ou xfwm4
-  └─ xtightvncviewer conectado ao notebook
-              │
-              ▼
-projetor hdmi
-  ├─ idle screen quando livre
-  └─ tela do notebook quando conectado
+notebook do usuário → flask na box → auth → conectar → vnc/emulação → hdmi/projetor
 ```
 
 ---
 
-## modo dev local
+## 🧱 arquitetura atual
 
-o modo dev permite desenvolver fora da rede ufrb e sem tocar no hardware real.
+| camada | branch dev |
+|---|---|
+| app web | `app/app.py`, flask com templates inline |
+| autenticação | mock em `dev`; ad/ldap em produção |
+| vnc | simulado em dev; `xtightvncviewer` real em produção |
+| tela idle | `/projetor`, fullscreen, 24/7 |
+| emulação | `/vnc-view`, experiência visual tightvnc em dev |
+| display | xorg `:0` + lightdm + openbox/xfwm4 |
+| hardware alvo | rk3229, armv7, ~1 gb ram |
+| observabilidade | `/api/v1/status`, logs e `PERFORMANCE.md` |
+
+---
+
+## 🚀 modo dev local
+
+rode fora da rede da ufrb, sem tocar na box real:
 
 ```bash
 cd app
 CARAPROJETADA_ENV=dev flask --app app:app run --host 127.0.0.1 --port 5000
 ```
 
-atalho local já criado no ambiente do deivison:
+atalho local no ambiente do deivison:
 
 ```bash
 caraprojetadadev
@@ -66,160 +90,112 @@ caraprojetadadev
 
 ### login dev
 
-| usuário | senha |
-|---|---|
-| `admin` | `admin` |
-| qualquer usuário | `dev` |
-| `usuario` | `usuario` |
-
-### urls principais em dev
-
-| url | função |
-|---|---|
-| `http://127.0.0.1:5000/` | login/painel |
-| `http://127.0.0.1:5000/projetor` | tela idle do projetor |
-| `http://127.0.0.1:5000/vnc-view` | emulação vnc, após conectar |
-| `http://127.0.0.1:5000/api/v1/status` | status json |
-
-### fluxo dev esperado
-
-```text
-abrir / → login admin/admin → painel limpo sem "sp" → conectar tela
-→ /vnc-view → ver emulação tightvnc → desconectar
-```
-
----
-
-## produção esperada
-
-em produção, `CARAPROJETADA_ENV` fica ausente ou `prod`.
-
-```text
-flask porta 80
-ad/ldap real
-xtightvncviewer real
-log em /var/log/projetor-acessos.log
-/api/dev/reset indisponível
-/vnc-view redireciona para /
-```
-
-variáveis relevantes:
-
-| variável | padrão | uso |
+| usuário | senha | observação |
 |---|---|---|
-| `CARAPROJETADA_ENV` | `prod` | ativa `dev` quando igual a `dev` |
-| `SECRET_KEY` | valor interno | cookie flask |
-| `AD_SERVER` | `ldap://10.198.1.2` | servidor ldap |
-| `AD_DOMAIN` | `intranet.ufrb.edu.br` | domínio institucional |
-| `AD_BASE_DN` | `dc=intranet,dc=ufrb,dc=edu,dc=br` | base dn |
-| `LOG_FILE` | `/var/log/projetor-acessos.log` | auditoria |
-| `PORT` | `5000` em dev, `80` em prod | porta flask |
-| `HOST` | `127.0.0.1` em dev, `0.0.0.0` em prod | bind |
+| `admin` | `admin` | administrador mock |
+| qualquer usuário | `dev` | login rápido |
+| `usuario` | `usuario` | usuário=senha |
+
+### fluxo feliz
+
+```text
+abrir / → login admin/admin → painel sem "sp" → conectar tela
+→ /vnc-view → validar emulação tightvnc → desconectar → /projetor livre
+```
 
 ---
 
-## tela do projetor 24/7
+## 🖥️ telas novas da dev
 
-a rota `/projetor` é a arte que deve ficar em fullscreen na box enquanto ninguém está conectado.
+### `/projetor` — arte idle 24/7
 
-ela mostra:
+tela para ficar fixa no hdmi quando ninguém estiver conectado.
 
-- identidade do sistema: sistema de projeções, ufrb, cetens
-- passos para conectar
-- endereço grande: `http://<ip-da-box>`
-- status livre/ocupado
-- relógio
-- animações leves
-- polling de status a cada 30s
+| elemento | função |
+|---|---|
+| identidade | sistema de projeções · ufrb · cetens |
+| passos | como acessar, logar e conectar |
+| url grande | `http://<ip-da-box>` |
+| status | livre/ocupado + usuário ativo |
+| relógio | referência visual contínua |
+| polling | atualiza a cada 30s |
 
-atenção: amanhã, quando melhorar telas e menus, validar essa tela no rk3229 real para garantir que as animações não aumentem cpu/temperatura.
+### `/vnc-view` — emulação da conexão
 
----
+tela dev que mostra como a experiência do projetor se comporta quando alguém conecta.
 
-## emulação vnc dev
-
-a rota `/vnc-view` simula a experiência visual do projetor após conectar:
-
-- toolbar tightvnc
-- ip/display conectado
-- indicador verde de conexão
-- tempo decorrido
-- desktop simulado
-- watermark `dev mode`
-- botão voltar ao painel
-- botão desconectar
-
-em produção, essa tela não é usada; o `xtightvncviewer` real assume o display hdmi.
+| elemento | função |
+|---|---|
+| toolbar tightvnc | aparência do viewer real |
+| led verde | conexão ativa |
+| tempo decorrido | sessão em andamento |
+| desktop simulado | área onde a tela real apareceria |
+| botões | voltar ao painel / desconectar |
 
 ---
 
-## estrutura do projeto
+## 🛣️ rotas principais
+
+| método | rota | modo | descrição |
+|---|---|---|---|
+| `GET` | `/` | dev/prod | login ou painel |
+| `POST` | `/login` | dev/prod | autentica usuário |
+| `POST` | `/logout` | dev/prod | encerra sessão web |
+| `POST` | `/conectar` | dev/prod | simula ou inicia vnc |
+| `POST` | `/desconectar` | dev/prod | libera projetor |
+| `GET` | `/projetor` | dev/prod futuro | idle screen 24/7 |
+| `GET` | `/vnc-view` | dev | emulação vnc |
+| `GET` | `/api/v1/status` | dev/prod | status json |
+| `POST` | `/api/dev/reset` | dev | limpa sessão atual |
+
+---
+
+## 📦 estrutura
 
 ```text
 caraprojetada/
 ├── app/
-│   ├── app.py              # flask, templates inline, auth, vnc, dev mode
-│   └── requirements.txt    # flask + ldap3
+│   ├── app.py                 # flask, templates inline, auth, vnc, dev mode
+│   └── requirements.txt       # flask + ldap3
 ├── scripts/
-│   ├── switch_to_openbox.sh # migração xfwm4 → openbox com revert
-│   ├── kiosk.sh             # chromium fullscreen
-│   ├── totem_guardian.sh    # health check frequente, wm-agnóstico
-│   ├── totem_watchdog.sh    # health check periódico, wm-agnóstico
-│   ├── totem_reset.sh       # reset emergencial gráfico
-│   └── start_rtsp.sh        # streaming rtsp opcional
-├── systemd/
-│   ├── projetor.service
-│   └── stream-cam.service
-├── docs/                    # documentação html legada/online
-├── assets/                  # logos e imagens
-├── DEVICE_CONTEXT.md        # snapshot da box real
-├── SPEC.md                  # especificação técnica
-├── PERFORMANCE.md           # notas de desempenho
-├── AGENTS.md                # instruções locais para agentes
+│   ├── switch_to_openbox.sh   # migração xfwm4 → openbox com revert
+│   ├── kiosk.sh               # chromium fullscreen
+│   ├── totem_guardian.sh      # health check frequente
+│   ├── totem_watchdog.sh      # watchdog periódico
+│   ├── totem_reset.sh         # reset emergencial gráfico
+│   └── start_rtsp.sh          # rtsp opcional
+├── systemd/                   # serviços
+├── docs/                      # documentação html legada/online
+├── assets/                    # logos e imagens
+├── AGENTS.md                  # instruções locais para agentes
+├── PERFORMANCE.md             # metas e checklist de desempenho
+├── SPEC.md                    # especificação técnica
 └── README.md
 ```
 
 ---
 
-## endpoints
+## ⚡ desempenho
 
-| método | rota | descrição |
-|---|---|---|
-| `GET` | `/` | login ou painel |
-| `POST` | `/login` | autenticação |
-| `POST` | `/logout` | encerra sessão |
-| `POST` | `/conectar` | conecta/simula vnc |
-| `POST` | `/desconectar` | libera projetor |
-| `GET` | `/projetor` | idle screen 24/7 |
-| `GET` | `/vnc-view` | emulação vnc dev |
-| `GET` | `/api/v1/status` | status do projetor |
-| `POST` | `/api/dev/reset` | reset dev, somente `CARAPROJETADA_ENV=dev` |
+o alvo real é pequeno. toda melhoria visual precisa ser validada no rk3229 antes de ir para `main`.
 
----
-
-## desempenho: pontos de atenção
-
-hardware alvo é limitado: rk3229, armv7 32-bit, ~1 gb ram e armazenamento emmc pequeno. cada decisão de ui precisa respeitar isso.
-
-metas iniciais:
-
-| métrica | alvo |
+| métrica | alvo inicial |
 |---|---|
-| flask idle | baixo uso de cpu, ideal `< 5%` |
-| memória app | ideal `< 120 mb` sem vnc |
-| sessão vnc | ideal `< 180 mb` somando viewer |
-| temperatura | manter abaixo de `75°c` |
-| conexão vnc | abrir em até `3s` após clique |
-| idle screen | animações sem travar e sem aquecer |
+| cpu idle flask | `< 5%` |
+| memória sem vnc | `< 120 mb` |
+| memória com vnc | `< 180 mb` somando viewer |
+| temperatura | ideal `< 75°c` |
+| tempo de conexão | `< 3s` |
+| polling da tela idle | não agressivo, hoje 30s |
 
-ver também: [`PERFORMANCE.md`](./PERFORMANCE.md)
+ver detalhes em [`PERFORMANCE.md`](./PERFORMANCE.md).
 
 ---
 
-## comandos úteis
+## 🧪 comandos úteis
 
 ```bash
-# sintaxe python
+# verificar sintaxe
 python3 -m py_compile app/app.py
 
 # status dev
@@ -228,38 +204,34 @@ curl -s http://127.0.0.1:5000/api/v1/status | python3 -m json.tool
 # reset dev
 curl -s -X POST http://127.0.0.1:5000/api/dev/reset | python3 -m json.tool
 
-# produção: status serviço
-ssh caraprojetada 'systemctl status projetor --no-pager'
-
-# produção: logs
-ssh caraprojetada 'tail -f /var/log/projetor-acessos.log'
-
-# produção: recursos
+# recursos no hardware real
 ssh caraprojetada 'free -h; uptime; df -h /; cat /sys/class/thermal/thermal_zone0/temp'
 ```
 
 ---
 
-## roadmap imediato
+## 🧩 próximos passos
 
-- [x] modo dev local
-- [x] auth mock dev
-- [x] vnc simulado dev
-- [x] emulação visual vnc
-- [x] idle screen `/projetor`
-- [x] remover retângulo roxo `sp`
-- [x] scripts openbox/wm-agnósticos
-- [ ] amanhã: lapidar telas e menus
-- [ ] amanhã: testar na rede 172 com hardware real
-- [ ] migrar gradualmente da branch `dev` para `main`
-- [ ] medir impacto da tela `/projetor` na cpu/temperatura real
+- [x] modo dev local.
+- [x] login mock.
+- [x] emulação vnc.
+- [x] arte idle do projetor.
+- [x] remover retângulo roxo `sp`.
+- [x] docs separadas para `dev` e `main`.
+- [ ] amanhã: melhorar telas e menus.
+- [ ] amanhã: testar na rede 172 com notebook real.
+- [ ] medir cpu/ram/temperatura da tela `/projetor`.
+- [ ] migrar commits da `dev` para `main` em blocos pequenos.
 
 ---
 
-## notas importantes
+## 🔒 notas de segurança
 
-- `main` deve permanecer segura para produção.
-- `dev` pode conter emulação e telas experimentais.
-- não misturar credenciais reais em commits públicos.
-- repo deve permanecer privado por conter contexto de rede/dispositivo.
-- antes de migrar para `main`, testar na rede ufrb com notebook real + servidor vnc ativo.
+- manter o repositório privado.
+- não promover `CARAPROJETADA_ENV=dev` para produção.
+- não expor credenciais ou dados sensíveis.
+- validar ad/ldap real antes de qualquer merge para `main`.
+
+<p align="center">
+  <strong>caraprojetada</strong> · ufrb/cetens · rk3229 · dev branch
+</p>
