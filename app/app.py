@@ -733,16 +733,10 @@ body {
    <div class="url-hint">Digite no navegador do seu computador na rede UFRB</div>
   </div>
  </div>
- <div class="status-bar">
-  <span class="status-dot {% if session_active %}in-use{% else %}available{% endif %}"></span>
-  <span class="status-text">
-   {% if session_active %}
-    Projetor em uso por {{ session_user_full }} · desde {{ session_start }}
-   {% else %}
-    Projetor disponível · Aguardando conexão
-   {% endif %}
-  </span>
- </div>
+  <div class="status-bar">
+   <span class="status-dot" id="status-dot"></span>
+   <span class="status-text" id="status-text">Carregando...</span>
+  </div>
 </div>
 <script>
 (function() {
@@ -763,11 +757,23 @@ function updateClock() {
   now.toLocaleDateString('pt-BR') + '  ' +
   now.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
 }
+function updateStatus() {
+ fetch('/api/v1/status').then(r => r.json()).then(data => {
+  const dot = document.getElementById('status-dot');
+  const txt = document.getElementById('status-text');
+  if (data.active_session) {
+   dot.className = 'status-dot in-use';
+   txt.textContent = 'Projetor em uso por ' + (data.current_user_full || data.current_user || 'alguem') + ' · desde ' + (data.since || '');
+  } else {
+   dot.className = 'status-dot available';
+   txt.textContent = 'Projetor disponivel · Aguardando conexao';
+  }
+ }).catch(function() {});
+}
 updateClock();
+updateStatus();
 setInterval(updateClock, 30000);
-setInterval(function() {
- fetch('/api/v1/status').then(r => r.json()).then(data => { location.reload(); }).catch(() => {});
-}, 30000);
+setInterval(updateStatus, 30000);
 </script>
 </body>
 </html>"""
@@ -798,18 +804,13 @@ def index():
 
 @app.route('/projetor')
 def projetor_idle():
-    # pega o ip real da box (nao localhost)
     try:
         saida = subprocess.check_output(['ip', '-4', 'addr', 'show', 'wlan0']).decode()
         ip_box = re.search(r'inet (\d+\.\d+\.\d+\.\d+)', saida)
         projector_ip = ip_box.group(1) if ip_box else '127.0.0.1'
     except Exception:
         projector_ip = '127.0.0.1'
-    return render_template_string(PROJECTOR_IDLE_HTML,
-        projector_ip=projector_ip,
-        session_active=current_session['active'],
-        session_user_full=current_session.get('user_fullname', current_session.get('username', '')),
-        session_start=current_session.get('started_at', ''))
+    return render_template_string(PROJECTOR_IDLE_HTML, projector_ip=projector_ip)
 
 @app.route('/login', methods=['POST'])
 def login():
