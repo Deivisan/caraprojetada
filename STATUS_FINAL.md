@@ -8,7 +8,8 @@
 | Flask 3.1.3 | ✅ Rodando na porta 80 |
 | Openbox WM | ✅ Ativo (sem compositor) |
 | xtightvncviewer | ✅ 1.3.10 instalado |
-| Chromium kiosk | ✅ Rodando (UOL) |
+| Chromium kiosk | ✅ Rodando (tela do projetor) |
+| Perfil chromium | ✅ `/tmp/chromium-kiosk` (nunca restaura sessão) |
 | Guardian/Watchdog | ✅ Scripts ativos via cron |
 | Logs | ✅ Em `/home/carapreta/` (evita zram) |
 | RAM | 🟢 66Mi / 962Mi |
