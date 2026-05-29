@@ -12,16 +12,17 @@ if ! pgrep -x "openbox" > /dev/null; then
   if command -v openbox &>/dev/null; then log "Subindo openbox..."; DISPLAY=:0 openbox --replace & sleep 2
   elif command -v xfwm4 &>/dev/null; then log "Subindo xfwm4..."; DISPLAY=:0 xfwm4 --replace --compositor=off & sleep 2; fi
 fi
-# Chromium kiosk com perfil FRESCO (nunca restaura uol)
-if ! pgrep -f "chromium.*kiosk.*caraprojetada" > /dev/null; then
-  log "Iniciando chromium com tela do projetor..."
-  pkill -9 -f chrom 2>/dev/null; sleep 2
+# So inicia chromium se nao estiver rodando (NUNCA mata)
+if ! pgrep -f "chromium.*--kiosk" > /dev/null; then
+  log "Chromium nao encontrado. Iniciando..."
   rm -rf /tmp/chromium-kiosk
   DISPLAY=:0 chromium --kiosk --start-maximized --noerrdialogs \
     --disable-infobars --incognito --hide-scrollbars \
     --user-data-dir=/tmp/chromium-kiosk --no-first-run \
     http://localhost/projetor &
-  log "Chromium PID: $!"
+  log "Chromium iniciado PID: $!"
+else
+  log "Chromium ja rodando. OK."
 fi
 DISPLAY=:0 xset s off 2>/dev/null; DISPLAY=:0 xset -dpms 2>/dev/null; DISPLAY=:0 xset s noblank 2>/dev/null
 log "VERIFICACAO OK"
