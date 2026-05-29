@@ -79,6 +79,23 @@ x11-xserver-utils
 ### `POST /desconectar`
 - **Ação**: Mata processo `xtightvncviewer`
 
+### `GET /projetor`
+- **Descrição**: Tela idle do projetor, desenhada para ficar 24/7 em fullscreen no hdmi.
+- **Conteúdo**: Identidade do sistema, instruções de conexão, URL de acesso, relógio e status livre/ocupado.
+- **Atualização**: Polling de `/api/v1/status` a cada 30 segundos.
+
+### `GET /vnc-view`
+- **Descrição**: Emulação visual da experiência TightVNC no modo desenvolvimento.
+- **Disponibilidade**: Somente quando `CARAPROJETADA_ENV=dev`; em produção redireciona para `/`.
+- **Uso**: Após `POST /conectar` em modo dev, a aplicação redireciona para esta tela.
+
+### `GET /api/v1/status`
+- **Descrição**: Retorna status JSON do projetor, modo, sessão ativa, usuário atual, IP e display.
+
+### `POST /api/dev/reset`
+- **Descrição**: Reseta `current_session` em modo dev.
+- **Disponibilidade**: Somente quando `CARAPROJETADA_ENV=dev`.
+
 ## 4. LDAP / Active Directory
 
 ### Configuração
@@ -205,3 +222,46 @@ zram1 (log)     50M   48M  /var/log
 - [ ] Fail2ban para SSH
 - [ ] Senha VNC configurável por sessão
 - [ ] Logs de auditoria
+
+## 11. Modo de Desenvolvimento
+
+### Ativação
+
+```bash
+CARAPROJETADA_ENV=dev
+```
+
+### Diferenças para produção
+
+| item | dev | prod |
+|------|-----|------|
+| host padrão | `127.0.0.1` | `0.0.0.0` |
+| porta padrão | `5000` | `80` |
+| autenticação | mock | ad/ldap |
+| ldap3 | opcional | obrigatório |
+| vnc | simulado | real via `xtightvncviewer` |
+| `/api/dev/reset` | disponível | indisponível |
+| `/vnc-view` | disponível | redireciona |
+
+### Credenciais mock
+
+| usuário | senha |
+|---------|-------|
+| `admin` | `admin` |
+| qualquer | `dev` |
+| `usuario` | `usuario` |
+
+## 12. Desempenho
+
+O alvo real é limitado. Toda evolução visual ou de serviço deve ser validada no RK3229.
+
+Metas iniciais:
+
+- Flask idle abaixo de 5% CPU.
+- Memória do app abaixo de 120 MB sem VNC.
+- Memória total adicional abaixo de 180 MB com VNC ativo.
+- Temperatura abaixo de 75°C em uso contínuo.
+- Tempo de conexão VNC abaixo de 3 segundos.
+- Tela `/projetor` sem uso excessivo de CPU mesmo rodando 24/7.
+
+Detalhes e checklist: `PERFORMANCE.md`.
