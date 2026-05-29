@@ -798,7 +798,13 @@ def index():
 
 @app.route('/projetor')
 def projetor_idle():
-    projector_ip = request.host
+    # pega o ip real da box (nao localhost)
+    try:
+        saida = subprocess.check_output(['ip', '-4', 'addr', 'show', 'wlan0']).decode()
+        ip_box = re.search(r'inet (\d+\.\d+\.\d+\.\d+)', saida)
+        projector_ip = ip_box.group(1) if ip_box else '127.0.0.1'
+    except Exception:
+        projector_ip = '127.0.0.1'
     return render_template_string(PROJECTOR_IDLE_HTML,
         projector_ip=projector_ip,
         session_active=current_session['active'],
@@ -824,7 +830,7 @@ def login():
 @app.route('/logout', methods=['POST'])
 def logout():
     if current_session.get('username') == session.get('username'):
-        subprocess.run('sudo pkill -9 xtightvncviewer', shell=True)
+        subprocess.run(['pkill', '-9', 'xtightvncviewer'])
         registrar_log('DESCONECTOU_LOGOUT', f'SIAPE={session.get("username")}')
         current_session['active'] = False
         current_session['username'] = None
@@ -866,11 +872,11 @@ def conectar():
             session_ip=current_session.get('user_ip', ''),
             msg=msg)
     # Mata sessão anterior e conecta
-    subprocess.run('sudo pkill -9 xtightvncviewer', shell=True)
-    # Comando otimizado: qualidade baixa + compressão máxima pra evitar travamento
-    comando = (f'echo "123456" | DISPLAY=:0 sudo /usr/bin/xtightvncviewer '
-               f'{notebook_ip}:{vnc_display} -autopass '
-               f'-quality 6 -compresslevel 9 -encodings "tight hextile"')
+    subprocess.run(['pkill', '-9', 'xtightvncviewer'])
+    # Comando otimizado: sem sudo (roda como root), quality baixo + compressão máxima
+    comando = (f'echo "123456" | DISPLAY=:0 XAUTHORITY=/var/run/lightdm/root/:0 '
+               f'/usr/bin/xtightvncviewer {notebook_ip}:{vnc_display} -autopass '
+               f'-quality 6 -compresslevel 9')
     current_session['active'] = True
     current_session['username'] = user
     current_session['user_fullname'] = fullname
@@ -903,7 +909,7 @@ def desconectar():
         return redirect('/')
     user = session['username']
     fullname = session.get('user_fullname', user)
-    subprocess.run('sudo pkill -9 xtightvncviewer', shell=True)
+    subprocess.run(['pkill', '-9', 'xtightvncviewer'])
     registrar_log('DESCONECTOU', f'SIAPE={user} nome="{fullname}"')
     current_session['active'] = False
     current_session['username'] = None
@@ -945,7 +951,7 @@ def api_status():
 
 @app.route('/api/v1/force-disconnect', methods=['POST'])
 def api_force_disconnect():
-    subprocess.run('sudo pkill -9 xtightvncviewer', shell=True)
+    subprocess.run(['pkill', '-9', 'xtightvncviewer'])
     registrar_log('FORCE_DISCONNECT_API', 'por API')
     current_session['active'] = False
     current_session['username'] = None
