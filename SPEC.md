@@ -205,3 +205,18 @@ zram1 (log)     50M   48M  /var/log
 - [ ] Fail2ban para SSH
 - [ ] Senha VNC configurável por sessão
 - [ ] Logs de auditoria
+
+## 11. Desempenho e Observabilidade
+
+O alvo de produção é uma box RK3229 com recursos limitados. Toda mudança visual, novo serviço ou nova dependência deve ser medida no hardware real antes de ser promovida para `main`.
+
+Metas iniciais:
+
+- CPU idle abaixo de 5%.
+- Memória do app abaixo de 120 MB sem VNC.
+- Conexão VNC em até 3 segundos após o clique.
+- Temperatura ideal abaixo de 75°C.
+- Espaço livre em `/` acima de 1 GB.
+- Logs curtos para evitar saturar `/var/log` em zram.
+
+Checklist e comandos: `PERFORMANCE.md`.

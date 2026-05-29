@@ -1,299 +1,207 @@
-<p align="center">
-  <img src="./assets/images/logo.svg" alt="CaraProjetada" width="120">
-</p>
+# 🎯 caraprojetada
 
-<h1 align="center">🎯 CaraProjetada</h1>
+subsistema embarcado para transformar uma tv box rk3229 em um ponto de projeção institucional: login ad/ldap, controle web, vnc reverso e exibição da tela do usuário no projetor hdmi.
 
-<p align="center">
-  <strong>Subsistema inteligente de projetores multi-sala com autenticação institucional</strong>
-</p>
-
-<p align="center">
-  <a href="https://github.com/Deivisan/caraprojetada"><img src="https://img.shields.io/badge/status-produçao-green?style=flat"></a>
-  <a href="#"><img src="https://img.shields.io/badge/SoC-RK3229%20(ARMv7)-blue?style=flat"></a>
-  <a href="#"><img src="https://img.shields.io/badge/VNC-UltraVNC-orange?style=flat"></a>
-  <a href="#"><img src="https://img.shields.io/badge/auth-AD%20LDAP-1f6feb?style=flat"></a>
-  <a href="https://dave-san.github.io/caraprojetada"><img src="https://img.shields.io/badge/docs-online-purple?style=flat"></a>
-</p>
+> branch atual: `main`  
+> estado: base estável de produção. mudanças experimentais ficam na `dev` e devem migrar aos poucos após teste na rede/hardware real.
 
 ---
 
-## 🌐 Documentação Online
+## visão rápida
 
-Acesse a documentação completa e interativa:
-
-| Página | Descrição |
-|--------|-----------|
-| **[🏠 Início](docs/index.html)** | Visão geral e funcionalidades |
-| **[🏗️ Arquitetura](docs/arquitetura.html)** | Diagramas e fluxos técnicos |
-| **[📚 Tutoriais](docs/tutoriais.html)** | Passo a passo para usuários |
-| **[🚀 Instalação](docs/setup.html)** | Deploy e configuração |
-| **[🗺️ Roadmap](docs/roadmap.html)** | Plano de desenvolvimento |
+| área | produção atual |
+|---|---|
+| hardware | rockchip rk3229, armv7, ~1 gb ram |
+| sistema | armbian bullseye, kernel 4.4 legacy |
+| app | flask em `app/app.py` |
+| porta | `80` |
+| autenticação | ad/ldap institucional |
+| projeção | vnc reverso com `xtightvncviewer` |
+| display | xorg `:0` + lightdm + wm leve |
+| watchdog | scripts de guardian/watchdog/reset |
 
 ---
 
-## 🏗️ Arquitetura Multi-Projetor
+## arquitetura de produção
 
-### Visão Geral
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                        DASHBOARD CENTRAL (Web)                             │
-│                   http://projetores.intranet.ufrb.edu.br                    │
-│                                                                             │
-│  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌────────────┐          │
-│  │   SALA A   │  │   SALA B   │  │   SALA C   │  │   SALA D   │          │
-│  │  172.17.x.x│  │ 172.17.x.x │  │ 172.17.x.x │  │ 172.17.x.x │          │
-│  │   [CONECTAR]│  │ [CONECTAR] │  │ [CONECTAR] │  │ [CONECTAR] │          │
-│  └──────┬─────┘  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘          │
-└─────────┼───────────────┼─────────────────┼─────────────────┼─────────────────┘
-          ▼               ▼                 ▼                 ▼
-┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
-│   PROJETOR A    │ │   PROJETOR B    │ │   PROJETOR C    │ │   PROJETOR D    │
-│   RK3229        │ │   RK3229        │ │   RK3229        │ │   RK3229        │
-│   192.168.1.101 │ │   192.168.1.102 │ │   192.168.1.103 │ │   192.168.1.104 │
-│   ┌───────────┐ │ │   ┌───────────┐ │ │   ┌───────────┐ │ │   ┌───────────┐ │
-│   │ xtightvnc │ │ │   │ xtightvnc │ │ │   │ xtightvnc │ │ │   │ xtightvnc │ │
-│   │ viewer    │ │ │   │ viewer    │ │ │   │ viewer    │ │ │   │ viewer    │ │
-│   └─────┬─────┘ │ │   └─────┬─────┘ │ │   └─────┬─────┘ │ │   └─────┬─────┘ │
-│         ▼       │ │         ▼       │ │         ▼       │ │         ▼       │
-│   ┌───────────┐ │ │   ┌───────────┐ │ │   ┌───────────┐ │ │   ┌───────────┐ │
-│   │ Flask API │ │ │   │ Flask API │ │ │   │ Flask API │ │ │   │ Flask API │ │
-│   │ (porta 80)│ │ │   │ (porta 80)│ │ │   │ (porta 80)│ │ │   │ (porta 80)│ │
-│   └─────┬─────┘ │ │   └─────┬─────┘ │ │   └─────┬─────┘ │ │   └─────┬─────┘ │
-│         ▼       │ │         ▼       │ │         ▼       │ │         ▼       │
-│   ┌───────────┐ │ │   ┌───────────┐ │ │   ┌───────────┐ │ │   ┌───────────┐ │
-│   │ LightDM   │ │ │   │ LightDM   │ │ │   │ LightDM   │ │ │   │ LightDM   │ │
-│   │ Xorg :0   │ │ │   │ Xorg :0   │ │ │   │ Xorg :0   │ │ │   │ Xorg :0   │ │
-│   └───────────┘ │ │   └───────────┘ │ │   └───────────┘ │ │   └───────────┘ │
-└─────────────────┘ └─────────────────┘ └─────────────────┘ └─────────────────┘
-```
-
-### 🔐 Fluxo de Autenticação
-
-```
-Usuario          Dashboard            AD Server
-   │                 │                    │
-   │  1. GET /          │                    │
-   │ ───────────────────►│                    │
-   │                 │  2. HTML Login        │
-   │ ◄───────────────────│                    │
-   │                 │                    │
-   │  3. POST /login      │                    │
-   │ ───────────────────►│                    │
-   │                 │  4. LDAP bind          │
-   │                 │ ───────────────►       │
-   │                 │ ◄──────────────OK       │
-   │ ◄───────────────────│                    │
-   │                 │  5. HTML Dashboard     │
-   │                 │  (lista salas)          │
-```
-
-### 🖥️ Fluxo de Conexão VNC
-
-```
-Usuario          Projetor (A)
-   │                 │
-   │  6. POST /sala/a/conectar         │
-   │ ───────────────────────────────►│
-   │                 │  7. Killa viewer antigo │
-   │                 │     (se existir)        │
-   │                 │  8. Executa:            │
-   │                 │     xtightvncviewer      │
-   │                 │     <IP_USUARIO>:0       │
-   │                 │     -autopass (123456)  │
-   │                 │ ───────────────────────►│
-   │  9. VNC Server (UltraVNC)               │
-   │ ◄═════════════════════════════════════════►│
-   │      Tela do notebook no projetor
+```text
+notebook do usuário
+  ├─ servidor vnc local ativo
+  ├─ navegador acessa http://<ip-da-box>/
+  └─ login com credenciais institucionais
+              │
+              ▼
+carapreta-box / rk3229
+  ├─ flask :80
+  ├─ /              login ou painel
+  ├─ /login         autenticação ad/ldap
+  ├─ /conectar      inicia xtightvncviewer
+  ├─ /desconectar   encerra viewer
+  ├─ /api/v1/status status json
+  ├─ xorg :0 + lightdm
+  ├─ wm gráfico
+  └─ watchdog/guardian
+              │
+              ▼
+projetor hdmi
+  └─ mostra o viewer vnc em tela cheia
 ```
 
 ---
 
-## 📊 Hardware Target
+## fluxo de uso
 
-### Rockchip RK3229 TV Box
-
-| Componente | Especificação |
-|------------|---------------|
-| **SoC** | Rockchip RK3229, 28nm |
-| **CPU** | 4x Cortex-A7 @ 1.5 GHz |
-| **GPU** | Mali-400 MP2 |
-| **RAM** | 1 GB DDR3 |
-| **eMMC** | 8 GB |
-| **Rede** | 10/100 Ethernet + Wi-Fi |
-| **USB** | 3x USB 2.0 |
-| **Vídeo** | HDMI 2.0 (4K@60fps) |
-
-<img src="./assets/images/rk3229-tv-box.jpg" width="400" alt="RK3229 TV Box">
+1. usuário acessa `http://<ip-da-box>/`.
+2. informa siape/usuário e senha institucional.
+3. sistema autentica via ad/ldap.
+4. painel detecta ip e sistema operacional pelo user-agent.
+5. usuário clica em conectar tela.
+6. box mata viewer antigo, se houver.
+7. box executa `xtightvncviewer <ip-do-usuario>:<display>` no display hdmi.
+8. ao terminar, usuário desconecta pelo painel.
 
 ---
 
-## 📦 Estrutura do Projeto
+## endpoints atuais
 
-```
+| método | rota | descrição |
+|---|---|---|
+| `GET` | `/` | login ou painel |
+| `POST` | `/login` | autenticação ad/ldap |
+| `POST` | `/logout` | encerra sessão web |
+| `POST` | `/conectar` | inicia conexão vnc reversa |
+| `POST` | `/desconectar` | encerra viewer e libera projetor |
+| `GET` | `/api/v1/status` | status json do projetor |
+| `POST` | `/api/v1/force-disconnect` | força liberação via api |
+
+> recursos experimentais da `dev`, como tela `/projetor` e emulação `/vnc-view`, devem migrar para `main` apenas depois de validação no hardware real.
+
+---
+
+## hardware alvo
+
+| componente | especificação |
+|---|---|
+| soc | rockchip rk3229 |
+| cpu | 4× cortex-a7 @ até 1.5 ghz |
+| gpu | mali-400 mp2 |
+| ram | ~1 gb ddr3 |
+| storage | emmc ~8 gb |
+| rede | ethernet 10/100 + wi-fi esp8089 |
+| vídeo | hdmi |
+| arquitetura | armv7 32-bit |
+
+limitação central: o hardware é útil para tarefa dedicada, mas não tolera excesso de processos, ui pesada ou logs verbosos.
+
+---
+
+## estrutura do projeto
+
+```text
 caraprojetada/
 ├── app/
-│   ├── app.py              # Flask server + VNC control + AD auth
-│   └── requirements.txt    # Flask, LDAP3
+│   ├── app.py              # flask, ad/ldap, controle vnc
+│   └── requirements.txt    # flask + ldap3
 ├── scripts/
-│   ├── kiosk.sh            # Chromium kiosk mode
-│   ├── totem_guardian.sh   # System health guardian
-│   ├── totem_watchdog.sh   # Periodic watchdog
-│   ├── totem_reset.sh      # Emergency reset
-│   ├── start_rtsp.sh       # RTSP camera streaming
-│   └── build-kernel.sh     # Kernel building (CaraAzul)
+│   ├── kiosk.sh            # chromium fullscreen opcional
+│   ├── totem_guardian.sh   # health check frequente
+│   ├── totem_watchdog.sh   # watchdog periódico
+│   ├── totem_reset.sh      # reset emergencial gráfico
+│   └── start_rtsp.sh       # rtsp opcional
 ├── systemd/
-│   ├── projetor.service    # Flask service (port 80)
-│   └── stream-cam.service  # RTSP streaming service
-├── docs/
-│   ├── index.html          # Landing page
-│   ├── arquitetura.html    # Documentação técnica
-│   ├── tutoriais.html      # Tutoriais de uso
-│   ├── setup.html          # Guia de instalação
-│   ├── roadmap.html        # Roadmap de desenvolvimento
-│   ├── css/style.css       # Estilos
-│   ├── js/main.js          # JavaScript
-│   ├── _config.yml         # GitHub Pages config
-│   └── .nojekyll           # Bypass Jekyll
-├── assets/
-│   └── images/             # Imagens do hardware
-├── exports/                # Configurações exportadas
+│   ├── projetor.service    # serviço flask porta 80
+│   └── stream-cam.service  # serviço rtsp opcional
+├── docs/                   # documentação html
+├── assets/                 # imagens e logos
+├── DEVICE_CONTEXT.md       # snapshot real da box
+├── SPEC.md                 # especificação técnica
+├── PERFORMANCE.md          # desempenho/observabilidade
+├── AGENTS.md               # instruções locais para agentes
 └── README.md
 ```
 
 ---
 
-## 🎯 Como Construir uma Imagem SD
+## deploy/execução
 
-### Passo 1: Baixar o Armbian
+instalar dependências no alvo:
 
 ```bash
-# Acesse: https://www.armbian.com/
-# Baixe a imagem para RK3229
-wget https://apt.armbian.com/armbian.key
-sudo apt-key add armbian.key
-echo "deb http://apt.armbian.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/armbian.list
+sudo apt update
+sudo apt install -y python3 python3-flask python3-ldap3 xtightvncviewer xserver-xorg-core lightdm x11-utils
 ```
 
-### Passo 2: Flash da Imagem
+serviço esperado:
 
 ```bash
-# Instale o balenaEtcher ou use dd
-sudo dd if=armbian-rk3229.img of=/dev/sdX bs=4M status=progress
-sync
+sudo systemctl status projetor --no-pager
+sudo systemctl restart projetor
 ```
 
-### Passo 3: Primeiro Boot
+comando vnc usado pela aplicação:
 
 ```bash
-# Conecte HDMI, teclado e rede
-# Aguarde 2-3 minutos
-# Acesse via SSH:
-ssh root@192.168.1.100
-# Senha padrão: 123456
-```
-
-### Passo 4: Configuração Inicial
-
-```bash
-# Altere a senha
-passwd
-
-# Configure a rede
-nano /etc/network/interfaces
-
-# Atualize o sistema
-apt update && apt upgrade -y
+echo "123456" | DISPLAY=:0 sudo /usr/bin/xtightvncviewer <ip-do-usuario>:<display> -autopass
 ```
 
 ---
 
-## 🔧 Comandos Úteis
+## desempenho: pontos de atenção
+
+metas iniciais para produção:
+
+| métrica | alvo |
+|---|---|
+| cpu idle | `< 5%` |
+| ram app sem vnc | `< 120 mb` |
+| ram com vnc ativo | `< 180 mb` adicional, observar caso real |
+| temperatura | ideal `< 75°c` |
+| tempo de conexão | `< 3s` após clique |
+| espaço livre em `/` | manter `> 1 gb` |
+
+ver [`PERFORMANCE.md`](./PERFORMANCE.md) para checklist de validação.
+
+---
+
+## comandos úteis
 
 ```bash
-# SSH direto
-ssh caraprojetada@172.17.28.179
+# ssh
+ssh caraprojetada
 
-# Status do projetor
-ssh caraprojetada 'systemctl status projetor'
+# status serviço
+ssh caraprojetada 'systemctl status projetor --no-pager'
 
-# Logs do VNC
-ssh caraprojetada 'tail -f /var/log/vnc.log'
+# logs do sistema/app
+ssh caraprojetada 'tail -f /var/log/projetor-acessos.log'
 
-# Kiosk manual
-ssh caraprojetada 'DISPLAY=:0 chromium --kiosk https://www.uol.com.br/'
+# recursos
+ssh caraprojetada 'uptime; free -h; df -h /; cat /sys/class/thermal/thermal_zone0/temp'
 
-# Verificar IP
-ip a
+# processos gráficos
+ssh caraprojetada 'pgrep -a "Xorg|lightdm|xfwm4|openbox|chromium|xtightvncviewer"'
+
+# api status
+curl -s http://172.17.28.179/api/v1/status | python3 -m json.tool
 ```
 
 ---
 
-## 📋 Roadmap de Desenvolvimento
+## estratégia de branches
 
-### Fase 1: Baseline (✅ Concluída)
-- [x] Flask app com autenticação AD
-- [x] Conexão VNC reversa
-- [x] Kiosk Chromium
-- [x] Watchdog e Guardian
-- [x] Streaming RTSP
-
-### Fase 2: Estabilização (🔄 Em Andamento)
-- [ ] Migrar para kernel 6.6+ (via CaraAzul)
-- [ ] Substituir xfwm4 por openbox
-- [ ] Adicionar fallback ethernet
-- [ ] Logs centralizados
-- [ ] Backup automático
-
-### Fase 3: Multi-Projetor (📋 Planejado)
-- [ ] Dashboard central web
-- [ ] Descoberta automática (mDNS)
-- [ ] Configuração remota via API
-- [ ] Agendamento de horários
-
-### Fase 4: Segurança (🔒 Planejado)
-- [ ] HTTPS com certificado
-- [ ] Rate limiting no login
-- [ ] Logs de auditoria
-- [ ] Fail2ban SSH
-
-### Fase 5: Features Avançadas (🚀 Futuro)
-- [ ] Múltiplos usuários simultâneos
-- [ ] Streaming de áudio
-- [ ] Modo apresentação
-- [ ] Miracast/AirPlay
-- [ ] App mobile
+- `main`: produção/estável.
+- `dev`: experimentos, modo dev, telas novas, emulação e migração openbox.
+- amanhã, na rede 172, validar a `dev` no hardware real.
+- migrar para `main` aos poucos, preferindo commits pequenos e testáveis.
+- não subir para `main` recursos visuais sem medir cpu/ram/temperatura na box.
 
 ---
 
-## 🤝 Como Contribuir
+## roadmap próximo
 
-1. **Fork o repositório**
-2. **Clone localmente**
-   ```bash
-   git clone https://github.com/seu-usuario/caraprojetada.git
-   ```
-3. **Crie uma branch**
-   ```bash
-   git checkout -b feature/nova-feature
-   ```
-4. **Faça suas alterações**
-5. **Commit e push**
-   ```bash
-   git commit -m "feat: descrição da feature"
-   git push origin feature/nova-feature
-   ```
-6. **Abra um Pull Request**
-
----
-
-## 📄 Licença
-
-MIT License - use livremente para desenvolvimento e produção.
-
----
-
-<p align="center">
-  <a href="https://github.com/Deivisan/caraprojetada">github.com/Deivisan/caraprojetada</a>
-</p>
+- [ ] validar no hardware real dentro da rede ufrb.
+- [ ] medir desempenho da tela idle antes de migrar para `main`.
+- [ ] melhorar telas e menus.
+- [ ] migrar openbox gradualmente.
+- [ ] revisar logs e auditoria.
+- [ ] manter kernel 6.6/caraazul fora do escopo imediato.
