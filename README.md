@@ -19,7 +19,6 @@
 <p align="center">
   <a href="#-visão-geral">visão geral</a> ·
   <a href="docs/SISTEMA_DE_PROJECOES.md">arquitetura atual</a> ·
-  <a href="docs/XBOX_LINUX_METODOLOGIA.md">xbox/linux</a> ·
   <a href="#-modo-dev-local">modo dev</a> ·
   <a href="#-rotas-principais">rotas</a> ·
   <a href="#-desempenho">desempenho</a> ·

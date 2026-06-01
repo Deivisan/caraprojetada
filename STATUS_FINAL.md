@@ -4,8 +4,6 @@
 > ❌ **caraazul foi descontinuado.**  
 > arquitetura consolidada: [`docs/SISTEMA_DE_PROJECOES.md`](docs/SISTEMA_DE_PROJECOES.md)
 
-> estudo complementar sem credenciais: [`docs/XBOX_LINUX_METODOLOGIA.md`](docs/XBOX_LINUX_METODOLOGIA.md)
-
 ## ✅ **Produção na TV Box (29/05/2026)**
 
 ### Box `caraprojetada` (172.17.28.179)
