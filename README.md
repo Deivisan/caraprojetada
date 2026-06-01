@@ -18,6 +18,7 @@
 
 <p align="center">
   <a href="#-visão-geral">visão geral</a> ·
+  <a href="docs/SISTEMA_DE_PROJECOES.md">arquitetura atual</a> ·
   <a href="#-modo-dev-local">modo dev</a> ·
   <a href="#-rotas-principais">rotas</a> ·
   <a href="#-desempenho">desempenho</a> ·
@@ -29,6 +30,10 @@
 ## ✨ visão geral
 
 `caraprojetada` transforma uma tv box **rockchip rk3229** em um ponto de projeção institucional: o usuário acessa uma interface web, autentica com credenciais institucionais e espelha a tela do notebook no projetor via **vnc reverso**.
+
+> ✅ projeto ativo: **caraprojetada**.  
+> ❌ projeto descontinuado: **caraazul**.  
+> 📌 documentação autoritativa atual: [`docs/SISTEMA_DE_PROJECOES.md`](docs/SISTEMA_DE_PROJECOES.md).
 
 esta branch `dev` contém o laboratório atual: **modo dev local**, **emulação visual da conexão vnc**, **tela idle 24/7 do projetor** e scripts preparados para migração de `xfwm4` para `openbox`.
 

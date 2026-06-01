@@ -1,5 +1,9 @@
 # Status Final - CaraProjetada
 
+> ✅ **caraprojetada segue ativo e funcional.**  
+> ❌ **caraazul foi descontinuado.**  
+> arquitetura consolidada: [`docs/SISTEMA_DE_PROJECOES.md`](docs/SISTEMA_DE_PROJECOES.md)
+
 ## ✅ **Produção na TV Box (29/05/2026)**
 
 ### Box `caraprojetada` (172.17.28.179)
