@@ -819,8 +819,8 @@ def conectar():
     subprocess.run(['pkill', '-9', 'xtightvncviewer'])
     # Comando otimizado: sem sudo (roda como root), quality baixo + compressão máxima
     comando = (f'echo "123456" | DISPLAY=:0 XAUTHORITY=/var/run/lightdm/root/:0 '
-               f'/usr/bin/xtightvncviewer {notebook_ip}:{vnc_display} -autopass '
-               f'-quality 6 -compresslevel 9 -fullscreen')
+               f'/usr/bin/xtightvncviewer -autopass -quality 6 -compresslevel 9 '
+               f'-fullscreen {notebook_ip}:{vnc_display}')
     current_session['active'] = True
     current_session['username'] = user
     current_session['user_fullname'] = fullname
