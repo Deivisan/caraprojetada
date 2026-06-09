@@ -13,16 +13,30 @@ if ! pgrep -x "openbox" > /dev/null; then
   elif command -v xfwm4 &>/dev/null; then log "Subindo xfwm4..."; DISPLAY=:0 xfwm4 --replace --compositor=off & sleep 2; fi
 fi
 # So inicia chromium se nao estiver rodando (NUNCA mata)
-if ! pgrep -f "chromium.*--kiosk" > /dev/null; then
-  log "Chromium nao encontrado. Iniciando..."
+CHROMIUM_PID=$(pgrep -f "chromium.*--kiosk" 2>/dev/null | head -1)
+if [ -z "$CHROMIUM_PID" ] || [ "$(ps -p "$CHROMIUM_PID" -o rss= 2>/dev/null)" -lt 20000 ]; then
+  # Mata processos fantasmas
+  pkill -f "chromium.*--kiosk" 2>/dev/null; sleep 1
+  log "Chromium nao encontrado ou RSS baixo. Iniciando..."
   rm -rf /tmp/chromium-kiosk
-  DISPLAY=:0 chromium --kiosk --start-maximized --noerrdialogs \
+  DISPLAY=:0 XAUTHORITY=/var/run/lightdm/root/:0 \
+  chromium --kiosk --start-maximized --noerrdialogs \
     --disable-infobars --incognito --hide-scrollbars \
-    --user-data-dir=/tmp/chromium-kiosk --no-first-run \
+    --disable-gpu --disable-gpu-compositing \
+    --disable-software-rasterizer --disable-accelerated-2d-canvas \
+    --disable-accelerated-video-decode --disable-features=VizDisplayCompositor \
+    --process-per-site --no-crashpad --no-first-run \
+    --user-data-dir=/tmp/chromium-kiosk \
     http://localhost/projetor &
-  log "Chromium iniciado PID: $!"
+  CHROME_PID=$!
+  log "Chromium iniciado PID: $CHROME_PID"
+  sleep 5
+  # Verifica se realmente subiu
+  if [ "$(ps -p "$CHROME_PID" -o rss= 2>/dev/null)" -lt 20000 ]; then
+    log "ALERTA: Chromium pode nao ter iniciado corretamente (RSS baixo)"
+  fi
 else
-  log "Chromium ja rodando. OK."
+  log "Chromium ja rodando (PID=$CHROMIUM_PID). OK."
 fi
 DISPLAY=:0 xset s off 2>/dev/null; DISPLAY=:0 xset -dpms 2>/dev/null; DISPLAY=:0 xset s noblank 2>/dev/null
 log "VERIFICACAO OK"

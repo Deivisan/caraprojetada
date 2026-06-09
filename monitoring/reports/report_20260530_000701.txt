@@ -1,0 +1,52 @@
+relatorio caraprojetada
+periodo: 2026-05-29 16:57:19 -> 2026-05-30 00:05:02
+amostras: 89 (intervalo esperado 5 min)
+
+temperatura: media 79.5 c | min 74.0 | max 83.0
+memoria usada: media 249 mb | max 262 mb | menor disponivel 700 mb
+swap max: 0 mb
+disco /: inicio 70% | fim 70% | max 70%
+crescimento /home/carapreta: 0.8 mb
+crescimento logs principais: 0.1 mb
+crescimento /tmp/chromium-kiosk: 0.7 mb
+
+chromium rss: media 640 mb | max 652 mb | cpu max amostrado 166.9%
+flask rss: media 20 mb | max 20 mb | cpu max 0.2%
+chromium restarts detectados: 0
+
+falhas: http_bad=0 services_bad=0 xorg_bad=0 openbox_bad=0 chromium_missing=0
+status: OK
+
+alertas recentes:
+2026-05-29 22:25:02 ALERT temp_high temp_c=80.0
+2026-05-29 22:30:01 ALERT temp_high temp_c=80.0
+2026-05-29 22:35:01 ALERT temp_high temp_c=80.0
+2026-05-29 22:45:02 ALERT temp_high temp_c=80.0
+2026-05-29 22:50:01 ALERT temp_high temp_c=80.0
+2026-05-29 22:55:01 ALERT temp_high temp_c=80.0
+2026-05-29 23:00:02 ALERT temp_high temp_c=80.0
+2026-05-29 23:05:01 ALERT temp_high temp_c=80.0
+2026-05-29 23:10:01 ALERT temp_high temp_c=80.0
+2026-05-29 23:15:01 ALERT temp_high temp_c=81.0
+2026-05-29 23:20:01 ALERT temp_high temp_c=80.0
+2026-05-29 23:25:01 ALERT temp_high temp_c=80.0
+2026-05-29 23:30:01 ALERT temp_high temp_c=80.0
+2026-05-29 23:35:02 ALERT temp_high temp_c=80.0
+2026-05-29 23:40:01 ALERT temp_high temp_c=80.0
+2026-05-29 23:45:01 ALERT temp_high temp_c=80.0
+2026-05-29 23:50:01 ALERT temp_high temp_c=80.0
+2026-05-29 23:55:02 ALERT temp_high temp_c=80.0
+2026-05-30 00:00:01 ALERT temp_high temp_c=81.0
+2026-05-30 00:05:02 ALERT temp_high temp_c=80.0
+
+novos arquivos desde baseline:
+2 /home/carapreta/monitoring/reports/latest_new_files.txt
+/home/carapreta/monitoring/bin/package_reports.sh	445	2026-05-29 16:59
+/home/carapreta/monitoring/state/file_inventory_baseline.tsv	270494	2026-05-29 16:58
+
+ultimas amostras:
+2026-05-29 23:45:01,1780109101,37532,1.58,1.74,1.82,80.0,985420,258452,726968,0,70,2148964,16,8,77304,33424,252,4,140,104,4,200,1,1,1,5065,10,658056,166.8,4063,20660,0.1,false,,0,temp_high
+2026-05-29 23:50:01,1780109401,37832,1.94,1.90,1.87,80.0,985420,253412,732008,0,70,2148960,16,8,77308,33424,256,4,144,104,4,200,1,1,1,5065,10,652636,166.9,4063,20660,0.1,false,,0,temp_high
+2026-05-29 23:55:02,1780109702,38133,1.67,1.79,1.83,80.0,985420,248604,736816,0,70,2148952,16,8,77316,33424,256,4,144,104,4,200,1,1,1,5065,10,649032,166.9,4063,20660,0.1,false,,0,temp_high
+2026-05-30 00:00:01,1780110001,38432,2.41,2.05,1.92,81.0,985420,250884,734536,0,70,2148952,16,8,77316,33424,256,4,144,104,4,200,1,1,1,5065,10,646712,166.9,4063,20660,0.1,false,,0,temp_high
+2026-05-30 00:05:02,1780110302,38733,1.83,2.03,1.98,80.0,985420,261488,723932,0,70,2147868,100,8,77316,33424,256,4,144,104,4,200,1,1,1,5065,10,657460,166.8,4063,20660,0.1,false,,0,temp_high

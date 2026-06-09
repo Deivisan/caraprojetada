@@ -1,0 +1,29 @@
+relatorio caraprojetada
+periodo: 2026-05-29 16:57:19 -> 2026-05-29 16:57:24
+amostras: 2 (intervalo esperado 5 min)
+
+temperatura: media 74.5 c | min 74.0 | max 75.0
+memoria usada: media 247 mb | max 249 mb | menor disponivel 713 mb
+swap max: 0 mb
+disco /: inicio 70% | fim 70% | max 70%
+crescimento /home/carapreta: 0.0 mb
+crescimento logs principais: 0.0 mb
+crescimento /tmp/chromium-kiosk: 0.0 mb
+
+chromium rss: media 638 mb | max 640 mb | cpu max amostrado 163.7%
+flask rss: media 20 mb | max 20 mb | cpu max 0.2%
+chromium restarts detectados: 0
+
+falhas: http_bad=0 services_bad=0 xorg_bad=0 openbox_bad=0 chromium_missing=0
+status: OK
+
+alertas recentes:
+sem alertas
+
+novos arquivos desde baseline:
+0 /home/carapreta/monitoring/reports/latest_new_files.txt
+
+ultimas amostras:
+ts,epoch,uptime_s,load1,load5,load15,temp_c,mem_total_kb,mem_used_kb,mem_avail_kb,swap_used_kb,root_used_pct,root_avail_kb,varlog_used_pct,tmp_used_pct,home_cara_kb,tmp_chromium_kb,log_total_kb,app_log_kb,guardian_log_kb,watchdog_log_kb,access_log_kb,proj_http,services_ok,xorg,openbox,chromium_pid,chromium_count,chromium_rss_kb,chromium_cpu_sum,python_pid,python_rss_kb,python_cpu,active_session,user_ip,chromium_restarts,notes
+2026-05-29 16:57:19,1780084639,13070,2.07,1.83,1.82,75.0,985420,251276,734144,0,70,2149784,14,8,76488,32696,104,4,56,40,4,200,1,1,1,5065,11,651296,163.7,4063,20532,0.1,false,,0,ok
+2026-05-29 16:57:24,1780084644,13075,2.22,1.87,1.83,74.0,985420,255280,730140,0,70,2149776,14,8,76496,32696,104,4,56,40,4,200,1,1,1,5065,11,655124,163.7,4063,20564,0.2,false,,0,ok

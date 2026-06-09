@@ -1,0 +1,33 @@
+relatorio caraprojetada
+periodo: 2026-05-29 16:57:19 -> 2026-05-29 18:05:01
+amostras: 17 (intervalo esperado 5 min)
+
+temperatura: media 77.0 c | min 74.0 | max 80.0
+memoria usada: media 249 mb | max 260 mb | menor disponivel 702 mb
+swap max: 0 mb
+disco /: inicio 70% | fim 70% | max 70%
+crescimento /home/carapreta: 0.7 mb
+crescimento logs principais: 0.0 mb
+crescimento /tmp/chromium-kiosk: 0.0 mb
+
+chromium rss: media 640 mb | max 652 mb | cpu max amostrado 165.0%
+flask rss: media 20 mb | max 20 mb | cpu max 0.2%
+chromium restarts detectados: 0
+
+falhas: http_bad=0 services_bad=0 xorg_bad=0 openbox_bad=0 chromium_missing=0
+status: OK
+
+alertas recentes:
+2026-05-29 17:50:01 ALERT temp_high temp_c=80.0
+
+novos arquivos desde baseline:
+2 /home/carapreta/monitoring/reports/latest_new_files.txt
+/home/carapreta/monitoring/bin/package_reports.sh	445	2026-05-29 16:59
+/home/carapreta/monitoring/state/file_inventory_baseline.tsv	270494	2026-05-29 16:58
+
+ultimas amostras:
+2026-05-29 17:45:01,1780087501,15932,1.96,1.98,1.93,79.0,985420,256656,728764,0,70,2149120,14,8,77152,32696,120,4,64,48,4,200,1,1,1,5065,10,657484,164.6,4063,20592,0.1,false,,0,ok
+2026-05-29 17:50:01,1780087801,16232,2.00,1.99,1.94,80.0,985420,252708,732712,0,70,2149120,14,8,77152,32696,120,4,64,48,4,200,1,1,1,5065,10,654732,164.7,4063,20592,0.1,false,,0,temp_high
+2026-05-29 17:55:02,1780088102,16532,1.96,1.94,1.93,79.0,985420,249308,736112,0,70,2149112,14,8,77160,32696,124,4,68,48,4,200,1,1,1,5065,10,649524,164.7,4063,20596,0.1,false,,0,ok
+2026-05-29 18:00:01,1780088401,16832,1.89,1.95,1.93,79.0,985420,246092,739328,0,70,2149112,14,8,77160,32696,124,4,68,48,4,200,1,1,1,5065,10,646460,164.8,4063,20596,0.1,false,,0,ok
+2026-05-29 18:05:01,1780088701,17132,1.76,1.83,1.89,79.0,985420,264520,720900,0,70,2149108,14,8,77164,32696,128,4,68,52,4,200,1,1,1,5065,10,667236,165.0,4063,20600,0.1,false,,0,ok

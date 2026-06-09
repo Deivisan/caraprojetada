@@ -1,0 +1,70 @@
+relatorio caraprojetada
+periodo: 2026-05-29 16:57:19 -> 2026-05-31 06:05:02
+amostras: 449 (intervalo esperado 5 min)
+
+temperatura: media 79.5 c | min 74.0 | max 83.0
+memoria usada: media 251 mb | max 297 mb | menor disponivel 665 mb
+swap max: 0 mb
+disco /: inicio 70% | fim 70% | max 70%
+crescimento /home/carapreta: 1.6 mb
+crescimento logs principais: 0.8 mb
+crescimento /tmp/chromium-kiosk: 0.8 mb
+
+chromium rss: media 640 mb | max 686 mb | cpu max amostrado 168.2%
+flask rss: media 20 mb | max 20 mb | cpu max 0.2%
+chromium restarts detectados: 0
+
+falhas: http_bad=0 services_bad=0 xorg_bad=0 openbox_bad=0 chromium_missing=0
+status: OK
+
+alertas recentes:
+2026-05-30 20:15:01 ALERT temp_high temp_c=80.0
+2026-05-30 20:20:02 ALERT temp_high temp_c=80.0
+2026-05-30 20:25:01 ALERT temp_high temp_c=80.0
+2026-05-30 20:30:01 ALERT temp_high temp_c=80.0
+2026-05-30 20:35:02 ALERT temp_high temp_c=80.0
+2026-05-30 20:40:01 ALERT temp_high temp_c=80.0
+2026-05-30 20:45:01 ALERT temp_high temp_c=80.0
+2026-05-30 20:55:01 ALERT temp_high temp_c=80.0
+2026-05-30 21:00:01 ALERT temp_high temp_c=80.0
+2026-05-30 21:05:02 ALERT temp_high temp_c=80.0
+2026-05-30 21:10:01 ALERT temp_high temp_c=80.0
+2026-05-30 21:25:02 ALERT temp_high temp_c=80.0
+2026-05-30 21:30:01 ALERT temp_high temp_c=80.0
+2026-05-30 21:35:01 ALERT temp_high temp_c=80.0
+2026-05-30 21:45:01 ALERT temp_high temp_c=80.0
+2026-05-30 22:00:02 ALERT temp_high temp_c=80.0
+2026-05-30 22:25:01 ALERT temp_high temp_c=81.0
+2026-05-30 22:45:02 ALERT temp_high temp_c=80.0
+2026-05-30 23:00:02 ALERT temp_high temp_c=80.0
+2026-05-30 23:10:01 ALERT temp_high temp_c=80.0
+
+novos arquivos desde baseline:
+118 /home/carapreta/monitoring/reports/latest_new_files.txt
+/var/log/journal/61405fcfdbd94651a7de5dfc68515509/user-1001@00065102cac6c46d-329c14dfcfb0a801.journal~	2621440	2026-05-31 00:00
+/var/log/journal/61405fcfdbd94651a7de5dfc68515509/user-1001@0025938426c24af59ec8ab0ec85e3965-0000000000000459-0006510270c26e8c.journal	2621440	2026-05-31 00:00
+/var/log/journal/61405fcfdbd94651a7de5dfc68515509/user-1001@07ec1cdaa1de4db19a08b82d576b91a9-0000000000000448-00065101ca649801.journal	2621440	2026-05-31 00:00
+/var/log/journal/61405fcfdbd94651a7de5dfc68515509/user-1001@1ed18dce9aaf439ca4af16450877315e-0000000000000476-000651cc6975ebcf.journal	524288	2026-05-31 00:00
+/var/log/journal/61405fcfdbd94651a7de5dfc68515509/user-1001@4670c51fbc6c4fe38db461802bc486fe-0000000000000457-00065102b06b88ef.journal	1216512	2026-05-31 00:00
+/var/log/journal/61405fcfdbd94651a7de5dfc68515509/user-1001@597d1fa2f3ce4db6aae8a8e7163b01f8-0000000000000469-000651cc6a0f9732.journal	524288	2026-05-31 00:00
+/var/log/journal/61405fcfdbd94651a7de5dfc68515509/user-1001@de2218211963407f85a26f3e56cac8d6-000000000000051a-000651caa66757e4.journal	524288	2026-05-31 00:00
+/var/log/journal/61405fcfdbd94651a7de5dfc68515509/user-1001@e7c8300f8e9746cf9bc38622ea07f515-0000000000000470-000651dfcce3fa07.journal	524288	2026-05-31 00:00
+/var/log/journal/61405fcfdbd94651a7de5dfc68515509/user-1001@e7c8300f8e9746cf9bc38622ea07f515-00000000000005be-000651dfdd29e82f.journal	524288	2026-05-31 00:00
+/var/log/sysstat/sa01	0	2026-05-31 00:00
+/var/log/sysstat/sa13	0	2026-05-31 00:00
+/var/log/sysstat/sa16	0	2026-05-31 00:00
+/var/log/sysstat/sa17	0	2026-05-31 00:00
+/var/log/sysstat/sa22	0	2026-05-31 00:00
+/var/log/sysstat/sa23	0	2026-05-31 00:00
+/var/log/sysstat/sa27	0	2026-05-31 00:00
+/var/log/sysstat/sa31	0	2026-05-31 00:00
+/var/log/sysstat/sar16	0	2026-05-31 00:00
+/var/log/sysstat/sar22	0	2026-05-31 00:00
+/var/log/sysstat/sar31	0	2026-05-31 00:00
+
+ultimas amostras:
+2026-05-31 05:45:02,1780217102,145532,1.77,1.85,1.84,78.0,985420,255604,729816,0,70,2148900,15,8,78104,33508,908,4,524,376,4,200,1,1,1,5065,10,653896,168.2,4063,20704,0.1,false,,0,ok
+2026-05-31 05:50:01,1780217401,145832,1.87,1.93,1.89,78.0,985420,253096,732324,0,70,2148900,15,8,78104,33508,908,4,524,376,4,200,1,1,1,5065,10,652416,168.2,4063,20704,0.1,false,,0,ok
+2026-05-31 05:55:01,1780217701,146132,1.65,1.82,1.86,76.0,985420,247064,738356,0,70,2148900,15,8,78104,33508,908,4,524,376,4,200,1,1,1,5065,10,646820,168.2,4063,20704,0.1,false,,0,ok
+2026-05-31 06:00:01,1780218001,146432,1.61,1.73,1.81,79.0,985420,268688,716732,0,70,2148896,15,8,78108,33508,912,4,524,380,4,200,1,1,1,5065,10,666284,168.2,4063,20704,0.1,false,,0,ok
+2026-05-31 06:05:02,1780218302,146733,1.98,1.83,1.83,77.0,985420,264900,720520,0,70,2148892,15,8,78112,33508,916,4,528,380,4,200,1,1,1,5065,10,664220,168.2,4063,20704,0.1,false,,0,ok

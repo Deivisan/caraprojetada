@@ -1,0 +1,70 @@
+relatorio caraprojetada
+periodo: 2026-05-29 16:57:19 -> 2026-06-04 18:05:01
+amostras: 1746 (intervalo esperado 5 min)
+
+temperatura: media 78.1 c | min 69.2 | max 83.0
+memoria usada: media 253 mb | max 527 mb | menor disponivel 436 mb
+swap max: 1 mb
+disco /: inicio 70% | fim 70% | max 70%
+crescimento /home/carapreta: 4.4 mb
+crescimento logs principais: 3.1 mb
+crescimento /tmp/chromium-kiosk: 2.1 mb
+
+chromium rss: media 642 mb | max 912 mb | cpu max amostrado 168.7%
+flask rss: media 20 mb | max 21 mb | cpu max 0.2%
+chromium restarts detectados: 0
+
+falhas: http_bad=0 services_bad=0 xorg_bad=0 openbox_bad=0 chromium_missing=0
+status: OK
+
+alertas recentes:
+2026-06-04 15:00:01 ALERT temp_high temp_c=80.0
+2026-06-04 15:05:02 ALERT temp_high temp_c=80.0
+2026-06-04 15:10:02 ALERT temp_high temp_c=80.0
+2026-06-04 15:15:01 ALERT temp_high temp_c=80.0
+2026-06-04 15:25:02 ALERT temp_high temp_c=80.0
+2026-06-04 15:30:01 ALERT temp_high temp_c=80.0
+2026-06-04 15:35:01 ALERT temp_high temp_c=80.0
+2026-06-04 15:45:02 ALERT temp_high temp_c=80.0
+2026-06-04 15:50:01 ALERT temp_high temp_c=80.0
+2026-06-04 16:00:02 ALERT temp_high temp_c=80.0
+2026-06-04 16:05:01 ALERT temp_high temp_c=80.0
+2026-06-04 16:15:01 ALERT temp_high temp_c=80.0
+2026-06-04 16:25:01 ALERT temp_high temp_c=80.0
+2026-06-04 16:30:02 ALERT temp_high temp_c=80.0
+2026-06-04 16:45:01 ALERT temp_high temp_c=80.0
+2026-06-04 16:50:01 ALERT temp_high temp_c=80.0
+2026-06-04 17:00:01 ALERT temp_high temp_c=80.0
+2026-06-04 17:15:01 ALERT temp_high temp_c=80.0
+2026-06-04 17:30:01 ALERT temp_high temp_c=80.0
+2026-06-04 17:35:02 ALERT temp_high temp_c=80.0
+
+novos arquivos desde baseline:
+98 /home/carapreta/monitoring/reports/latest_new_files.txt
+/tmp/chromium-kiosk/PKIMetadata/1688/ct_config.pb	56123	2026-06-03 23:29
+/tmp/chromium-kiosk/PKIMetadata/1688/kp_pinslist.pb	10799	2026-06-03 23:29
+/tmp/chromium-kiosk/PKIMetadata/1688/manifest.fingerprint	66	2026-06-03 23:29
+/tmp/chromium-kiosk/PKIMetadata/1688/manifest.json	73	2026-06-03 23:29
+/tmp/chromium-kiosk/PKIMetadata/1688/mtc_config.pb	244	2026-06-03 23:29
+/tmp/chromium-kiosk/component_crx_cache/efniojlnjndmcbiieegkicadnoecjjef_1.14fb09e9acf031b83456c0db5aca66b396b8206fa91ce5a52599b1462f33e274	381377	2026-06-03 23:29
+/tmp/chromium-kiosk/component_crx_cache/ggkkehgbnfjpeggfpleeakpidbkibbmn_1.e9d5bfc43af6af8e2700c49769c47d5a84e9878fe0339863d18a83a7fd3d9d82	253608	2026-06-01 11:29
+/tmp/chromium-kiosk/component_crx_cache/hfnkpimlhhgieaddgfemjhofmfblmnib_1.1c8185c7ed4778da5688a4014b08679ba49b92a60a815e448a6515e917a73fd8	29743	2026-06-04 09:29
+/var/log/journal/61405fcfdbd94651a7de5dfc68515509/user-1001@e7c8300f8e9746cf9bc38622ea07f515-00000000000005be-000651dfdd29e82f.journal	524288	2026-06-04 00:00
+/var/log/sysstat/sa01	0	2026-06-04 00:00
+/var/log/sysstat/sa13	0	2026-06-04 00:00
+/var/log/sysstat/sa16	0	2026-06-04 00:00
+/var/log/sysstat/sa17	0	2026-06-04 00:00
+/var/log/sysstat/sa22	0	2026-06-04 00:00
+/var/log/sysstat/sa23	0	2026-06-04 00:00
+/var/log/sysstat/sa27	0	2026-06-04 00:00
+/var/log/sysstat/sa31	0	2026-06-04 00:00
+/var/log/sysstat/sar16	0	2026-06-04 00:00
+/var/log/sysstat/sar22	0	2026-06-04 00:00
+/var/log/sysstat/sar31	0	2026-06-04 00:00
+
+ultimas amostras:
+2026-06-04 17:45:01,1780605901,534332,1.78,1.94,1.93,79.0,985420,255232,730188,812,70,2145520,18,8,80948,34868,3272,4,1900,1364,4,200,1,1,1,5065,10,651540,168.7,4063,21172,0.1,false,,0,ok
+2026-06-04 17:50:01,1780606201,534632,1.97,1.90,1.91,79.0,985420,271424,713996,812,70,2145520,18,8,80948,34868,3272,4,1900,1364,4,200,1,1,1,5065,10,668284,168.7,4063,21172,0.1,false,,0,ok
+2026-06-04 17:55:02,1780606502,534933,1.72,1.83,1.89,79.0,985420,268616,716804,812,70,2145520,18,8,80948,34868,3272,4,1900,1364,4,200,1,1,1,5065,10,664708,168.7,4063,21172,0.1,false,,0,ok
+2026-06-04 18:00:01,1780606801,535232,1.79,1.89,1.90,79.0,985420,269152,716268,812,70,2145516,18,8,80956,34868,3280,4,1904,1368,4,200,1,1,1,5065,10,661200,168.7,4063,21172,0.1,false,,0,ok
+2026-06-04 18:05:01,1780607101,535532,2.03,1.93,1.92,79.0,985420,261528,723892,812,70,2145508,18,8,80960,34868,3284,4,1904,1372,4,200,1,1,1,5065,10,658344,168.7,4063,21172,0.1,false,,0,ok

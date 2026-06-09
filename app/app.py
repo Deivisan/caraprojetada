@@ -522,14 +522,13 @@ PROJECTOR_IDLE_HTML = """<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Projetor — Sistema de Projeções</title>
+<title>Projetor — UFRB CETENS</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body { width: 100%; height: 100%; overflow: hidden; }
 body {
- font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
- background: linear-gradient(135deg, #001a33 0%, #003366 35%, #005580 65%, #002233 100%);
+ font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+ background: #0a1628;
  color: #fff;
  display: flex;
  align-items: center;
@@ -537,243 +536,223 @@ body {
  cursor: none;
  user-select: none;
 }
-.scene {
+.container {
  width: 100%; height: 100%;
  display: flex; flex-direction: column;
  align-items: center; justify-content: center;
+ padding: 40px;
  position: relative;
 }
-.particles {
- position: absolute; top: 0; left: 0; width: 100%; height: 100%;
- pointer-events: none; overflow: hidden;
-}
-.particle {
+.brand {
  position: absolute;
- width: 4px; height: 4px;
- background: rgba(255,179,0,0.3);
- border-radius: 50%;
- animation: floatUp linear infinite;
+ top: 28px;
+ left: 32px;
+ display: flex; align-items: center; gap: 12px;
 }
-@keyframes floatUp {
- 0% { transform: translateY(100vh) scale(0); opacity: 0; }
- 10% { opacity: 1; }
- 90% { opacity: 1; }
- 100% { transform: translateY(-10vh) scale(1); opacity: 0; }
-}
-.identity {
- text-align: center;
- margin-bottom: 48px;
- position: relative;
- z-index: 2;
-}
-.identity .logo-icon {
- width: 80px; height: 80px;
- margin: 0 auto 20px;
- background: linear-gradient(135deg, #FFB300, #FF8F00);
- border-radius: 20px;
+.brand .logo {
+ width: 36px; height: 36px;
+ background: #FFB300;
+ border-radius: 8px;
  display: flex; align-items: center; justify-content: center;
- font-size: 40px;
- box-shadow: 0 8px 32px rgba(255,179,0,0.3);
- animation: pulse 3s ease-in-out infinite;
+ font-size: 18px;
 }
-@keyframes pulse {
- 0%, 100% { transform: scale(1); box-shadow: 0 8px 32px rgba(255,179,0,0.3); }
- 50% { transform: scale(1.05); box-shadow: 0 12px 48px rgba(255,179,0,0.5); }
+.brand .name {
+ font-size: 13px;
+ font-weight: 600;
+ color: rgba(255,255,255,0.8);
+ letter-spacing: 0.3px;
 }
-.identity h1 {
- font-size: 36px;
- font-weight: 900;
- letter-spacing: -1px;
- text-shadow: 0 2px 12px rgba(0,0,0,0.3);
-}
-.identity .org {
- font-size: 16px;
- font-weight: 300;
- color: rgba(255,255,255,0.7);
- margin-top: 6px;
- letter-spacing: 2px;
+.brand .name small {
+ display: block;
+ font-size: 10px;
+ font-weight: 400;
+ color: rgba(255,255,255,0.4);
+ letter-spacing: 1px;
  text-transform: uppercase;
 }
-.connect-info {
+
+.main-content {
  text-align: center;
- position: relative; z-index: 2;
- max-width: 700px;
+ max-width: 720px;
 }
-.connect-info .step-grid {
- display: grid;
- grid-template-columns: repeat(3, 1fr);
- gap: 24px;
+.main-content .title {
+ font-size: 15px;
+ font-weight: 500;
+ color: rgba(255,255,255,0.5);
+ letter-spacing: 2px;
+ text-transform: uppercase;
+ margin-bottom: 12px;
+}
+.main-content .ip-address {
+ font-size: 56px;
+ font-weight: 800;
+ font-family: 'Courier New', 'Consolas', monospace;
+ color: #FFB300;
+ letter-spacing: 3px;
+ line-height: 1.1;
+ margin-bottom: 8px;
+}
+.main-content .ip-hint {
+ font-size: 14px;
+ color: rgba(255,255,255,0.35);
  margin-bottom: 40px;
 }
-.step-card {
- background: rgba(255,255,255,0.08);
- backdrop-filter: blur(10px);
- border: 1px solid rgba(255,255,255,0.12);
- border-radius: 16px;
- padding: 24px 16px;
- text-align: center;
- transition: all 0.3s;
+
+.status-panel {
+ display: flex;
+ align-items: center;
+ justify-content: center;
+ gap: 14px;
+ margin-bottom: 48px;
 }
-.step-card:hover {
- background: rgba(255,255,255,0.14);
- transform: translateY(-2px);
-}
-.step-num {
- width: 32px; height: 32px;
- background: linear-gradient(135deg, #FFB300, #FF8F00);
+.status-panel .dot {
+ width: 14px; height: 14px;
  border-radius: 50%;
- display: flex; align-items: center; justify-content: center;
- font-weight: 700; font-size: 14px; color: #003366;
- margin: 0 auto 12px;
+ flex-shrink: 0;
 }
-.step-card h3 {
- font-size: 14px; font-weight: 600;
- margin-bottom: 6px;
+.status-panel .dot.available {
+ background: #22c55e;
+ box-shadow: 0 0 12px rgba(34,197,94,0.4);
 }
-.step-card p {
- font-size: 12px; color: rgba(255,255,255,0.6);
- line-height: 1.5;
+.status-panel .dot.in-use {
+ background: #eab308;
+ box-shadow: 0 0 12px rgba(234,179,8,0.4);
 }
-.url-display {
- background: rgba(0,0,0,0.3);
- border: 2px solid rgba(255,179,0,0.4);
- border-radius: 16px;
- padding: 20px 32px;
- display: inline-block;
- margin-bottom: 24px;
- animation: glow 4s ease-in-out infinite;
+.status-panel .status-text {
+ font-size: 18px;
+ font-weight: 500;
+ color: rgba(255,255,255,0.8);
 }
-@keyframes glow {
- 0%, 100% { border-color: rgba(255,179,0,0.3); box-shadow: 0 0 20px rgba(255,179,0,0.1); }
- 50% { border-color: rgba(255,179,0,0.7); box-shadow: 0 0 40px rgba(255,179,0,0.2); }
-}
-.url-display .url-label {
- font-size: 11px; text-transform: uppercase;
- letter-spacing: 2px; color: rgba(255,255,255,0.5);
- margin-bottom: 6px;
-}
-.url-display .url-value {
- font-size: 28px; font-weight: 700;
- font-family: 'Courier New', monospace;
+.status-panel .status-text .highlight {
  color: #FFB300;
- letter-spacing: 1px;
+ font-weight: 600;
 }
-.url-display .url-hint {
- font-size: 11px; color: rgba(255,255,255,0.4);
- margin-top: 4px;
+
+.instructions {
+ display: flex;
+ gap: 24px;
+ justify-content: center;
 }
-.status-bar {
- position: absolute;
- bottom: 32px;
- left: 50%; transform: translateX(-50%);
- display: flex; align-items: center; gap: 10px;
- background: rgba(0,0,0,0.25);
- padding: 8px 20px;
- border-radius: 20px;
+.instructions .step {
+ background: rgba(255,255,255,0.05);
+ border: 1px solid rgba(255,255,255,0.08);
+ border-radius: 10px;
+ padding: 14px 20px;
+ min-width: 140px;
+}
+.instructions .step .num {
+ display: inline-block;
+ background: rgba(255,179,0,0.15);
+ color: #FFB300;
+ font-size: 11px;
+ font-weight: 700;
+ padding: 2px 8px;
+ border-radius: 4px;
+ margin-bottom: 6px;
+}
+.instructions .step p {
  font-size: 12px;
+ color: rgba(255,255,255,0.5);
+ line-height: 1.4;
 }
-.status-dot {
- width: 8px; height: 8px;
- border-radius: 50%;
- animation: blink 2s ease-in-out infinite;
+.instructions .step strong {
+ color: rgba(255,255,255,0.8);
 }
-.status-dot.available { background: #16a34a; }
-.status-dot.in-use { background: #eab308; }
-@keyframes blink {
- 0%, 100% { opacity: 1; }
- 50% { opacity: 0.4; }
-}
-.status-text { color: rgba(255,255,255,0.6); }
+
 .clock {
  position: absolute;
- top: 24px; right: 32px;
- font-size: 14px;
- font-weight: 300;
- color: rgba(255,255,255,0.3);
+ top: 32px;
+ right: 32px;
+ font-size: 13px;
+ font-weight: 400;
+ color: rgba(255,255,255,0.25);
  font-family: 'Courier New', monospace;
 }
-@media (max-width: 768px) {
- .connect-info .step-grid { grid-template-columns: 1fr; gap: 12px; }
- .identity h1 { font-size: 24px; }
- .url-display .url-value { font-size: 18px; }
- .step-card { padding: 16px 12px; }
+
+.bottom-bar {
+ position: absolute;
+ bottom: 24px;
+ left: 50%; transform: translateX(-50%);
+ font-size: 11px;
+ color: rgba(255,255,255,0.15);
+ letter-spacing: 1px;
+}
+
+@media (max-width: 640px) {
+ .main-content .ip-address { font-size: 32px; letter-spacing: 2px; }
+ .instructions { flex-direction: column; gap: 10px; }
+ .instructions .step { min-width: auto; }
+ .brand { top: 16px; left: 16px; }
+ .clock { top: 16px; right: 16px; }
 }
 </style>
 </head>
 <body>
-<div class="scene">
- <div class="particles" id="particles"></div>
+<div class="container">
+ <div class="brand">
+  <div class="logo">&#127916;</div>
+  <div class="name">
+   Proje&ccedil;&otilde;es UFRB
+   <small>CETENS &middot; Feira de Santana</small>
+  </div>
+ </div>
  <div class="clock" id="clock"></div>
- <div class="identity">
-  <div class="logo-icon">&#127916;</div>
-  <h1>Sistema de Projeções</h1>
-  <div class="org">UFRB · CETENS · Feira de Santana</div>
- </div>
- <div class="connect-info">
-  <div class="step-grid">
-   <div class="step-card">
-    <div class="step-num">1</div>
-    <h3>Acesse o endereço</h3>
-    <p>Abra o navegador do seu computador e digite o endereço abaixo</p>
-   </div>
-   <div class="step-card">
-    <div class="step-num">2</div>
-    <h3>Faça login</h3>
-    <p>Use seu SIAPE e senha institucional da rede UFRB</p>
-   </div>
-   <div class="step-card">
-    <div class="step-num">3</div>
-    <h3>Conecte ao projetor</h3>
-    <p>Clique em "Conectar Tela" e sua tela será espelhada automaticamente</p>
-   </div>
+
+ <div class="main-content">
+  <div class="title">Conecte-se ao Projetor</div>
+  <div class="ip-address" id="ip-address">http://{{ projector_ip }}</div>
+  <div class="ip-hint">Digite este endere&ccedil;o no navegador do seu computador</div>
+
+  <div class="status-panel">
+   <span class="dot available" id="status-dot"></span>
+   <span class="status-text" id="status-text">Projetor dispon&iacute;vel &middot; Aguardando conex&atilde;o</span>
   </div>
-  <div class="url-display">
-   <div class="url-label">Endereço de acesso</div>
-   <div class="url-value">http://{{ projector_ip }}</div>
-   <div class="url-hint">Digite no navegador do seu computador na rede UFRB</div>
+
+  <div class="instructions">
+   <div class="step">
+    <div class="num">1</div>
+    <p>Acesse o <strong>endere&ccedil;o acima</strong> no navegador</p>
+   </div>
+   <div class="step">
+    <div class="num">2</div>
+    <p>Fa&ccedil;a login com seu <strong>SIAPE</strong> e senha institucional</p>
+   </div>
+   <div class="step">
+    <div class="num">3</div>
+    <p>Clique em <strong>"Conectar Tela"</strong> para espelhar</p>
+   </div>
   </div>
  </div>
-  <div class="status-bar">
-   <span class="status-dot" id="status-dot"></span>
-   <span class="status-text" id="status-text">Carregando...</span>
-  </div>
+
+ <div class="bottom-bar">UFRB &middot; Universidade Federal do Rec&ocirc;ncavo da Bahia</div>
 </div>
+
 <script>
-(function() {
- const container = document.getElementById('particles');
- for (let i = 0; i < 30; i++) {
-  const p = document.createElement('div');
-  p.className = 'particle';
-  p.style.left = Math.random() * 100 + '%';
-  p.style.animationDuration = (8 + Math.random() * 12) + 's';
-  p.style.animationDelay = Math.random() * 10 + 's';
-  p.style.width = p.style.height = (2 + Math.random() * 4) + 'px';
-  container.appendChild(p);
- }
-})();
 function updateClock() {
- const now = new Date();
+ var now = new Date();
  document.getElementById('clock').textContent =
   now.toLocaleDateString('pt-BR') + '  ' +
   now.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
 }
 function updateStatus() {
- fetch('/api/v1/status').then(r => r.json()).then(data => {
-  const dot = document.getElementById('status-dot');
-  const txt = document.getElementById('status-text');
+ fetch('/api/v1/status').then(function(r) { return r.json(); }).then(function(data) {
+  var dot = document.getElementById('status-dot');
+  var txt = document.getElementById('status-text');
   if (data.active_session) {
-   dot.className = 'status-dot in-use';
-   txt.textContent = 'Projetor em uso por ' + (data.current_user_full || data.current_user || 'alguem') + ' · desde ' + (data.since || '');
+   dot.className = 'dot in-use';
+   txt.innerHTML = 'Projetor em uso por <span class="highlight">' + (data.current_user_full || data.current_user || 'algu&eacute;m') + '</span> &middot; desde ' + (data.since || '');
   } else {
-   dot.className = 'status-dot available';
-   txt.textContent = 'Projetor disponivel · Aguardando conexao';
+   dot.className = 'dot available';
+   txt.textContent = 'Projetor dispon&iacute;vel &middot; Aguardando conex&atilde;o';
   }
  }).catch(function() {});
 }
-updateClock();
-updateStatus();
-setInterval(updateClock, 30000);
-setInterval(updateStatus, 30000);
+document.addEventListener('DOMContentLoaded', function() {
+ updateClock();
+ updateStatus();
+ setInterval(updateClock, 60000);
+ setInterval(updateStatus, 30000);
+});
 </script>
 </body>
 </html>"""

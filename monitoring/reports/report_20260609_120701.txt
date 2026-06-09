@@ -1,0 +1,70 @@
+relatorio caraprojetada
+periodo: 2026-05-29 16:57:19 -> 2026-06-09 12:05:01
+amostras: 3114 (intervalo esperado 5 min)
+
+temperatura: media 77.8 c | min 61.0 | max 86.7
+memoria usada: media 256 mb | max 527 mb | menor disponivel 436 mb
+swap max: 27 mb
+disco /: inicio 70% | fim 37% | max 76%
+crescimento /home/carapreta: 343.3 mb
+crescimento logs principais: 5.5 mb
+crescimento /tmp/chromium-kiosk: 0.0 mb
+
+chromium rss: media 642 mb | max 912 mb | cpu max amostrado 168.8%
+flask rss: media 20 mb | max 21 mb | cpu max 8.7%
+chromium restarts detectados: 5
+
+falhas: http_bad=0 services_bad=0 xorg_bad=0 openbox_bad=0 chromium_missing=0
+status: ATENCAO
+
+alertas recentes:
+2026-06-07 19:30:02 ALERT temp_high temp_c=80.0
+2026-06-07 19:45:01 ALERT temp_high temp_c=80.0
+2026-06-07 21:00:02 ALERT temp_high temp_c=80.0
+2026-06-09 08:55:01 ALERT temp_high temp_c=84.0
+2026-06-09 09:00:01 ALERT temp_high temp_c=83.0
+2026-06-09 09:05:01 ALERT chromium_pid_changed old=5065 new=10727
+2026-06-09 09:10:06 ALERT temp_high temp_c=85.0
+2026-06-09 09:15:01 ALERT temp_high temp_c=81.0
+2026-06-09 09:20:01 ALERT temp_high temp_c=83.0
+2026-06-09 09:25:01 ALERT temp_high temp_c=81.0
+2026-06-09 09:30:01 ALERT temp_high temp_c=84.0
+2026-06-09 09:35:01 ALERT temp_high temp_c=85.0
+2026-06-09 09:40:01 ALERT temp_high temp_c=85.8
+2026-06-09 09:45:02 ALERT temp_high temp_c=86.7
+2026-06-09 09:50:02 ALERT chromium_pid_changed old=10727 new=25121
+2026-06-09 09:50:02 ALERT temp_high temp_c=85.0
+2026-06-09 09:55:01 ALERT chromium_pid_changed old=25121 new=26466
+2026-06-09 09:55:01 ALERT temp_high temp_c=80.0
+2026-06-09 10:00:01 ALERT chromium_pid_changed old=26466 new=27435
+2026-06-09 11:30:01 ALERT chromium_pid_changed old=27435 new=5064
+
+novos arquivos desde baseline:
+151 /home/carapreta/monitoring/reports/latest_new_files.txt
+/tmp/chromium-kiosk/PKIMetadata/1688/ct_config.pb	56123	2026-06-03 23:29
+/tmp/chromium-kiosk/PKIMetadata/1688/kp_pinslist.pb	10799	2026-06-03 23:29
+/tmp/chromium-kiosk/PKIMetadata/1688/manifest.fingerprint	66	2026-06-03 23:29
+/tmp/chromium-kiosk/PKIMetadata/1688/manifest.json	73	2026-06-03 23:29
+/tmp/chromium-kiosk/PKIMetadata/1688/mtc_config.pb	244	2026-06-03 23:29
+/tmp/chromium-kiosk/component_crx_cache/efniojlnjndmcbiieegkicadnoecjjef_1.14fb09e9acf031b83456c0db5aca66b396b8206fa91ce5a52599b1462f33e274	381377	2026-06-03 23:29
+/tmp/chromium-kiosk/component_crx_cache/ggkkehgbnfjpeggfpleeakpidbkibbmn_1.0081ab4079a65a594c402b4d909b80a29202d45c779849f84f4b05743fa5aa8f	262253	2026-06-08 13:29
+/tmp/chromium-kiosk/component_crx_cache/hfnkpimlhhgieaddgfemjhofmfblmnib_1.dffedb951140f18a0bc78b5d20e7a9e2dd3ffab77440031a77aa971efe8262fd	29888	2026-06-08 18:29
+/var/log/journal/61405fcfdbd94651a7de5dfc68515509/user-1001@e7c8300f8e9746cf9bc38622ea07f515-00000000000005be-000651dfdd29e82f.journal	524288	2026-06-09 00:00
+/var/log/sysstat/sa01	0	2026-06-09 00:00
+/var/log/sysstat/sa13	0	2026-06-09 00:00
+/var/log/sysstat/sa16	0	2026-06-09 00:00
+/var/log/sysstat/sa17	0	2026-06-09 00:00
+/var/log/sysstat/sa22	0	2026-06-09 00:00
+/var/log/sysstat/sa23	0	2026-06-09 00:00
+/var/log/sysstat/sa27	0	2026-06-09 00:00
+/var/log/sysstat/sa31	0	2026-06-09 00:00
+/var/log/sysstat/sar16	0	2026-06-09 00:00
+/var/log/sysstat/sar22	0	2026-06-09 00:00
+/var/log/sysstat/sar31	0	2026-06-09 00:00
+
+ultimas amostras:
+2026-06-09 11:45:01,1781016301,944732,0.12,0.17,0.25,64.0,985420,318524,666896,5944,37,4437208,57,9,428056,32712,5772,4,3356,2408,4,200,1,1,1,5064,11,624516,3.0,4933,20496,0.4,false,,5,ok
+2026-06-09 11:50:01,1781016601,945032,0.00,0.06,0.17,61.0,985420,318764,666656,5944,37,4437204,57,9,428060,32712,5776,4,3356,2412,4,200,1,1,1,5064,11,624860,2.3,4933,20524,0.3,false,,5,ok
+2026-06-09 11:55:01,1781016901,945332,0.00,0.02,0.12,62.0,985420,318780,666640,5944,37,4437204,57,9,428060,32712,5776,4,3356,2412,4,200,1,1,1,5064,11,625388,2.0,4933,20524,0.3,false,,5,ok
+2026-06-09 12:00:02,1781017202,945632,0.00,0.00,0.07,62.0,985420,320896,664524,5944,37,4437200,57,9,428064,32712,5780,4,3360,2412,4,200,1,1,1,5064,11,625832,1.8,4933,20524,0.3,false,,5,ok
+2026-06-09 12:05:01,1781017501,945932,0.00,0.00,0.05,61.0,985420,319412,666008,5944,37,4437200,57,9,428064,32712,5780,4,3360,2412,4,200,1,1,1,5064,11,626060,1.6,4933,20528,0.2,false,,5,ok
