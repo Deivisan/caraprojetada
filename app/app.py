@@ -524,11 +524,11 @@ PROJECTOR_IDLE_HTML = """<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Projetor — UFRB CETENS</title>
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { width: 100%; height: 100%; overflow: hidden; }
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:100%; height:100%; overflow:hidden; }
 body {
  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
- background: #0a1628;
+ background: linear-gradient(160deg, #001a33 0%, #003366 30%, #004d80 60%, #002244 100%);
  color: #fff;
  display: flex;
  align-items: center;
@@ -536,222 +536,186 @@ body {
  cursor: none;
  user-select: none;
 }
-.container {
- width: 100%; height: 100%;
- display: flex; flex-direction: column;
- align-items: center; justify-content: center;
- padding: 40px;
- position: relative;
+
+/* overlay animado */
+body::before {
+ content: '';
+ position: fixed;
+ top:0; left:0; width:100%; height:100%;
+ background:
+  radial-gradient(ellipse at 25% 50%, rgba(0,153,204,0.12) 0%, transparent 60%),
+  radial-gradient(ellipse at 75% 50%, rgba(106,27,154,0.08) 0%, transparent 60%),
+  radial-gradient(ellipse at 50% 0%, rgba(255,179,0,0.04) 0%, transparent 50%);
+ animation: bgShift 10s ease-in-out infinite alternate;
+ pointer-events: none;
 }
-.brand {
- position: absolute;
- top: 28px;
- left: 32px;
- display: flex; align-items: center; gap: 12px;
-}
-.brand .logo {
- width: 36px; height: 36px;
- background: #FFB300;
- border-radius: 8px;
- display: flex; align-items: center; justify-content: center;
- font-size: 18px;
-}
-.brand .name {
- font-size: 13px;
- font-weight: 600;
- color: rgba(255,255,255,0.8);
- letter-spacing: 0.3px;
-}
-.brand .name small {
- display: block;
- font-size: 10px;
- font-weight: 400;
- color: rgba(255,255,255,0.4);
- letter-spacing: 1px;
- text-transform: uppercase;
+@keyframes bgShift {
+ 0% { transform: scale(1); opacity:0.6; }
+ 100% { transform: scale(1.08); opacity:1; }
 }
 
-.main-content {
+.container {
+ position: relative;
+ z-index: 2;
  text-align: center;
- max-width: 720px;
+ padding: 40px;
+ width: 100%;
+ max-width: 900px;
 }
-.main-content .title {
- font-size: 15px;
- font-weight: 500;
+
+/* logo */
+.logo-wrap {
+ margin-bottom: 56px;
+}
+.logo-wrap img {
+ max-width: 380px;
+ width: 90%;
+ height: auto;
+ filter: brightness(1.15);
+}
+
+/* status */
+.status-area {
+ margin-bottom: 48px;
+}
+.status-text {
+ font-size: 48px;
+ font-weight: 200;
+ letter-spacing: 6px;
+ color: rgba(255,255,255,0.85);
+ animation: softPulse 4s ease-in-out infinite;
+ text-shadow: 0 0 40px rgba(255,255,255,0.06);
+}
+@keyframes softPulse {
+ 0%, 100% { opacity:0.6; text-shadow: 0 0 20px rgba(255,255,255,0.03); }
+ 50% { opacity:1; text-shadow: 0 0 60px rgba(255,255,255,0.08); }
+}
+
+.indicator {
+ display: inline-flex;
+ align-items: center;
+ gap: 12px;
+ margin-top: 24px;
+ padding: 10px 28px;
+ background: rgba(255,255,255,0.05);
+ border: 1px solid rgba(255,255,255,0.08);
+ border-radius: 40px;
+ backdrop-filter: blur(4px);
+}
+.indicator .pulse-dot {
+ width: 10px; height: 10px;
+ background: #22c55e;
+ border-radius: 50%;
+ animation: blinkLive 2s ease-in-out infinite;
+}
+@keyframes blinkLive {
+ 0%, 100% { opacity:1; box-shadow: 0 0 10px rgba(34,197,94,0.5); }
+ 50% { opacity:0.3; box-shadow: 0 0 2px rgba(34,197,94,0.1); }
+}
+.indicator .label {
+ font-size: 13px;
+ font-weight: 400;
  color: rgba(255,255,255,0.5);
  letter-spacing: 2px;
  text-transform: uppercase;
- margin-bottom: 12px;
-}
-.main-content .ip-address {
- font-size: 56px;
- font-weight: 800;
- font-family: 'Courier New', 'Consolas', monospace;
- color: #FFB300;
- letter-spacing: 3px;
- line-height: 1.1;
- margin-bottom: 8px;
-}
-.main-content .ip-hint {
- font-size: 14px;
- color: rgba(255,255,255,0.35);
- margin-bottom: 40px;
 }
 
-.status-panel {
- display: flex;
- align-items: center;
- justify-content: center;
- gap: 14px;
- margin-bottom: 48px;
-}
-.status-panel .dot {
- width: 14px; height: 14px;
- border-radius: 50%;
- flex-shrink: 0;
-}
-.status-panel .dot.available {
- background: #22c55e;
- box-shadow: 0 0 12px rgba(34,197,94,0.4);
-}
-.status-panel .dot.in-use {
- background: #eab308;
- box-shadow: 0 0 12px rgba(234,179,8,0.4);
-}
-.status-panel .status-text {
- font-size: 18px;
- font-weight: 500;
- color: rgba(255,255,255,0.8);
-}
-.status-panel .status-text .highlight {
- color: #FFB300;
- font-weight: 600;
+/* instrucoes minimalistas */
+.hint {
+ font-size: 13px;
+ color: rgba(255,255,255,0.2);
+ letter-spacing: 1px;
+ margin-top: 16px;
 }
 
-.instructions {
- display: flex;
- gap: 24px;
- justify-content: center;
-}
-.instructions .step {
- background: rgba(255,255,255,0.05);
- border: 1px solid rgba(255,255,255,0.08);
- border-radius: 10px;
- padding: 14px 20px;
- min-width: 140px;
-}
-.instructions .step .num {
- display: inline-block;
- background: rgba(255,179,0,0.15);
- color: #FFB300;
- font-size: 11px;
- font-weight: 700;
- padding: 2px 8px;
- border-radius: 4px;
- margin-bottom: 6px;
-}
-.instructions .step p {
- font-size: 12px;
- color: rgba(255,255,255,0.5);
- line-height: 1.4;
-}
-.instructions .step strong {
- color: rgba(255,255,255,0.8);
-}
-
+/* clock */
 .clock {
  position: absolute;
- top: 32px;
+ top: 28px;
  right: 32px;
  font-size: 13px;
- font-weight: 400;
- color: rgba(255,255,255,0.25);
+ font-weight: 300;
+ color: rgba(255,255,255,0.2);
  font-family: 'Courier New', monospace;
+ letter-spacing: 0.5px;
 }
 
-.bottom-bar {
+/* rodape */
+.footer-bar {
  position: absolute;
- bottom: 24px;
+ bottom: 28px;
  left: 50%; transform: translateX(-50%);
  font-size: 11px;
  color: rgba(255,255,255,0.15);
- letter-spacing: 1px;
+ letter-spacing: 2px;
+ text-transform: uppercase;
+ white-space: nowrap;
 }
 
+/* responsivo */
 @media (max-width: 640px) {
- .main-content .ip-address { font-size: 32px; letter-spacing: 2px; }
- .instructions { flex-direction: column; gap: 10px; }
- .instructions .step { min-width: auto; }
- .brand { top: 16px; left: 16px; }
- .clock { top: 16px; right: 16px; }
+ .status-text { font-size: 28px; letter-spacing: 3px; }
+ .logo-wrap { margin-bottom: 36px; }
+ .logo-wrap img { max-width: 260px; }
+ .clock { top: 16px; right: 16px; font-size: 11px; }
+ .indicator { padding: 8px 18px; }
+ .indicator .label { font-size: 11px; }
 }
 </style>
 </head>
 <body>
 <div class="container">
- <div class="brand">
-  <div class="logo">&#127916;</div>
-  <div class="name">
-   Proje&ccedil;&otilde;es UFRB
-   <small>CETENS &middot; Feira de Santana</small>
-  </div>
+ <div class="logo-wrap">
+  <img src="/static/UFRB-20_assinatura_principal_preto.png" alt="UFRB 20 anos &mdash; Universidade Federal do Rec&ocirc;ncavo da Bahia">
  </div>
- <div class="clock" id="clock"></div>
 
- <div class="main-content">
-  <div class="title">Conecte-se ao Projetor</div>
-  <div class="ip-address" id="ip-address">http://{{ projector_ip }}</div>
-  <div class="ip-hint">Digite este endere&ccedil;o no navegador do seu computador</div>
-
-  <div class="status-panel">
-   <span class="dot available" id="status-dot"></span>
-   <span class="status-text" id="status-text">Projetor dispon&iacute;vel &middot; Aguardando conex&atilde;o</span>
-  </div>
-
-  <div class="instructions">
-   <div class="step">
-    <div class="num">1</div>
-    <p>Acesse o <strong>endere&ccedil;o acima</strong> no navegador</p>
-   </div>
-   <div class="step">
-    <div class="num">2</div>
-    <p>Fa&ccedil;a login com seu <strong>SIAPE</strong> e senha institucional</p>
-   </div>
-   <div class="step">
-    <div class="num">3</div>
-    <p>Clique em <strong>"Conectar Tela"</strong> para espelhar</p>
-   </div>
+ <div class="status-area">
+  <div class="status-text" id="status-msg">Aguardando conex&atilde;o...</div>
+  <div class="indicator">
+   <span class="pulse-dot" id="status-dot"></span>
+   <span class="label" id="status-label">Projetor dispon&iacute;vel</span>
   </div>
  </div>
 
- <div class="bottom-bar">UFRB &middot; Universidade Federal do Rec&ocirc;ncavo da Bahia</div>
+ <div class="hint" id="hint-user"></div>
 </div>
 
+<div class="clock" id="clock"></div>
+<div class="footer-bar">UFRB &middot; Universidade Federal do Rec&ocirc;ncavo da Bahia</div>
+
 <script>
+function pad(n) { return n<10?'0'+n:n; }
 function updateClock() {
  var now = new Date();
  document.getElementById('clock').textContent =
-  now.toLocaleDateString('pt-BR') + '  ' +
-  now.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+  pad(now.getDate())+'/'+pad(now.getMonth()+1)+'/'+now.getFullYear()+'  '+
+  pad(now.getHours())+':'+pad(now.getMinutes());
 }
 function updateStatus() {
- fetch('/api/v1/status').then(function(r) { return r.json(); }).then(function(data) {
-  var dot = document.getElementById('status-dot');
-  var txt = document.getElementById('status-text');
-  if (data.active_session) {
-   dot.className = 'dot in-use';
-   txt.innerHTML = 'Projetor em uso por <span class="highlight">' + (data.current_user_full || data.current_user || 'algu&eacute;m') + '</span> &middot; desde ' + (data.since || '');
+ fetch('/api/v1/status').then(function(r){return r.json()}).then(function(d){
+  var msg=document.getElementById('status-msg');
+  var dot=document.getElementById('status-dot');
+  var lbl=document.getElementById('status-label');
+  var hint=document.getElementById('hint-user');
+  if(d.active_session) {
+   msg.textContent='Projetor em uso';
+   dot.style.background='#eab308';
+   dot.style.animation='blinkLive 1.5s ease-in-out infinite';
+   lbl.textContent='Conectado a '+ (d.current_user_full||d.current_user||'alguem');
+   hint.textContent='desde '+ (d.since||'') +' \u00b7 sessao remota ativa';
   } else {
-   dot.className = 'dot available';
-   txt.textContent = 'Projetor dispon&iacute;vel &middot; Aguardando conex&atilde;o';
+   msg.textContent='Aguardando conex\u00e3o...';
+   dot.style.background='#22c55e';
+   dot.style.animation='blinkLive 2s ease-in-out infinite';
+   lbl.textContent='Projetor dispon\u00edvel';
+   hint.textContent='';
   }
- }).catch(function() {});
+ }).catch(function(){});
 }
-document.addEventListener('DOMContentLoaded', function() {
- updateClock();
- updateStatus();
- setInterval(updateClock, 60000);
- setInterval(updateStatus, 30000);
+document.addEventListener('DOMContentLoaded', function(){
+ updateClock(); updateStatus();
+ setInterval(updateClock,60000);
+ setInterval(updateStatus,15000);
 });
 </script>
 </body>
@@ -856,7 +820,7 @@ def conectar():
     # Comando otimizado: sem sudo (roda como root), quality baixo + compressão máxima
     comando = (f'echo "123456" | DISPLAY=:0 XAUTHORITY=/var/run/lightdm/root/:0 '
                f'/usr/bin/xtightvncviewer {notebook_ip}:{vnc_display} -autopass '
-               f'-quality 6 -compresslevel 9')
+               f'-quality 6 -compresslevel 9 -fullscreen')
     current_session['active'] = True
     current_session['username'] = user
     current_session['user_fullname'] = fullname
