@@ -477,16 +477,14 @@ CONTROL_HTML = """<!DOCTYPE html>
                     Projetor dispon&iacute;vel
                     {% endif %}
                 </div>
+                {% if not session_active %}
                 <form action="/conectar" method="post" style="display:inline;">
                     <input type="hidden" name="ip" value="{{ user_ip }}">
                     <button type="submit" class="btn btn-primary">
-                        {% if session_active and session_user != username %}
-                            &#9888; Assumir Projetor
-                        {% else %}
-                            &#9654; Conectar Tela ao Projetor
-                        {% endif %}
+                        &#9654; Conectar Tela ao Projetor
                     </button>
                 </form>
+                {% endif %}
                 {% if session_active and session_user == username %}
                 <div class="btn-group">
                     <form action="/desconectar" method="post" style="display:inline;width:100%;">
@@ -802,8 +800,8 @@ def conectar():
                f'Conectado por <strong>{current_session["user_fullname"]}</strong> '
                f'({current_session["username"]}) desde '
                f'{current_session["started_at"]}.<br><br>'
-               'Clique novamente em <strong>Assumir Projetor</strong> para '
-               'desconect&aacute;-lo e conectar sua tela.')
+               'Aguarde at&eacute; que a sess&atilde;o atual seja encerrada '
+               'para conectar sua tela.')
         return render_template_string(CONTROL_HTML,
             user_ip=notebook_ip, username=user, user_fullname=fullname,
             os_detect=os_name,
