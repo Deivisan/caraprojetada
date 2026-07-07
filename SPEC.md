@@ -220,3 +220,31 @@ Metas iniciais:
 - Logs curtos para evitar saturar `/var/log` em zram.
 
 Checklist e comandos: `PERFORMANCE.md`.
+
+## 12. Modo de Desenvolvimento
+
+### Ativação
+
+```bash
+CARAPROJETADA_ENV=dev
+```
+
+### Diferenças para produção
+
+| item | dev | prod |
+|------|-----|------|
+| host padrão | `127.0.0.1` | `0.0.0.0` |
+| porta padrão | `5000` | `80` |
+| autenticação | mock | ad/ldap |
+| ldap3 | opcional | obrigatório |
+| vnc | simulado | real via `xtightvncviewer` |
+| `/api/dev/reset` | disponível | indisponível |
+| `/vnc-view` | disponível | redireciona |
+
+### Credenciais mock
+
+| usuário | senha |
+|---------|-------|
+| `admin` | `admin` |
+| qualquer | `dev` |
+| `usuario` | `usuario` |

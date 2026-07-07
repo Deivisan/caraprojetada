@@ -1,18 +1,20 @@
 from flask import Flask, render_template_string, request, session, redirect, jsonify
-from ldap3 import Server, Connection, ALL
 import subprocess
 import time
 from datetime import datetime
 import os
 import re
 
-app = Flask(__name__)
-app.secret_key = 'chave_secreta_projecoes_ufrb_cetens'
+# ldap3 obrigatório em produção
+from ldap3 import Server, Connection, ALL
 
-AD_SERVER = 'ldap://10.198.1.2'
-AD_DOMAIN = 'intranet.ufrb.edu.br'
-AD_BASE_DN = 'dc=intranet,dc=ufrb,dc=edu,dc=br'
-LOG_FILE = '/var/log/projetor-acessos.log'
+app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'chave_secreta_projecoes_ufrb_cetens')
+
+AD_SERVER = os.environ.get('AD_SERVER', 'ldap://10.198.1.2')
+AD_DOMAIN = os.environ.get('AD_DOMAIN', 'intranet.ufrb.edu.br')
+AD_BASE_DN = os.environ.get('AD_BASE_DN', 'dc=intranet,dc=ufrb,dc=edu,dc=br')
+LOG_FILE = os.environ.get('LOG_FILE', '/home/carapreta/projetor-acessos.log')
 
 current_session = {
     'active': False,
@@ -35,13 +37,13 @@ def detect_os(user_agent):
     return ('0', 'Desconhecido')
 
 def registrar_log(evento, detalhes=''):
+    data = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    ip = request.remote_addr if request else '-'
+    user = session.get('username', '-') if session else '-'
+    linha = f'[{data}] IP={ip} USUARIO={user} EVENTO={evento} {detalhes}'
     try:
-        data = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        ip = request.remote_addr if request else '-'
-        user = session.get('username', '-') if session else '-'
-        linha = f'[{data}] IP={ip} USUARIO={user} EVENTO={evento} {detalhes}\n'
         with open(LOG_FILE, 'a') as f:
-            f.write(linha)
+            f.write(linha + '\n')
     except:
         pass
 
@@ -52,11 +54,12 @@ def autenticar_ad(username, password):
         conn = Connection(server, user=user_principal, password=password, authentication='SIMPLE')
         if conn.bind():
             nome_completo = username
+            email = ''
             try:
                 conn.search(
                     search_base=AD_BASE_DN,
                     search_filter=f'(sAMAccountName={username})',
-                    attributes=['displayName', 'name', 'cn', 'mail']
+                    attributes=['displayName', 'name', 'cn', 'mail', 'department', 'title']
                 )
                 if conn.entries:
                     entry = conn.entries[0]
@@ -64,17 +67,22 @@ def autenticar_ad(username, password):
                         if hasattr(entry, attr) and entry[attr].value:
                             nome_completo = entry[attr].value
                             break
+                    if hasattr(entry, 'mail') and entry['mail'].value:
+                        email = entry['mail'].value
             except:
                 pass
             conn.unbind()
-            registrar_log('LOGIN_OK', f'nome="{nome_completo}"')
-            return True, nome_completo
-        return False, None
+            registrar_log('LOGIN_OK', f'SIAPE={username} nome="{nome_completo}" email="{email}"')
+            return True, nome_completo, email
+        return False, None, None
     except Exception as e:
         registrar_log('LOGIN_ERRO', f'erro={str(e)}')
-        return False, None
+        return False, None, None
 
-# ── PÁGINA DE LOGIN ──────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════
+# TEMPLATES HTML
+# ══════════════════════════════════════════════════════════════════
+
 LOGIN_HTML = """<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -211,7 +219,6 @@ LOGIN_HTML = """<!DOCTYPE html>
             line-height: 1.7;
         }
         .footer strong { color: #003366; }
-
         @media (max-width: 500px) {
             .login-card { padding: 24px 18px; }
         }
@@ -230,7 +237,6 @@ LOGIN_HTML = """<!DOCTYPE html>
                 <div class="sub"><strong>CETENS</strong> &middot; UFRB &middot; Feira de Santana</div>
                 <div class="divider"></div>
             </div>
-
             <div class="info-box">
                 <strong>&#128161; Para que serve este sistema?</strong><br>
                 Este sistema permite que voc&ecirc; <strong>espelhe a tela do seu computador</strong>
@@ -239,11 +245,9 @@ LOGIN_HTML = """<!DOCTYPE html>
                 <strong>&#128272; Acesso:</strong> informe seu <span class="highlight">SIAPE</span>
                 (nome de usu&aacute;rio da rede UFRB) e sua senha institucional (AD).
             </div>
-
             {% if error %}
             <div class="error-msg">&#9888; {{ error }}</div>
             {% endif %}
-
             <form action="/login" method="post">
                 <div class="form-group">
                     <label>SIAPE (usu&aacute;rio institucional)</label>
@@ -257,7 +261,6 @@ LOGIN_HTML = """<!DOCTYPE html>
                 </div>
                 <button type="submit" class="btn-login">Acessar o Sistema de Proje&ccedil;&otilde;es</button>
             </form>
-
             <div class="footer">
                 <strong>Universidade Federal do Rec&ocirc;ncavo da Bahia</strong><br>
                 Centro de Ci&ecirc;ncia e Tecnologia em Energia e Sustentabilidade &bull; CETENS<br>
@@ -268,7 +271,6 @@ LOGIN_HTML = """<!DOCTYPE html>
 </body>
 </html>"""
 
-# ── PAINEL DE CONTROLE ───────────────────────────────────────────
 CONTROL_HTML = """<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -294,7 +296,6 @@ CONTROL_HTML = """<!DOCTYPE html>
             box-shadow: 0 8px 40px rgba(0,0,0,0.25);
             border-top: 5px solid #FFB300;
         }
-
         .header {
             display: flex;
             justify-content: space-between;
@@ -302,14 +303,7 @@ CONTROL_HTML = """<!DOCTYPE html>
             margin-bottom: 24px;
             flex-wrap: wrap; gap: 12px;
         }
-        .header-left { display: flex; align-items: center; gap: 14px; }
-        .header-left .shield {
-            width: 44px; height: 44px;
-            background: linear-gradient(135deg, #003366, #6A1B9A);
-            border-radius: 10px;
-            display: flex; align-items: center; justify-content: center;
-            color: #fff; font-weight: 700; font-size: 18px;
-        }
+        .header-left { display: flex; align-items: center; gap: 0; }
         .header-left h1 {
             font-size: 18px; color: #003366; font-weight: 700;
             line-height: 1.2;
@@ -327,7 +321,6 @@ CONTROL_HTML = """<!DOCTYPE html>
             overflow: hidden;
             text-overflow: ellipsis;
         }
-
         .ip-box {
             background: #f0f4f8;
             border: 1px solid #d0dce8;
@@ -350,7 +343,6 @@ CONTROL_HTML = """<!DOCTYPE html>
             padding: 3px 10px; border-radius: 12px;
             font-size: 11px; font-weight: 600;
         }
-
         {% if session_active %}
         .session-card {
             background: #fef8e7;
@@ -369,7 +361,6 @@ CONTROL_HTML = """<!DOCTYPE html>
         }
         .session-card .s-detail strong { color: #b8860b; }
         {% endif %}
-
         .connect-area {
             border: 1.5px dashed #c8d8e8;
             border-radius: 12px; padding: 24px;
@@ -381,19 +372,9 @@ CONTROL_HTML = """<!DOCTYPE html>
             font-size: 13px; font-weight: 500; margin-bottom: 16px;
         }
         .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-        .dot.green {
-            background: #16a34a;
-            box-shadow: 0 0 6px rgba(22,163,74,0.4);
-        }
-        .dot.yellow {
-            background: #eab308;
-            box-shadow: 0 0 6px rgba(234,179,8,0.4);
-        }
-        .dot.red {
-            background: #dc2626;
-            box-shadow: 0 0 6px rgba(220,38,38,0.4);
-        }
-
+        .dot.green { background: #16a34a; box-shadow: 0 0 6px rgba(22,163,74,0.4); }
+        .dot.yellow { background: #eab308; box-shadow: 0 0 6px rgba(234,179,8,0.4); }
+        .dot.red { background: #dc2626; box-shadow: 0 0 6px rgba(220,38,38,0.4); }
         .btn-group {
             display: flex;
             gap: 12px;
@@ -432,7 +413,6 @@ CONTROL_HTML = """<!DOCTYPE html>
             padding: 8px 16px;
         }
         .btn-outline:hover { background: #e5e7eb; }
-
         .msg-box {
             border-radius: 10px; padding: 14px 18px;
             margin-top: 16px; font-size: 14px;
@@ -440,22 +420,44 @@ CONTROL_HTML = """<!DOCTYPE html>
             color: #2c3e50;
             line-height: 1.6;
         }
-        .msg-box.warning {
-            background: #fef8e7; border-color: #fde0a0; color: #5c4a00;
+        .msg-box.warning { background: #fef8e7; border-color: #fde0a0; color: #5c4a00; }
+        .msg-box.error { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+        .msg-box.success { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+        .pin-area {
+            text-align: center;
+            padding: 20px 10px 10px;
         }
-        .msg-box.error {
-            background: #fef2f2; border-color: #fecaca; color: #991b1b;
+        .pin-area .pin-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #4a5568;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
         }
-        .msg-box.success {
-            background: #f0fdf4; border-color: #bbf7d0; color: #166534;
+        .pin-input {
+            width: 180px !important;
+            text-align: center;
+            letter-spacing: 12px;
+            font-size: 28px !important;
+            font-weight: 700;
+            color: #003366;
+            padding: 14px 12px !important;
+            border: 2px solid #cfe0f0 !important;
+            transition: all 0.2s;
+            margin: 0 auto;
+            display: block;
         }
-
+        .pin-input:focus {
+            border-color: #003366 !important;
+            box-shadow: 0 0 0 3px rgba(0,51,102,0.12) !important;
+        }
         .footer {
             text-align: center; margin-top: 24px;
             font-size: 11px; color: #888; line-height: 1.6;
         }
         .footer strong { color: #003366; }
-
         @media (max-width: 500px) {
             .panel-card { padding: 20px; }
             .header { flex-direction: column; align-items: stretch; }
@@ -470,7 +472,6 @@ CONTROL_HTML = """<!DOCTYPE html>
         <div class="panel-card">
             <div class="header">
                 <div class="header-left">
-                    <div class="shield">SP</div>
                     <div>
                         <h1>Sistema de Proje&ccedil;&otilde;es</h1>
                         <div class="sub">UFRB &middot; CETENS</div>
@@ -478,13 +479,11 @@ CONTROL_HTML = """<!DOCTYPE html>
                 </div>
                 <div class="user-badge" title="{{ user_fullname }}">&#128100; {{ user_fullname }}</div>
             </div>
-
             <div class="ip-box">
                 <span class="label">&#127760; Seu IP</span>
                 <span class="value">{{ user_ip }}</span>
                 <span class="os-tag">{{ os_detect }}</span>
             </div>
-
             {% if session_active %}
             <div class="session-card">
                 <div class="s-title">&#9654; Projetor em uso</div>
@@ -495,7 +494,6 @@ CONTROL_HTML = """<!DOCTYPE html>
                 </div>
             </div>
             {% endif %}
-
             <div class="connect-area">
                 <div class="status-row">
                     {% if session_active and session_user != username %}
@@ -509,18 +507,21 @@ CONTROL_HTML = """<!DOCTYPE html>
                     Projetor dispon&iacute;vel
                     {% endif %}
                 </div>
-
-                <form action="/conectar" method="post" style="display:inline;">
-                    <input type="hidden" name="ip" value="{{ user_ip }}">
-                    <button type="submit" class="btn btn-primary">
-                        {% if session_active and session_user != username %}
-                            &#9888; Assumir Projetor
-                        {% else %}
-                            &#9654; Conectar Tela ao Projetor
-                        {% endif %}
+                {% if not session_active %}
+                <form action="/conectar" method="post">
+                    <div class="pin-area">
+                        <span class="pin-label">PIN de acesso</span>
+                        <input type="text" name="pin" class="pin-input"
+                               placeholder="&#8226;&#8226;&#8226;&#8226;"
+                               required autocomplete="off"
+                               inputmode="numeric" maxlength="4"
+                               pattern="\\d{4}">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%;">
+                        &#9654; Conectar ao Projetor
                     </button>
                 </form>
-
+                {% endif %}
                 {% if session_active and session_user == username %}
                 <div class="btn-group">
                     <form action="/desconectar" method="post" style="display:inline;width:100%;">
@@ -531,77 +532,240 @@ CONTROL_HTML = """<!DOCTYPE html>
                 </div>
                 {% endif %}
             </div>
-
             {% if msg %}
             <div class="msg-box {% if 'Erro' in msg %}error{% elif 'Conectado' in msg or 'liberado' in msg %}success{% elif 'uso' in msg %}warning{% endif %}">
                 {{ msg|safe }}
             </div>
             {% endif %}
-
             <div style="text-align:center;margin-top:16px;">
                 <form action="/logout" method="post" style="display:inline;">
                     <button type="submit" class="btn btn-outline">Sair da sess&atilde;o</button>
                 </form>
             </div>
-
             <div class="footer">
                 <strong>UFRB</strong> &bull; Universidade Federal do Rec&ocirc;ncavo da Bahia<br>
                 CETENS &bull; Centro de Ci&ecirc;ncia e Tecnologia em Energia e Sustentabilidade<br>
-                Sistema de Proje&ccedil;&otilde;es
+                Sistema de Proje&ccedil;&otilde;es &bull; <a href="/projetor" style="color:#008B9E;">Tela do Projetor</a>
             </div>
         </div>
     </div>
 </body>
 </html>"""
 
-def init_x_server():
-    subprocess.run('sudo pkill -9 xtightvncviewer', shell=True)
-    # So inicia X se nao estiver rodando
-    import os as _os
-    if not _os.path.exists('/tmp/.X0-lock'):
-        subprocess.Popen('sudo xinit /bin/sleep infinity -- :0 -nocursor', shell=True)
-        time.sleep(1)
+PROJECTOR_IDLE_HTML = """<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Projetor — UFRB CETENS</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:100%; height:100%; overflow:hidden; }
+body {
+ font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+ background: linear-gradient(160deg, #001a33 0%, #003366 30%, #004d80 60%, #002244 100%);
+ color: #fff;
+ display: flex;
+ align-items: center;
+ justify-content: center;
+ cursor: none;
+ user-select: none;
+}
 
-def autenticar_ad_completo(username, password):
-    try:
-        user_principal = f'{username}@{AD_DOMAIN}'
-        server = Server(AD_SERVER, get_info=ALL)
-        conn = Connection(server, user=user_principal, password=password, authentication='SIMPLE')
-        if conn.bind():
-            nome_completo = username
-            email = ''
-            try:
-                conn.search(
-                    search_base=AD_BASE_DN,
-                    search_filter=f'(sAMAccountName={username})',
-                    attributes=['displayName', 'name', 'cn', 'mail', 'department', 'title']
-                )
-                if conn.entries:
-                    entry = conn.entries[0]
-                    for attr in ['displayName', 'name', 'cn']:
-                        if hasattr(entry, attr) and entry[attr].value:
-                            nome_completo = entry[attr].value
-                            break
-                    if hasattr(entry, 'mail') and entry['mail'].value:
-                        email = entry['mail'].value
-            except:
-                pass
-            conn.unbind()
-            return True, nome_completo, email
-        return False, None, None
-    except Exception as e:
-        return False, None, None
+/* overlay animado */
+body::before {
+ content: '';
+ position: fixed;
+ top:0; left:0; width:100%; height:100%;
+ background:
+  radial-gradient(ellipse at 25% 50%, rgba(0,153,204,0.12) 0%, transparent 60%),
+  radial-gradient(ellipse at 75% 50%, rgba(106,27,154,0.08) 0%, transparent 60%),
+  radial-gradient(ellipse at 50% 0%, rgba(255,179,0,0.04) 0%, transparent 50%);
+ animation: bgShift 10s ease-in-out infinite alternate;
+ pointer-events: none;
+}
+@keyframes bgShift {
+ 0% { transform: scale(1); opacity:0.6; }
+ 100% { transform: scale(1.08); opacity:1; }
+}
 
-# ── ROTAS ────────────────────────────────────────────────────────
+.container {
+ position: relative;
+ z-index: 2;
+ text-align: center;
+ padding: 40px;
+ width: 100%;
+ max-width: 900px;
+}
+
+/* logo */
+.logo-wrap {
+ margin-bottom: 56px;
+}
+.logo-wrap img {
+ max-width: 380px;
+ width: 90%;
+ height: auto;
+ filter: brightness(1.15);
+}
+
+/* status */
+.status-area {
+ margin-bottom: 48px;
+}
+.status-text {
+ font-size: 48px;
+ font-weight: 200;
+ letter-spacing: 6px;
+ color: rgba(255,255,255,0.85);
+ animation: softPulse 4s ease-in-out infinite;
+ text-shadow: 0 0 40px rgba(255,255,255,0.06);
+}
+@keyframes softPulse {
+ 0%, 100% { opacity:0.6; text-shadow: 0 0 20px rgba(255,255,255,0.03); }
+ 50% { opacity:1; text-shadow: 0 0 60px rgba(255,255,255,0.08); }
+}
+
+.indicator {
+ display: inline-flex;
+ align-items: center;
+ gap: 12px;
+ margin-top: 24px;
+ padding: 10px 28px;
+ background: rgba(255,255,255,0.05);
+ border: 1px solid rgba(255,255,255,0.08);
+ border-radius: 40px;
+ backdrop-filter: blur(4px);
+}
+.indicator .pulse-dot {
+ width: 10px; height: 10px;
+ background: #22c55e;
+ border-radius: 50%;
+ animation: blinkLive 2s ease-in-out infinite;
+}
+@keyframes blinkLive {
+ 0%, 100% { opacity:1; box-shadow: 0 0 10px rgba(34,197,94,0.5); }
+ 50% { opacity:0.3; box-shadow: 0 0 2px rgba(34,197,94,0.1); }
+}
+.indicator .label {
+ font-size: 13px;
+ font-weight: 400;
+ color: rgba(255,255,255,0.5);
+ letter-spacing: 2px;
+ text-transform: uppercase;
+}
+
+/* instrucoes minimalistas */
+.hint {
+ font-size: 13px;
+ color: rgba(255,255,255,0.2);
+ letter-spacing: 1px;
+ margin-top: 16px;
+}
+
+/* clock */
+.clock {
+ position: absolute;
+ top: 28px;
+ right: 32px;
+ font-size: 13px;
+ font-weight: 300;
+ color: rgba(255,255,255,0.2);
+ font-family: 'Courier New', monospace;
+ letter-spacing: 0.5px;
+}
+
+/* rodape */
+.footer-bar {
+ position: absolute;
+ bottom: 28px;
+ left: 50%; transform: translateX(-50%);
+ font-size: 11px;
+ color: rgba(255,255,255,0.15);
+ letter-spacing: 2px;
+ text-transform: uppercase;
+ white-space: nowrap;
+}
+
+/* responsivo */
+@media (max-width: 640px) {
+ .status-text { font-size: 28px; letter-spacing: 3px; }
+ .logo-wrap { margin-bottom: 36px; }
+ .logo-wrap img { max-width: 260px; }
+ .clock { top: 16px; right: 16px; font-size: 11px; }
+ .indicator { padding: 8px 18px; }
+ .indicator .label { font-size: 11px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+ <div class="logo-wrap">
+  <img src="/static/UFRB-20_assinatura_principal_preto.png" alt="UFRB 20 anos &mdash; Universidade Federal do Rec&ocirc;ncavo da Bahia">
+ </div>
+
+ <div class="status-area">
+  <div class="status-text" id="status-msg">Aguardando conex&atilde;o...</div>
+  <div class="indicator">
+   <span class="pulse-dot" id="status-dot"></span>
+   <span class="label" id="status-label">Projetor dispon&iacute;vel</span>
+  </div>
+ </div>
+
+ <div class="hint" id="hint-user"></div>
+</div>
+
+<div class="clock" id="clock"></div>
+<div class="footer-bar">UFRB &middot; Universidade Federal do Rec&ocirc;ncavo da Bahia</div>
+
+<script>
+function pad(n) { return n<10?'0'+n:n; }
+function updateClock() {
+ var now = new Date();
+ document.getElementById('clock').textContent =
+  pad(now.getDate())+'/'+pad(now.getMonth()+1)+'/'+now.getFullYear()+'  '+
+  pad(now.getHours())+':'+pad(now.getMinutes());
+}
+function updateStatus() {
+ fetch('/api/v1/status').then(function(r){return r.json()}).then(function(d){
+  var msg=document.getElementById('status-msg');
+  var dot=document.getElementById('status-dot');
+  var lbl=document.getElementById('status-label');
+  var hint=document.getElementById('hint-user');
+  if(d.active_session) {
+   msg.textContent='Projetor em uso';
+   dot.style.background='#eab308';
+   dot.style.animation='blinkLive 1.5s ease-in-out infinite';
+   lbl.textContent='Conectado a '+ (d.current_user_full||d.current_user||'alguem');
+   hint.textContent='desde '+ (d.since||'') +' \u00b7 sessao remota ativa';
+  } else {
+   msg.textContent='Aguardando conex\u00e3o...';
+   dot.style.background='#22c55e';
+   dot.style.animation='blinkLive 2s ease-in-out infinite';
+   lbl.textContent='Projetor dispon\u00edvel';
+   hint.textContent='';
+  }
+ }).catch(function(){});
+}
+document.addEventListener('DOMContentLoaded', function(){
+ updateClock(); updateStatus();
+ setInterval(updateClock,60000);
+ setInterval(updateStatus,15000);
+});
+</script>
+</body>
+</html>"""
+
+# ══════════════════════════════════════════════════════════════════
+# ROTAS
+# ══════════════════════════════════════════════════════════════════
 
 @app.route('/')
 def index():
     if 'username' not in session:
         return render_template_string(LOGIN_HTML)
-
     disp, os_name = detect_os(request.headers.get('User-Agent', ''))
     fullname = session.get('user_fullname', session['username'])
-
     return render_template_string(CONTROL_HTML,
         user_ip=request.remote_addr,
         username=session['username'],
@@ -616,35 +780,36 @@ def index():
         session_ip=current_session.get('user_ip', ''),
         msg='')
 
+@app.route('/projetor')
+def projetor_idle():
+    try:
+        saida = subprocess.check_output(['ip', '-4', 'addr', 'show', 'wlan0']).decode()
+        ip_box = re.search(r'inet (\d+\.\d+\.\d+\.\d+)', saida)
+        projector_ip = ip_box.group(1) if ip_box else '127.0.0.1'
+    except Exception:
+        projector_ip = '127.0.0.1'
+    return render_template_string(PROJECTOR_IDLE_HTML, projector_ip=projector_ip)
+
 @app.route('/login', methods=['POST'])
 def login():
     username = request.form.get('username', '').strip().lower()
     password = request.form.get('password')
-
     if not username or not password:
-        return render_template_string(LOGIN_HTML,
-            error='Informe seu SIAPE e senha institucional.')
-
-    # Remove @ufrb.edu.br se o usuario digitou email completo
+        return render_template_string(LOGIN_HTML, error='Informe seu SIAPE e senha institucional.')
     username = re.sub(r'@.*$', '', username)
-
-    ok, nome_completo, email = autenticar_ad_completo(username, password)
-
+    ok, nome_completo, email = autenticar_ad(username, password)
     if ok:
         session['username'] = username
         session['user_fullname'] = nome_completo
         session['user_email'] = email
-        registrar_log('LOGIN_OK', f'SIAPE={username} nome="{nome_completo}" email={email}')
         return redirect('/')
-
-    registrar_log('LOGIN_FALHA', f'tentativa SIAPE={username}')
     return render_template_string(LOGIN_HTML,
         error='SIAPE ou senha inv&aacute;lidos. Use suas credenciais institucionais (AD/UFRB).')
 
 @app.route('/logout', methods=['POST'])
 def logout():
     if current_session.get('username') == session.get('username'):
-        subprocess.run('sudo pkill -9 xtightvncviewer', shell=True)
+        subprocess.run(['pkill', '-9', 'xtightvncviewer'])
         registrar_log('DESCONECTOU_LOGOUT', f'SIAPE={session.get("username")}')
         current_session['active'] = False
         current_session['username'] = None
@@ -662,25 +827,19 @@ def logout():
 def conectar():
     if 'username' not in session:
         return redirect('/')
-
-    notebook_ip = request.form.get('ip')
+    pin = request.form.get('pin', '').strip()
+    notebook_ip = request.remote_addr
     user = session['username']
     fullname = session.get('user_fullname', user)
-
-    # Detecta SO automaticamente - sem seletor manual
     disp, os_name = detect_os(request.headers.get('User-Agent', ''))
     vnc_display = disp
-
-    # Se outro usuario esta usando, avisa e permite assumir
     if current_session['active'] and current_session['username'] != user:
-        msg = (
-            '<strong>&#9888; Este projetor j&aacute; est&aacute; em uso!</strong><br>'
-            f'Conectado por <strong>{current_session["user_fullname"]}</strong> '
-            f'({current_session["username"]}) desde '
-            f'{current_session["started_at"]}.<br><br>'
-            'Clique novamente em <strong>Assumir Projetor</strong> para '
-            'desconect&aacute;-lo e conectar sua tela.'
-        )
+        msg = ('<strong>&#9888; Este projetor j&aacute; est&aacute; em uso!</strong><br>'
+               f'Conectado por <strong>{current_session["user_fullname"]}</strong> '
+               f'({current_session["username"]}) desde '
+               f'{current_session["started_at"]}.<br><br>'
+               'Aguarde at&eacute; que a sess&atilde;o atual seja encerrada '
+               'para conectar sua tela.')
         return render_template_string(CONTROL_HTML,
             user_ip=notebook_ip, username=user, user_fullname=fullname,
             os_detect=os_name,
@@ -692,12 +851,41 @@ def conectar():
             session_os=current_session.get('os_type', ''),
             session_ip=current_session.get('user_ip', ''),
             msg=msg)
-
-    # Conecta
-    subprocess.run('sudo pkill -9 xtightvncviewer', shell=True)
-    comando = f'echo "123456" | DISPLAY=:0 sudo /usr/bin/xtightvncviewer {notebook_ip}:{vnc_display} -autopass'
+    # Mata sessão anterior e conecta
+    subprocess.run(['pkill', '-9', 'xtightvncviewer'])
+    # Comando otimizado: sem sudo (roda como root), quality baixo + compressão máxima
+    # senha VNC vem do PIN informado pelo usuário (4 dígitos)
+    comando = (f'echo "{pin}" | DISPLAY=:0 XAUTHORITY=/var/run/lightdm/root/:0 '
+               f'/usr/bin/xtightvncviewer -autopass -quality 6 -compresslevel 9 '
+               f'-fullscreen {notebook_ip}:{vnc_display}')
     try:
-        subprocess.Popen(comando, shell=True)
+        proc = subprocess.Popen(comando, shell=True,
+                                stdout=subprocess.DEVNULL,
+                                stderr=subprocess.DEVNULL)
+        conectado = False
+        # aguarda até estabelecer ou falhar (senha errada costuma sair em <3s)
+        for _ in range(60):  # ate 6s
+            if proc.poll() is not None:
+                # processo saiu => falha (senha/PIN errado ou servidor VNC off)
+                registrar_log('ERRO_CONECTAR',
+                              f'SIAPE={user} rc={proc.returncode}')
+                msg = ('<strong>&#9888; N&atilde;o foi poss&iacute;vel conectar.</strong><br>'
+                       'Verifique se o PIN/senha do VNC est&aacute; correto e se o '
+                       'servidor VNC est&aacute; ativo no seu computador.')
+                return render_template_string(CONTROL_HTML,
+                    user_ip=notebook_ip, username=user, user_fullname=fullname,
+                    os_detect=os_name,
+                    session_active=current_session['active'],
+                    session_user=current_session.get('username', ''),
+                    session_user_full=current_session.get('user_fullname', current_session.get('username', '')),
+                    session_start=current_session.get('started_at', ''),
+                    session_display=current_session.get('display', ''),
+                    session_os=current_session.get('os_type', ''),
+                    session_ip=current_session.get('user_ip', ''),
+                    msg=msg)
+            time.sleep(0.1)
+        # nao saiu do loop => viewer continua rodando => conexao estabelecida
+        conectado = True
         current_session['active'] = True
         current_session['username'] = user
         current_session['user_fullname'] = fullname
@@ -710,7 +898,6 @@ def conectar():
     except Exception as e:
         registrar_log('ERRO_CONECTAR', f'SIAPE={user} erro={str(e)}')
         msg = f'<strong>Erro ao conectar:</strong> {str(e)}'
-
     return render_template_string(CONTROL_HTML,
         user_ip=notebook_ip, username=user, user_fullname=fullname,
         os_detect=os_name,
@@ -727,11 +914,9 @@ def conectar():
 def desconectar():
     if 'username' not in session:
         return redirect('/')
-
     user = session['username']
     fullname = session.get('user_fullname', user)
-
-    subprocess.run('sudo pkill -9 xtightvncviewer', shell=True)
+    subprocess.run(['pkill', '-9', 'xtightvncviewer'])
     registrar_log('DESCONECTOU', f'SIAPE={user} nome="{fullname}"')
     current_session['active'] = False
     current_session['username'] = None
@@ -740,7 +925,6 @@ def desconectar():
     current_session['os_type'] = None
     current_session['started_at'] = None
     current_session['user_fullname'] = None
-
     disp, os_name = detect_os(request.headers.get('User-Agent', ''))
     return render_template_string(CONTROL_HTML,
         user_ip=request.remote_addr, username=user, user_fullname=fullname,
@@ -750,7 +934,9 @@ def desconectar():
         session_start='', session_display='', session_os='', session_ip='',
         msg='<strong>Projetor liberado.</strong> Voc&ecirc; pode fechar a p&aacute;gina.')
 
-# ── API ──────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════
+# API
+# ══════════════════════════════════════════════════════════════════
 
 @app.route('/api/v1/status', methods=['GET'])
 def api_status():
@@ -758,6 +944,7 @@ def api_status():
         'projector': 'carapreta-box',
         'ip': request.host,
         'online': True,
+        'mode': 'PROD',
         'active_session': current_session['active'],
         'current_user': current_session.get('username'),
         'current_user_full': current_session.get('user_fullname'),
@@ -765,14 +952,14 @@ def api_status():
         'os': current_session.get('os_type'),
         'display': current_session.get('display'),
         'user_ip': current_session.get('user_ip'),
-        'vnc_password': '123456',
-        'capabilities': ['vnc', 'autodetect-os', 'log-access']
+        'vnc_password': '[protegido]',
+        'capabilities': ['vnc', 'autodetect-os', 'log-access', 'pin-required']
     })
 
 @app.route('/api/v1/force-disconnect', methods=['POST'])
 def api_force_disconnect():
-    subprocess.run('sudo pkill -9 xtightvncviewer', shell=True)
-    registrar_log('FORCE_DISCONNECT_API', f'por API')
+    subprocess.run(['pkill', '-9', 'xtightvncviewer'])
+    registrar_log('FORCE_DISCONNECT_API', 'por API')
     current_session['active'] = False
     current_session['username'] = None
     current_session['user_ip'] = None
@@ -783,10 +970,8 @@ def api_force_disconnect():
     return jsonify({'success': True, 'message': 'Projetor liberado a forca'})
 
 if __name__ == '__main__':
-    # Garante que o arquivo de log existe
     try:
         os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
     except:
         pass
-    init_x_server()
     app.run(host='0.0.0.0', port=80)
