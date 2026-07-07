@@ -205,3 +205,46 @@ zram1 (log)     50M   48M  /var/log
 - [ ] Fail2ban para SSH
 - [ ] Senha VNC configurável por sessão
 - [ ] Logs de auditoria
+
+## 11. Desempenho e Observabilidade
+
+O alvo de produção é uma box RK3229 com recursos limitados. Toda mudança visual, novo serviço ou nova dependência deve ser medida no hardware real antes de ser promovida para `main`.
+
+Metas iniciais:
+
+- CPU idle abaixo de 5%.
+- Memória do app abaixo de 120 MB sem VNC.
+- Conexão VNC em até 3 segundos após o clique.
+- Temperatura ideal abaixo de 75°C.
+- Espaço livre em `/` acima de 1 GB.
+- Logs curtos para evitar saturar `/var/log` em zram.
+
+Checklist e comandos: `PERFORMANCE.md`.
+
+## 12. Modo de Desenvolvimento
+
+### Ativação
+
+```bash
+CARAPROJETADA_ENV=dev
+```
+
+### Diferenças para produção
+
+| item | dev | prod |
+|------|-----|------|
+| host padrão | `127.0.0.1` | `0.0.0.0` |
+| porta padrão | `5000` | `80` |
+| autenticação | mock | ad/ldap |
+| ldap3 | opcional | obrigatório |
+| vnc | simulado | real via `xtightvncviewer` |
+| `/api/dev/reset` | disponível | indisponível |
+| `/vnc-view` | disponível | redireciona |
+
+### Credenciais mock
+
+| usuário | senha |
+|---------|-------|
+| `admin` | `admin` |
+| qualquer | `dev` |
+| `usuario` | `usuario` |
