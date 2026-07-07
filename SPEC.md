@@ -72,9 +72,10 @@ x11-xserver-utils
 - **Resposta**: Redirect para `/`
 
 ### `POST /conectar`
-- **Parâmetros**: `ip` (string, IP do cliente)
-- **Ação**: Executa `xtightvncviewer <ip>:0 -autopass`
-- **Senha VNC**: 123456
+- **Parâmetros**: `pin` (string, 4 dígitos — senha do servidor VNC do usuário)
+- **IP do cliente**: autodetectado via `request.remote_addr` (não é mais campo de formulário)
+- **Ação**: Executa `echo "<pin>" | xtightvncviewer <ip>:0 -autopass` usando o PIN digitado como senha VNC
+- **Validação de conexão**: o viewer é lançado e o app aguarda até ~6s; se o processo sai (PIN/senha errado ou servidor VNC off) a sessão **não** é marcada como ativa e um erro é retornado ao usuário. Só marca "conectado" quando o viewer continua rodando (conexão estabelecida de verdade).
 
 ### `POST /desconectar`
 - **Ação**: Mata processo `xtightvncviewer`
@@ -125,8 +126,13 @@ return conn.bind()
 
 ### Comando Executado
 ```bash
-echo "123456" | DISPLAY=:0 sudo /usr/bin/xtightvncviewer <user_ip>:0 -autopass
+echo "<pin>" | DISPLAY=:0 XAUTHORITY=/var/run/lightdm/root/:0 \
+  /usr/bin/xtightvncviewer -autopass -quality 6 -compresslevel 9 \
+  -fullscreen <user_ip>:<display>
 ```
+- O `<pin>` é o valor digitado na interface (a própria senha do servidor VNC do usuário).
+- `<display>` é `:0` (Windows/macOS) ou `:3` (Linux), detectado pelo `User-Agent`.
+- Não há mais senha VNC fixa no código — ela vem do campo PIN da interface.
 
 ### Display
 - `:0` — Display Xorg principal
@@ -212,8 +218,9 @@ zram1 (log)     50M   48M  /var/log
 ### Atual
 - ✅ Autenticação LDAP/AD (credenciais institucionais)
 - ✅ Sessões Flask com cookie assinado
+- ✅ PIN/senha VNC informado pelo usuário na interface (sem valor fixo no código)
+- ✅ Validação real de conexão VNC (não marca "conectado" se a senha estiver errada)
 - ⚠️ HTTP (sem HTTPS)
-- ⚠️ Senha VNC fixa (123456)
 - ❌ Sem rate limiting no login
 
 ### Recomendado

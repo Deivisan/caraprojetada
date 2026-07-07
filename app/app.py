@@ -423,6 +423,36 @@ CONTROL_HTML = """<!DOCTYPE html>
         .msg-box.warning { background: #fef8e7; border-color: #fde0a0; color: #5c4a00; }
         .msg-box.error { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
         .msg-box.success { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+        .pin-area {
+            text-align: center;
+            padding: 20px 10px 10px;
+        }
+        .pin-area .pin-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #4a5568;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+        .pin-input {
+            width: 180px !important;
+            text-align: center;
+            letter-spacing: 12px;
+            font-size: 28px !important;
+            font-weight: 700;
+            color: #003366;
+            padding: 14px 12px !important;
+            border: 2px solid #cfe0f0 !important;
+            transition: all 0.2s;
+            margin: 0 auto;
+            display: block;
+        }
+        .pin-input:focus {
+            border-color: #003366 !important;
+            box-shadow: 0 0 0 3px rgba(0,51,102,0.12) !important;
+        }
         .footer {
             text-align: center; margin-top: 24px;
             font-size: 11px; color: #888; line-height: 1.6;
@@ -478,10 +508,17 @@ CONTROL_HTML = """<!DOCTYPE html>
                     {% endif %}
                 </div>
                 {% if not session_active %}
-                <form action="/conectar" method="post" style="display:inline;">
-                    <input type="hidden" name="ip" value="{{ user_ip }}">
-                    <button type="submit" class="btn btn-primary">
-                        &#9654; Conectar Tela ao Projetor
+                <form action="/conectar" method="post">
+                    <div class="pin-area">
+                        <span class="pin-label">PIN de acesso</span>
+                        <input type="text" name="pin" class="pin-input"
+                               placeholder="&#8226;&#8226;&#8226;&#8226;"
+                               required autocomplete="off"
+                               inputmode="numeric" maxlength="4"
+                               pattern="\\d{4}">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%;">
+                        &#9654; Conectar ao Projetor
                     </button>
                 </form>
                 {% endif %}
@@ -790,7 +827,8 @@ def logout():
 def conectar():
     if 'username' not in session:
         return redirect('/')
-    notebook_ip = request.form.get('ip')
+    pin = request.form.get('pin', '').strip()
+    notebook_ip = request.remote_addr
     user = session['username']
     fullname = session.get('user_fullname', user)
     disp, os_name = detect_os(request.headers.get('User-Agent', ''))
@@ -816,19 +854,46 @@ def conectar():
     # Mata sessão anterior e conecta
     subprocess.run(['pkill', '-9', 'xtightvncviewer'])
     # Comando otimizado: sem sudo (roda como root), quality baixo + compressão máxima
-    comando = (f'echo "123456" | DISPLAY=:0 XAUTHORITY=/var/run/lightdm/root/:0 '
+    # senha VNC vem do PIN informado pelo usuário (4 dígitos)
+    comando = (f'echo "{pin}" | DISPLAY=:0 XAUTHORITY=/var/run/lightdm/root/:0 '
                f'/usr/bin/xtightvncviewer -autopass -quality 6 -compresslevel 9 '
                f'-fullscreen {notebook_ip}:{vnc_display}')
-    current_session['active'] = True
-    current_session['username'] = user
-    current_session['user_fullname'] = fullname
-    current_session['user_ip'] = notebook_ip
-    current_session['display'] = vnc_display
-    current_session['os_type'] = os_name
-    current_session['started_at'] = datetime.now().strftime('%d/%m/%Y %H:%M')
-    registrar_log('CONECTOU', f'SIAPE={user} nome="{fullname}" IP={notebook_ip} OS={os_name} display={vnc_display}')
     try:
-        subprocess.Popen(comando, shell=True)
+        proc = subprocess.Popen(comando, shell=True,
+                                stdout=subprocess.DEVNULL,
+                                stderr=subprocess.DEVNULL)
+        conectado = False
+        # aguarda até estabelecer ou falhar (senha errada costuma sair em <3s)
+        for _ in range(60):  # ate 6s
+            if proc.poll() is not None:
+                # processo saiu => falha (senha/PIN errado ou servidor VNC off)
+                registrar_log('ERRO_CONECTAR',
+                              f'SIAPE={user} rc={proc.returncode}')
+                msg = ('<strong>&#9888; N&atilde;o foi poss&iacute;vel conectar.</strong><br>'
+                       'Verifique se o PIN/senha do VNC est&aacute; correto e se o '
+                       'servidor VNC est&aacute; ativo no seu computador.')
+                return render_template_string(CONTROL_HTML,
+                    user_ip=notebook_ip, username=user, user_fullname=fullname,
+                    os_detect=os_name,
+                    session_active=current_session['active'],
+                    session_user=current_session.get('username', ''),
+                    session_user_full=current_session.get('user_fullname', current_session.get('username', '')),
+                    session_start=current_session.get('started_at', ''),
+                    session_display=current_session.get('display', ''),
+                    session_os=current_session.get('os_type', ''),
+                    session_ip=current_session.get('user_ip', ''),
+                    msg=msg)
+            time.sleep(0.1)
+        # nao saiu do loop => viewer continua rodando => conexao estabelecida
+        conectado = True
+        current_session['active'] = True
+        current_session['username'] = user
+        current_session['user_fullname'] = fullname
+        current_session['user_ip'] = notebook_ip
+        current_session['display'] = vnc_display
+        current_session['os_type'] = os_name
+        current_session['started_at'] = datetime.now().strftime('%d/%m/%Y %H:%M')
+        registrar_log('CONECTOU', f'SIAPE={user} nome="{fullname}" IP={notebook_ip} OS={os_name} display={vnc_display}')
         msg = '<strong>&#9989; Conectado com sucesso!</strong> Sua tela est&aacute; sendo exibida no projetor.'
     except Exception as e:
         registrar_log('ERRO_CONECTAR', f'SIAPE={user} erro={str(e)}')
@@ -887,8 +952,8 @@ def api_status():
         'os': current_session.get('os_type'),
         'display': current_session.get('display'),
         'user_ip': current_session.get('user_ip'),
-        'vnc_password': '123456',
-        'capabilities': ['vnc', 'autodetect-os', 'log-access']
+        'vnc_password': '[protegido]',
+        'capabilities': ['vnc', 'autodetect-os', 'log-access', 'pin-required']
     })
 
 @app.route('/api/v1/force-disconnect', methods=['POST'])
