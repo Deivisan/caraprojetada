@@ -4,6 +4,8 @@ import time
 from datetime import datetime
 import os
 import re
+import socket
+import struct
 
 # ldap3 obrigatório em produção
 from ldap3 import Server, Connection, ALL
@@ -62,6 +64,64 @@ def registrar_log(evento, detalhes=''):
             f.write(linha + '\n')
     except:
         pass
+
+def probe_vnc_resolution(host, port=5900):
+    """Conecta no servidor VNC do notebook e descobre a resolucao do framebuffer.
+    Retorna (width, height) ou (None, None) em caso de erro.
+    Suporta RFB 3.8 com Tight security (tipo 16) sem sub-autenticacao,
+    e None auth (tipo 2)."""
+    sock = socket.socket()
+    sock.settimeout(4)
+    try:
+        sock.connect((host, port))
+        proto = sock.recv(12)  # "RFB 003.008\n"
+        if not proto.startswith(b'RFB'):
+            return None, None
+        sock.send(proto)  # ecoa o mesmo protocolo
+
+        sec_count = ord(sock.recv(1))
+        sec_types = sock.recv(sec_count) if sec_count > 0 else b''
+
+        # Tenta Tight security (16) primeiro, depois None (2)
+        sec_chosen = None
+        if 16 in sec_types:
+            sec_chosen = 16
+        elif 2 in sec_types:
+            sec_chosen = 2
+        else:
+            registrar_log('RES_PROBE_ERRO', f'sem sec type compativel: {list(sec_types)}')
+            return None, None
+
+        sock.send(bytes([sec_chosen]))
+
+        if sec_chosen == 16:
+            # Tight security
+            sub = ord(sock.recv(1))
+            if sub > 0:
+                sock.recv(sub)  # descarta sub-tipos
+            # Le SecurityResult
+            result = struct.unpack('>I', sock.recv(4))[0]
+            if result != 0:
+                return None, None
+        elif sec_chosen == 2:
+            # None auth: le SecurityResult (4 bytes)
+            result = struct.unpack('>I', sock.recv(4))[0]
+            if result != 0:
+                return None, None
+
+        # ClientInit: shared flag = 1
+        sock.send(b'\x01')
+
+        # ServerInit: 2B width + 2B height + 4B name_len + name
+        si = sock.recv(4)
+        w = struct.unpack('>H', si[0:2])[0]
+        h = struct.unpack('>H', si[2:4])[0]
+        return w, h
+    except Exception as e:
+        registrar_log('RES_PROBE_ERRO', f'{host}:{port} {type(e).__name__}:{e}')
+        return None, None
+    finally:
+        sock.close()
 
 def autenticar_ad(username, password):
     if DEV_MODE:
@@ -1064,49 +1124,39 @@ def conectar():
             time.sleep(0.1)
         # nao saiu do loop => viewer continua rodando => conexao estabelecida
         conectado = True
-        # ─── Ajuste de resolução: detecta janela do viewer e força xrandr ───
+        # ─── Ajuste de resolução: probe VNC + xrandr ───
         try:
-            # salva resolução original antes de alterar
             xrandr_out = subprocess.run(
                 ['xrandr', '--current'],
                 capture_output=True, text=True, timeout=5
             ).stdout
+            # Extrai resolucao atual e modos suportados
+            modos_suportados = set()
             for line in xrandr_out.splitlines():
+                m_mode = re.search(r'^\s+(\d+x\d+)', line)
+                if m_mode:
+                    modos_suportados.add(m_mode.group(1))
                 if 'HDMI-1' in line and '*' in line:
-                    # linha tipo: "HDMI-1 connected 1360x768+0+0 (normal) ... *"
-                    # ou: "   1360x768      60.00*+"
-                    m = re.search(r'(\d+)x(\d+)', line)
-                    if m:
-                        orig_res = f'{m.group(1)}x{m.group(2)}'
+                    m_cur = re.search(r'(\d+)x(\d+)', line)
+                    if m_cur:
+                        orig_res = f'{m_cur.group(1)}x{m_cur.group(2)}'
                         current_session['original_resolution'] = orig_res
-                        break
-            # espera janela do viewer aparecer
-            time.sleep(2)
-            for _ in range(30):  # até 3s procurando a janela
-                win_id = subprocess.run(
-                    ['xdotool', 'search', '--name', 'xtightvnc'],
-                    capture_output=True, text=True, timeout=5
-                ).stdout.strip()
-                if win_id:
-                    break
-                time.sleep(0.1)
-            if win_id:
-                # pega geometria da janela
-                geo = subprocess.run(
-                    ['xdotool', 'getwindowgeometry', win_id.split()[0]],
-                    capture_output=True, text=True, timeout=5
-                ).stdout
-                m = re.search(r'Geometry:\s*(\d+)x(\d+)', geo)
-                if m:
-                    vw, vh = m.group(1), m.group(2)
-                    nova_res = f'{vw}x{vh}'
-                    registrar_log('RES_DETECT',
-                                  f'janela={nova_res} original={orig_res}')
-                    # força resolução no display
+            # Prova resolucao real do notebook via VNC
+            vnc_w, vnc_h = probe_vnc_resolution(notebook_ip, 5900)
+            if vnc_w and vnc_h:
+                nova_res = f'{vnc_w}x{vnc_h}'
+                registrar_log('RES_PROBE',
+                              f'notebook={nova_res} display={orig_res}')
+                if nova_res != orig_res and nova_res in modos_suportados:
                     subprocess.run(
                         ['xrandr', '--output', 'HDMI-1', '--mode', nova_res],
                         timeout=5
                     )
+                elif nova_res not in modos_suportados:
+                    registrar_log('RES_PROBE',
+                                  f'resolucao {nova_res} nao suportada pelo display')
+            else:
+                registrar_log('RES_PROBE', 'sem resposta VNC, mantem resolucao')
         except Exception as res_err:
             registrar_log('RES_ERRO', str(res_err))
         # ─── fim do ajuste de resolução ───
