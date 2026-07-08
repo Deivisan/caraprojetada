@@ -37,9 +37,24 @@ sem registro, sem serviço, sem download.
 
 | arquivo | descrição |
 |---------|-----------|
-| `tvnserver.exe` | tightvnc server+client portátil (2.8.88) |
+| `caraprojetada-vnc.exe` | tightvnc server+client portátil (2.8.88) — nome fixo |
 | `start-tvnserver.cmd` | launcher que roda o exe acima |
 | `main.py` | cliente python que se registra no projetor |
+
+## download (link fixo e permanente)
+
+o binário está em um **release fixo** do github. o nome do asset nunca muda,
+então o link abaixo **sempre** aponta para a versão mais recente:
+
+```
+https://github.com/Deivisan/caraprojetada/releases/latest/download/caraprojetada-vnc.exe
+```
+
+para atualizar o binário: basta subir um novo asset com o mesmo nome
+`caraprojetada-vnc.exe` no release mais recente. o link não precisa mudar.
+
+esse link é exibido na própria interface web do projetor (antes do login),
+para o usuário baixar em um clique.
 
 ---
 

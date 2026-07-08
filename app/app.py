@@ -1,4 +1,4 @@
-from flask import Flask, render_template_string, request, session, redirect, jsonify
+from flask import Flask, render_template_string, request, session, redirect, jsonify, send_file
 import subprocess
 import time
 from datetime import datetime
@@ -15,6 +15,15 @@ AD_SERVER = os.environ.get('AD_SERVER', 'ldap://10.198.1.2')
 AD_DOMAIN = os.environ.get('AD_DOMAIN', 'intranet.ufrb.edu.br')
 AD_BASE_DN = os.environ.get('AD_BASE_DN', 'dc=intranet,dc=ufrb,dc=edu,dc=br')
 LOG_FILE = os.environ.get('LOG_FILE', '/home/carapreta/projetor-acessos.log')
+
+# link de download do cliente vnc.
+# primario: a propria box serve o binario (sempre funciona, fallback local).
+# secundario (opcional): release do github via env VNC_DOWNLOAD_URL.
+VNC_BINARY_PATH = os.environ.get('VNC_BINARY_PATH', '/home/carapreta/caraprojetada-vnc.exe')
+VNC_DOWNLOAD_URL = os.environ.get(
+    'VNC_DOWNLOAD_URL',
+    '/download/vnc'
+)
 
 current_session = {
     'active': False,
@@ -233,6 +242,61 @@ LOGIN_HTML = """<!DOCTYPE html>
         @media (max-width: 500px) {
             .login-card { padding: 24px 18px; }
         }
+        /* bloco de download do cliente vnc (antes do login) */
+        .download-box {
+            background: #eaf6f8;
+            border: 1.5px solid #9fd6e0;
+            border-radius: 12px;
+            padding: 18px 20px;
+            margin-bottom: 22px;
+        }
+        .download-box .dl-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            color: #005580;
+            margin-bottom: 8px;
+        }
+        .download-box .dl-desc {
+            font-size: 12.5px;
+            color: #2c3e50;
+            line-height: 1.6;
+            margin-bottom: 12px;
+        }
+        .btn-download {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 13px;
+            background: linear-gradient(135deg, #008B9E, #005580);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 14.5px;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-download:hover {
+            background: linear-gradient(135deg, #00a3b8, #006699);
+            box-shadow: 0 4px 15px rgba(0,139,158,0.3);
+        }
+        .download-box .dl-warn {
+            margin-top: 10px;
+            font-size: 11px;
+            color: #8a5a00;
+            background: #fff7e6;
+            border: 1px solid #ffe0a3;
+            border-radius: 8px;
+            padding: 8px 10px;
+            line-height: 1.5;
+        }
+        .download-box .dl-warn strong { color: #b8860b; }
     </style>
 </head>
 <body>
@@ -255,6 +319,23 @@ LOGIN_HTML = """<!DOCTYPE html>
                 Funciona em computadores da UFRB com Windows ou Linux.<br><br>
                 <strong>&#128272; Acesso:</strong> informe seu <span class="highlight">SIAPE</span>
                 (nome de usu&aacute;rio da rede UFRB) e sua senha institucional (AD).
+            </div>
+            <div class="download-box">
+                <div class="dl-title">&#128229; Baixe o cliente de proje&ccedil;&atilde;o (Windows)</div>
+                <div class="dl-desc">
+                    Antes de acessar, baixe o aplicativo que espelha sua tela no projetor.
+                    Execute o arquivo e defina a senha na janela que abrir &mdash; esse valor
+                    ser&aacute; o <strong>PIN</strong> usado neste painel.
+                </div>
+                <a class="btn-download" href="{{ vnc_download_url }}" download>
+                    &#11015; Baixar cliente VNC (.exe &mdash; 1 clique)
+                </a>
+                <div class="dl-warn">
+                    &#9888; <strong>Aviso:</strong> este arquivo &eacute; um software de terceiros
+                    (TightVNC) e pode ser sinalizado pelo navegador como potencialmente inseguro.
+                    Ele &eacute; <strong>autenticado e distribu&iacute;do pela UFRB/CETENS</strong>
+                    para uso institucional.
+                </div>
             </div>
             {% if error %}
             <div class="error-msg">&#9888; {{ error }}</div>
@@ -774,7 +855,7 @@ document.addEventListener('DOMContentLoaded', function(){
 @app.route('/')
 def index():
     if 'username' not in session:
-        return render_template_string(LOGIN_HTML)
+        return render_template_string(LOGIN_HTML, vnc_download_url=VNC_DOWNLOAD_URL)
     disp, os_name = detect_os(request.headers.get('User-Agent', ''))
     fullname = session.get('user_fullname', session['username'])
     return render_template_string(CONTROL_HTML,
@@ -807,7 +888,7 @@ def login():
     username = request.form.get('username', '').strip().lower()
     password = request.form.get('password')
     if not username or not password:
-        return render_template_string(LOGIN_HTML, error='Informe seu SIAPE e senha institucional.')
+        return render_template_string(LOGIN_HTML, error='Informe seu SIAPE e senha institucional.', vnc_download_url=VNC_DOWNLOAD_URL)
     username = re.sub(r'@.*$', '', username)
     ok, nome_completo, email = autenticar_ad(username, password)
     if ok:
@@ -816,7 +897,8 @@ def login():
         session['user_email'] = email
         return redirect('/')
     return render_template_string(LOGIN_HTML,
-        error='SIAPE ou senha inv&aacute;lidos. Use suas credenciais institucionais (AD/UFRB).')
+        error='SIAPE ou senha inv&aacute;lidos. Use suas credenciais institucionais (AD/UFRB).',
+        vnc_download_url=VNC_DOWNLOAD_URL)
 
 @app.route('/logout', methods=['POST'])
 def logout():
@@ -949,6 +1031,30 @@ def desconectar():
 # ══════════════════════════════════════════════════════════════════
 # API
 # ══════════════════════════════════════════════════════════════════
+
+@app.route('/download/vnc')
+def download_vnc():
+    """Serve o cliente VNC (tightvnc portatil) direto da box.
+    fallback local sempre disponivel, independente do github."""
+    import os.path as _osp
+    if _osp.exists(VNC_BINARY_PATH):
+        try:
+            return send_file(
+                VNC_BINARY_PATH,
+                as_attachment=True,
+                download_name='caraprojetada-vnc.exe',
+                mimetype='application/octet-stream'
+            )
+        except TypeError:
+            # flask 1.x usa attachment_filename em vez de download_name
+            return send_file(
+                VNC_BINARY_PATH,
+                as_attachment=True,
+                attachment_filename='caraprojetada-vnc.exe',
+                mimetype='application/octet-stream'
+            )
+    return 'Cliente VNC indisponível nesta box.', 404
+
 
 @app.route('/api/v1/status', methods=['GET'])
 def api_status():

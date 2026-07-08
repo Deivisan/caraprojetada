@@ -17,15 +17,19 @@ CONFIG = {
     'api_port': 80,
     'vnc_port': 5900,
     'heartbeat_interval': 30,
-    'auto_start': True
+    'auto_start': True,
+    # link fixo de download: sempre aponta para o binario mais recente
+    # (github "latest release" + nome de asset imutavel)
+    'vnc_binary_url': 'https://github.com/Deivisan/caraprojetada/releases/latest/download/caraprojetada-vnc.zip',
+    'vnc_binary_name': 'caraprojetada-vnc.zip'
 }
 
 class VNCMManager:
     """Gerenciador do TightVNC Server (tvnserver.exe portatil)"""
 
     def __init__(self):
-        # binario portatil ao lado deste script
-        self.tvnserver_path = Path(__file__).resolve().parent / "tvnserver.exe"
+        # binario portatil ao lado deste script (nome fixo)
+        self.tvnserver_path = Path(__file__).resolve().parent / CONFIG['vnc_binary_name']
 
     def is_installed(self):
         return self.tvnserver_path.exists()

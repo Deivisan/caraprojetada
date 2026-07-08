@@ -1,7 +1,7 @@
 @echo off
 rem ============================================================
 rem  caraprojetada - launcher do tightvnc server (portatil)
-rem  nao instala, nao baixa. roda o tvnserver.exe ao lado.
+rem  nao instala, nao baixa. roda o caraprojetada-vnc.exe ao lado.
 rem  o usuario define a senha na propria GUI do tightvnc.
 rem  o PIN informado no painel do projetor = essa senha.
 rem ============================================================
@@ -9,8 +9,9 @@ setlocal
 title caraprojetada - tightvnc server
 cd /d "%~dp0"
 
-if not exist "%~dp0tvnserver.exe" (
-    echo [erro] tvnserver.exe nao encontrado ao lado deste script.
+if not exist "%~dp0caraprojetada-vnc.exe" (
+    echo [erro] caraprojetada-vnc.exe nao encontrado ao lado deste script.
+    echo baixe em: https://github.com/Deivisan/caraprojetada/releases/latest/download/caraprojetada-vnc.exe
     pause
     exit /b 1
 )
@@ -28,5 +29,5 @@ echo.
 echo  aguarde a interface abrir...
 echo.
 
-start "" "%~dp0tvnserver.exe"
+start "" "%~dp0caraprojetada-vnc.exe"
 exit /b 0
