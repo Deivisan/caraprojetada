@@ -38,7 +38,8 @@ current_session = {
     'display': None,
     'os_type': None,
     'started_at': None,
-    'user_fullname': None
+    'user_fullname': None,
+    'original_resolution': None
 }
 
 def detect_os(user_agent):
@@ -973,6 +974,17 @@ def login():
 @app.route('/logout', methods=['POST'])
 def logout():
     if current_session.get('username') == session.get('username'):
+        # ─── Restaura resolução original do display ───
+        orig_res = current_session.get('original_resolution')
+        if orig_res:
+            try:
+                subprocess.run(
+                    ['xrandr', '--output', 'HDMI-1', '--mode', orig_res],
+                    timeout=5
+                )
+            except Exception:
+                pass
+        # ─── fim restauração ───
         subprocess.run(['pkill', '-9', 'xtightvncviewer'])
         registrar_log('DESCONECTOU_LOGOUT', f'SIAPE={session.get("username")}')
         current_session['active'] = False
@@ -982,6 +994,7 @@ def logout():
         current_session['os_type'] = None
         current_session['started_at'] = None
         current_session['user_fullname'] = None
+        current_session['original_resolution'] = None
     session.pop('username', None)
     session.pop('user_fullname', None)
     session.pop('user_email', None)
@@ -1020,7 +1033,8 @@ def conectar():
     # Comando otimizado: sem sudo (roda como root), quality baixo + compressão máxima
     # senha VNC vem do PIN informado pelo usuário (4 dígitos)
     comando = (f'echo "{pin}" | DISPLAY=:0 XAUTHORITY=/var/run/lightdm/root/:0 '
-               f'/usr/bin/xtightvncviewer -autopass -quality 6 -compresslevel 9 '
+                f'/usr/bin/xtightvncviewer -autopass -quality 6 -compresslevel 9 '
+
                f'-fullscreen {notebook_ip}:{vnc_display}')
     try:
         proc = subprocess.Popen(comando, shell=True,
@@ -1050,6 +1064,52 @@ def conectar():
             time.sleep(0.1)
         # nao saiu do loop => viewer continua rodando => conexao estabelecida
         conectado = True
+        # ─── Ajuste de resolução: detecta janela do viewer e força xrandr ───
+        try:
+            # salva resolução original antes de alterar
+            xrandr_out = subprocess.run(
+                ['xrandr', '--current'],
+                capture_output=True, text=True, timeout=5
+            ).stdout
+            for line in xrandr_out.splitlines():
+                if 'HDMI-1' in line and '*' in line:
+                    # linha tipo: "HDMI-1 connected 1360x768+0+0 (normal) ... *"
+                    # ou: "   1360x768      60.00*+"
+                    m = re.search(r'(\d+)x(\d+)', line)
+                    if m:
+                        orig_res = f'{m.group(1)}x{m.group(2)}'
+                        current_session['original_resolution'] = orig_res
+                        break
+            # espera janela do viewer aparecer
+            time.sleep(2)
+            for _ in range(30):  # até 3s procurando a janela
+                win_id = subprocess.run(
+                    ['xdotool', 'search', '--name', 'xtightvnc'],
+                    capture_output=True, text=True, timeout=5
+                ).stdout.strip()
+                if win_id:
+                    break
+                time.sleep(0.1)
+            if win_id:
+                # pega geometria da janela
+                geo = subprocess.run(
+                    ['xdotool', 'getwindowgeometry', win_id.split()[0]],
+                    capture_output=True, text=True, timeout=5
+                ).stdout
+                m = re.search(r'Geometry:\s*(\d+)x(\d+)', geo)
+                if m:
+                    vw, vh = m.group(1), m.group(2)
+                    nova_res = f'{vw}x{vh}'
+                    registrar_log('RES_DETECT',
+                                  f'janela={nova_res} original={orig_res}')
+                    # força resolução no display
+                    subprocess.run(
+                        ['xrandr', '--output', 'HDMI-1', '--mode', nova_res],
+                        timeout=5
+                    )
+        except Exception as res_err:
+            registrar_log('RES_ERRO', str(res_err))
+        # ─── fim do ajuste de resolução ───
         current_session['active'] = True
         current_session['username'] = user
         current_session['user_fullname'] = fullname
@@ -1081,6 +1141,18 @@ def desconectar():
     user = session['username']
     fullname = session.get('user_fullname', user)
     subprocess.run(['pkill', '-9', 'xtightvncviewer'])
+    # ─── Restaura resolução original do display ───
+    orig_res = current_session.get('original_resolution')
+    if orig_res:
+        try:
+            subprocess.run(
+                ['xrandr', '--output', 'HDMI-1', '--mode', orig_res],
+                timeout=5
+            )
+            registrar_log('RES_RESTORE', f'restaurado {orig_res}')
+        except Exception as res_err:
+            registrar_log('RES_ERRO', f'falha restore {orig_res}: {res_err}')
+    # ─── fim restauração ───
     registrar_log('DESCONECTOU', f'SIAPE={user} nome="{fullname}"')
     current_session['active'] = False
     current_session['username'] = None
@@ -1089,6 +1161,7 @@ def desconectar():
     current_session['os_type'] = None
     current_session['started_at'] = None
     current_session['user_fullname'] = None
+    current_session['original_resolution'] = None
     disp, os_name = detect_os(request.headers.get('User-Agent', ''))
     return render_template_string(CONTROL_HTML,
         user_ip=request.remote_addr, username=user, user_fullname=fullname,
