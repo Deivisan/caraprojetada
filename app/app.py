@@ -16,6 +16,12 @@ AD_DOMAIN = os.environ.get('AD_DOMAIN', 'intranet.ufrb.edu.br')
 AD_BASE_DN = os.environ.get('AD_BASE_DN', 'dc=intranet,dc=ufrb,dc=edu,dc=br')
 LOG_FILE = os.environ.get('LOG_FILE', '/home/carapreta/projetor-acessos.log')
 
+# modo dev: desativa autenticacao AD real (apenas para testes locais)
+DEV_MODE = os.environ.get('DEV_MODE', 'False').lower() in ('1', 'true', 'yes', 'on')
+
+# ldap3 e importado diretamente no topo (obrigatorio em producao)
+LDAP_DISPONIVEL = True
+
 # link de download do cliente vnc.
 # primario: a propria box serve o binario (sempre funciona, fallback local).
 # secundario (opcional): release do github via env VNC_DOWNLOAD_URL.
