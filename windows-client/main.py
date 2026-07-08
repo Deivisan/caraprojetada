@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # CaraProjetada Windows Client
-# Gerencia UltraVNC Server e se registra no projetor
+# Gerencia TightVNC Server (tvnserver.exe portatil) e se registra no projetor
 
 import sys
 import os
@@ -21,60 +21,48 @@ CONFIG = {
 }
 
 class VNCMManager:
-    """Gerenciador do UltraVNC Server"""
-    
+    """Gerenciador do TightVNC Server (tvnserver.exe portatil)"""
+
     def __init__(self):
-        self.ultravnc_path = Path(r"C:\Program Files\UltraVNC")
-        self.config_file = self.ultravnc_path / "ultravnc.ini"
-        
+        # binario portatil ao lado deste script
+        self.tvnserver_path = Path(__file__).resolve().parent / "tvnserver.exe"
+
     def is_installed(self):
-        return self.ultravnc_path.exists()
-        
+        return self.tvnserver_path.exists()
+
     def install(self):
-        """Instala o UltraVNC Server silenciosamente"""
+        """O tvnserver e portatil: nao instala, so executa."""
         if self.is_installed():
             return True
-            
-        # Placeholder - na prática, executaria o MSI
-        print("[VNC] Baixando e instalando UltraVNC...")
-        # msiexec /i UltraVNC_Server.msi /quiet /norestart
+        print("[VNC] tvnserver.exe nao encontrado ao lado do client.")
         return False
         
     def set_password(self, password):
-        """Configura senha do VNC"""
+        """A senha do VNC e definida na GUI do tightvnc (tvnserver).
+        O PIN informado no painel do projetor deve igualar essa senha."""
         if not self.is_installed():
             return False
-            
-        # UltraVNC usa encriptação específica
-        # Simplesmente escrevemos no config por enquanto
-        config = {
-            'passwd': password,
-            'AcceptSocketConn': 1,
-            'LoopbackOnly': 0,
-            'MSLogon': 1
-        }
-        
-        # Atualiza config (implementação real precisa da API do UltraVNC)
-        print(f"[VNC] Senha configurada: {password}")
+        # o tvnserver gera/armazena a senha na propria interface
+        # nao gravamos nada em arquivo: o usuario define em "administration".
+        print(f"[VNC] senha definida pelo usuario na GUI do tightvnc (pin do painel)")
         return True
-        
+
     def start_service(self):
-        """Inicia serviço UltraVNC"""
+        """Inicia o tvnserver portatil (modo aplicacao/GUI)."""
         try:
-            result = subprocess.run(
-                ['net', 'start', 'UltraVNC Server'],
-                capture_output=True,
-                text=True
-            )
-            return result.returncode == 0
+            subprocess.Popen([str(self.tvnserver_path)],
+                             stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL)
+            return True
         except Exception as e:
-            print(f"[VNC] Erro ao iniciar serviço: {e}")
+            print(f"[VNC] Erro ao iniciar tvnserver: {e}")
             return False
-            
+
     def stop_service(self):
-        """Para serviço UltraVNC"""
+        """Encerra o tvnserver portatil."""
         try:
-            subprocess.run(['net', 'stop', 'UltraVNC Server'], capture_output=True)
+            subprocess.run(['taskkill', '/IM', 'tvnserver.exe', '/F'],
+                           capture_output=True)
             return True
         except Exception:
             return False

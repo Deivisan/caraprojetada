@@ -1,82 +1,64 @@
-# 🪟 Cliente Windows — Sistema de Projeções UFRB/CETENS
+# 🪟 Cliente Windows — caraprojetada
 
-Métodos para configurar um servidor VNC no Windows e conectar ao projetor.
+cliente windows para o sistema de projeção institucional (ufrb/cetens).
 
-## Métodos disponíveis
+## abordagem atual (portátil)
 
-| Método | Arquivo | Testado no Windows 11 | Testado no Windows 10 |
-|--------|---------|-----------------------|-----------------------|
-| **TightVNC (recomendado)** | `definitive-tightvnc.bat` | ✅ Sim | ❌ Não testado |
-| **UltraVNC** | `quick_setup_ultravnc.ps1` | Parcial | ❌ Não testado |
-| **Provisionamento completo** | `provisioning/install_caraprojetada.ps1` | ✅ Sim | ❌ Não testado |
+não instalamos mais nada e não baixamos nada. usamos o binário
+**`tvnserver.exe`** (tightvnc server+client 2.8.88, portátil) que já
+acompanha este cliente.
 
----
+### como funciona
 
-## Método 1 — TightVNC (recomendado)
+1. o usuário roda `start-tvnserver.cmd` (ou direto o `tvnserver.exe`).
+2. abre a janela do tightvnc server.
+3. em **administration** o usuário define a **senha do vnc**.
+4. essa senha é exatamente o **PIN** que ele digita no painel do projetor.
+5. mantenha a janela aberta durante a projeção.
 
-Instalação completa com um clique via `definitive-tightvnc.bat`.
-
-### O que o script faz
-
-1. **Auto-elevação** — reinicia como Administrador se necessário
-2. **Limpeza profunda** — remove qualquer instalação anterior do TightVNC (processos, serviço, registro, firewall)
-3. **Download** — baixa TightVNC Server 2.8.87 de mirrors oficiais
-4. **Instalação silenciosa** — via MSI com senha `123456`, firewall liberado, serviço automático
-5. **Configuração forçada** — escreve senha no registro, libera portas 5900/5800 no firewall
-6. **Inicialização** — inicia o serviço e verifica se está rodando
-7. **Verificação** — testa serviço, porta 5900, senha no registro, regra de firewall e conexão TCP local
-
-### Como usar
+### comando
 
 ```batch
-# Executar como Administrador (o script faz auto-elevação)
-definitive-tightvnc.bat
+start-tvnserver.cmd
 ```
 
-O script:
-- Instala o TightVNC Server com senha **123456**
-- Configura o serviço para iniciar automaticamente com o Windows
-- Libera a porta **5900** no firewall do Windows
-- Exibe relatório de verificação no final
+o launcher apenas executa o `tvnserver.exe` ao lado — sem instalação,
+sem registro, sem serviço, sem download.
 
-### ⚠️ Notas
+### fluxo no projetor
 
-- Não testado no **Windows 10** — apenas Windows 11
-- A senha fixa `123456` é exigida pelo sistema de projeção (compatibilidade com `xtightvncviewer` na box)
-- Para alterar a senha futuramente: `TightVNC Server > Admin Properties > Password`
+- a box roda `xtightvncviewer` e passa o PIN como senha (`-autopass`).
+- o PIN precisa bater com a senha definida na GUI do tightvnc.
+- display padrão windows: `0` (porta 5900).
 
 ---
 
-## Método 2 — UltraVNC (alternativa)
+## arquivos
 
-Script leve de uma linha para configurar o UltraVNC após instalação manual.
-
-```powershell
-# Instale o UltraVNC manualmente, depois:
-quick_setup_ultravnc.ps1
-```
-
----
-
-## Provisionamento automático (ISO personalizada)
-
-Para deploy em massa, use os scripts em `provisioning/`:
-
-- `install_caraprojetada.ps1` — instala e configura tudo
-- `ultravnc_1822_setup.ps1` — setup específico do UltraVNC 1.8.2.2
-- `autounattend.xml` — resposta para instalação automatizada do Windows
+| arquivo | descrição |
+|---------|-----------|
+| `tvnserver.exe` | tightvnc server+client portátil (2.8.88) |
+| `start-tvnserver.cmd` | launcher que roda o exe acima |
+| `main.py` | cliente python que se registra no projetor |
 
 ---
 
-## Compatibilidade
+## legado (obsoleto)
 
-O servidor VNC (qualquer método) deve estar rodando no computador do usuário
-para que o sistema de projeção consiga conectar. Após configurar:
+os scripts abaixo eram da abordagem antiga (instalar tightvnc via msi /
+ultravnc). **não são mais usados** com a abordagem portátil:
 
-1. Acesse `http://172.17.28.179/` no navegador
-2. Faça login com seu **SIAPE** e senha institucional (AD/UFRB)
-3. O sistema detecta automaticamente que você está no Windows
-4. Clique em **Conectar Tela ao Projetor**
+- `definitive-tightvnc.bat` (removido)
+- `install_vnc.ps1`
+- `quick_setup_ultravnc.ps1`
+- `WINDOWS_VNC_SETUP.md`, `WIN11_COMMANDS.txt`, `WIN11_ONE_CLICK_SETUP.txt`
+- `provisioning/` (ultravnc)
 
-> 💡 O servidor VNC precisa estar **ativo** antes de clicar em Conectar.
-> No TightVNC, o serviço `tvnserver` já inicia automaticamente com o Windows.
+mantidos apenas como referência histórica.
+
+---
+
+## compatibilidade
+
+servidor vnc precisa estar **ativo** no notebook antes de clicar em
+"conectar" no painel. testado no windows 11.
