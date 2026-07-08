@@ -108,234 +108,133 @@ LOGIN_HTML = """<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Projeções &mdash; UFRB &middot; CETENS</title>
+    <title>Sistema de Proje&ccedil;&otilde;es &mdash; UFRB &middot; CETENS</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; overflow: hidden; }
         body {
             font-family: 'Segoe UI', 'Open Sans', system-ui, -apple-system, sans-serif;
             background: linear-gradient(135deg, #003366 0%, #005580 40%, #6A1B9A 100%);
-            min-height: 100vh;
+            height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            padding: 16px;
         }
-        .login-wrapper { max-width: 520px; width: 100%; }
-        .login-card {
+        .layout {
+            width: 100%;
+            max-width: 980px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 22px;
+            align-items: stretch;
+        }
+        .card {
             background: #fff;
             border-radius: 16px;
-            padding: 40px 36px;
+            padding: 28px 30px;
             box-shadow: 0 8px 40px rgba(0,0,0,0.25);
-            border-top: 5px solid #FFB300;
+            display: flex;
+            flex-direction: column;
         }
-        .brand {
-            text-align: center;
-            margin-bottom: 28px;
-        }
-        .brand img {
-            max-width: 240px;
-            height: auto;
-            margin-bottom: 14px;
-        }
+        .card.login { border-top: 5px solid #FFB300; }
+        .card.side  { border-top: 5px solid #008B9E; }
+        .brand { margin-bottom: 18px; }
+        .brand img { max-height: 44px; width: auto; margin-bottom: 10px; }
         .brand h1 {
-            font-size: 22px;
-            color: #003366;
-            font-weight: 700;
-            letter-spacing: -0.3px;
+            font-size: 19px; color: #003366; font-weight: 700; letter-spacing: -0.3px;
         }
-        .brand .sub {
-            font-size: 13px;
-            color: #666;
-            margin-top: 2px;
-        }
-        .brand .sub strong {
-            color: #008B9E;
-        }
+        .brand .sub { font-size: 12px; color: #666; margin-top: 2px; }
+        .brand .sub strong { color: #008B9E; }
         .brand .divider {
-            width: 60px;
-            height: 3px;
+            width: 56px; height: 3px; margin-top: 12px; border-radius: 3px;
             background: linear-gradient(90deg, #003366, #008B9E, #6A1B9A, #FFB300);
-            margin: 14px auto 0;
-            border-radius: 3px;
         }
         .info-box {
-            background: #f0f4f8;
-            border: 1px solid #d0dce8;
-            border-radius: 10px;
-            padding: 16px 18px;
-            margin-bottom: 20px;
-            font-size: 13.5px;
-            color: #2c3e50;
-            line-height: 1.7;
+            background: #f0f4f8; border: 1px solid #d0dce8; border-radius: 10px;
+            padding: 14px 16px; font-size: 13px; color: #2c3e50; line-height: 1.6; margin-bottom: 18px;
         }
         .info-box strong { color: #003366; }
-        .info-box .highlight {
-            display: inline-block;
-            background: #FFB300;
-            color: #003366;
-            font-weight: 700;
-            padding: 0 6px;
-            border-radius: 3px;
+        .info-box .hl {
+            display: inline-block; background: #FFB300; color: #003366;
+            font-weight: 700; padding: 0 6px; border-radius: 3px;
         }
-        .form-group {
-            margin-bottom: 18px;
-        }
+        .form-group { margin-bottom: 14px; }
         .form-group label {
-            display: block;
-            font-size: 13px;
-            font-weight: 600;
-            color: #444;
-            margin-bottom: 6px;
+            display: block; font-size: 12.5px; font-weight: 600; color: #444; margin-bottom: 5px;
         }
         .form-group input {
-            width: 100%;
-            padding: 13px 14px;
-            border: 1.5px solid #d0d5dd;
-            border-radius: 8px;
-            font-size: 15px;
-            transition: all 0.2s;
-            outline: none;
-            background: #fafafa;
+            width: 100%; padding: 12px 14px; border: 1.5px solid #d0d5dd; border-radius: 8px;
+            font-size: 15px; outline: none; background: #fafafa; transition: all 0.2s;
         }
         .form-group input:focus {
-            border-color: #003366;
-            background: #fff;
-            box-shadow: 0 0 0 3px rgba(0,51,102,0.10);
+            border-color: #003366; background: #fff; box-shadow: 0 0 0 3px rgba(0,51,102,0.10);
         }
         .btn-login {
-            width: 100%;
-            padding: 14px;
-            background: linear-gradient(135deg, #003366, #005580);
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            margin-top: 4px;
+            width: 100%; padding: 13px; margin-top: 4px;
+            background: linear-gradient(135deg, #003366, #005580); color: #fff;
+            border: none; border-radius: 8px; font-size: 15px; font-weight: 600;
+            cursor: pointer; transition: all 0.2s;
         }
-        .btn-login:hover {
-            background: linear-gradient(135deg, #004480, #006699);
-            box-shadow: 0 4px 15px rgba(0,51,102,0.3);
-        }
-        .btn-login:active {
-            transform: scale(0.98);
-        }
+        .btn-login:hover { background: linear-gradient(135deg, #004480, #006699); box-shadow: 0 4px 15px rgba(0,51,102,0.3); }
+        .btn-login:active { transform: scale(0.98); }
         .error-msg {
-            background: #fef2f2;
-            color: #991b1b;
-            padding: 12px 16px;
-            border-radius: 8px;
-            font-size: 14px;
-            margin-bottom: 18px;
-            border: 1px solid #fecaca;
+            background: #fef2f2; color: #991b1b; padding: 10px 14px; border-radius: 8px;
+            font-size: 13px; margin-bottom: 14px; border: 1px solid #fecaca;
         }
-        .footer {
-            text-align: center;
-            margin-top: 24px;
-            font-size: 11.5px;
-            color: #888;
-            line-height: 1.7;
+        .card-side h2 {
+            font-size: 15px; color: #005580; font-weight: 700; margin-bottom: 6px;
+            display: flex; align-items: center; gap: 7px;
         }
-        .footer strong { color: #003366; }
-        @media (max-width: 500px) {
-            .login-card { padding: 24px 18px; }
-        }
-        /* bloco de download do cliente vnc (antes do login) */
-        .download-box {
-            background: #eaf6f8;
-            border: 1.5px solid #9fd6e0;
-            border-radius: 12px;
-            padding: 18px 20px;
-            margin-bottom: 22px;
-        }
-        .download-box .dl-title {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 14px;
-            font-weight: 700;
-            color: #005580;
-            margin-bottom: 8px;
-        }
-        .download-box .dl-desc {
-            font-size: 12.5px;
-            color: #2c3e50;
-            line-height: 1.6;
-            margin-bottom: 12px;
-        }
+        .side-desc { font-size: 12.5px; color: #2c3e50; line-height: 1.55; margin-bottom: 14px; }
         .btn-download {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            width: 100%;
-            padding: 13px;
-            background: linear-gradient(135deg, #008B9E, #005580);
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            font-size: 14.5px;
-            font-weight: 600;
-            text-decoration: none;
-            cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            width: 100%; padding: 12px; text-decoration: none; color: #fff;
+            background: linear-gradient(135deg, #008B9E, #005580); border: none;
+            border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.15s;
+        }
+        .btn-download:hover { background: linear-gradient(135deg, #00a3b8, #006699); box-shadow: 0 4px 15px rgba(0,139,158,0.3); }
+        .side-warn {
+            margin-top: 10px; font-size: 10.5px; color: #8a5a00; line-height: 1.5;
+            background: #fff7e6; border: 1px solid #ffe0a3; border-radius: 8px; padding: 8px 10px;
+        }
+        .side-steps { margin-top: 14px; font-size: 12px; color: #2c3e50; line-height: 1.6; }
+        .side-steps ol { padding-left: 18px; margin: 0; }
+        .side-steps li { margin-bottom: 4px; }
+        .side-steps strong { color: #003366; }
+        .side-foot {
+            margin-top: auto; padding-top: 14px; font-size: 11px; color: #888; line-height: 1.5;
+            display: flex; align-items: center; justify-content: space-between; gap: 8px;
+        }
+        .side-foot a { color: #008B9E; text-decoration: none; }
+        .gh-logo {
+            position: fixed; right: 14px; bottom: 12px;
+            display: flex; align-items: center; gap: 6px;
+            font-size: 11px; color: #fff; text-decoration: none;
+            background: rgba(0,0,0,0.25); padding: 6px 10px; border-radius: 20px;
             transition: all 0.15s;
         }
-        .btn-download:hover {
-            background: linear-gradient(135deg, #00a3b8, #006699);
-            box-shadow: 0 4px 15px rgba(0,139,158,0.3);
+        .gh-logo:hover { background: rgba(0,0,0,0.45); }
+        .gh-logo svg { width: 18px; height: 18px; fill: #fff; }
+        @media (max-width: 720px) {
+            html, body { overflow: auto; }
+            .layout { grid-template-columns: 1fr; max-width: 440px; }
         }
-        .download-box .dl-warn {
-            margin-top: 10px;
-            font-size: 11px;
-            color: #8a5a00;
-            background: #fff7e6;
-            border: 1px solid #ffe0a3;
-            border-radius: 8px;
-            padding: 8px 10px;
-            line-height: 1.5;
-        }
-        .download-box .dl-warn strong { color: #b8860b; }
     </style>
 </head>
 <body>
-    <div class="login-wrapper">
-        <div class="login-card">
+    <div class="layout">
+        <!-- coluna esquerda: login (foco) -->
+        <div class="card login">
             <div class="brand">
-                <div style="display:flex;justify-content:center;align-items:center;margin-bottom:16px;">
-                    <img src="/static/UFRB-20_assinatura_principal_preto.png"
-                         alt="UFRB"
-                         style="max-height:52px;width:auto;">
-                </div>
+                <img src="/static/UFRB-20_assinatura_principal_preto.png" alt="UFRB">
                 <h1>Sistema de Proje&ccedil;&otilde;es</h1>
                 <div class="sub"><strong>CETENS</strong> &middot; UFRB &middot; Feira de Santana</div>
                 <div class="divider"></div>
             </div>
             <div class="info-box">
-                <strong>&#128161; Para que serve este sistema?</strong><br>
-                Este sistema permite que voc&ecirc; <strong>espelhe a tela do seu computador</strong>
-                no projetor multim&iacute;dia da sala, utilizando suas credenciais institucionais.
-                Funciona em computadores da UFRB com Windows ou Linux.<br><br>
-                <strong>&#128272; Acesso:</strong> informe seu <span class="highlight">SIAPE</span>
-                (nome de usu&aacute;rio da rede UFRB) e sua senha institucional (AD).
-            </div>
-            <div class="download-box">
-                <div class="dl-title">&#128229; Baixe o cliente de proje&ccedil;&atilde;o (Windows)</div>
-                <div class="dl-desc">
-                    Antes de acessar, baixe o aplicativo que espelha sua tela no projetor.
-                    Execute o arquivo e defina a senha na janela que abrir &mdash; esse valor
-                    ser&aacute; o <strong>PIN</strong> usado neste painel.
-                </div>
-                <a class="btn-download" href="{{ vnc_download_url }}" download>
-                    &#11015; Baixar cliente VNC (.exe &mdash; 1 clique)
-                </a>
-                <div class="dl-warn">
-                    &#9888; <strong>Aviso:</strong> este arquivo &eacute; um software de terceiros
-                    (TightVNC) e pode ser sinalizado pelo navegador como potencialmente inseguro.
-                    Ele &eacute; <strong>autenticado e distribu&iacute;do pela UFRB/CETENS</strong>
-                    para uso institucional.
-                </div>
+                Espelhe a tela do seu computador no projetor da sala usando suas
+                credenciais institucionais. Funciona em Windows ou Linux da UFRB.
             </div>
             {% if error %}
             <div class="error-msg">&#9888; {{ error }}</div>
@@ -351,15 +250,42 @@ LOGIN_HTML = """<!DOCTYPE html>
                     <input type="password" name="password" placeholder="Sua senha da rede UFRB"
                            required autocomplete="off">
                 </div>
-                <button type="submit" class="btn-login">Acessar o Sistema de Proje&ccedil;&otilde;es</button>
+                <button type="submit" class="btn-login">Acessar</button>
             </form>
-            <div class="footer">
-                <strong>Universidade Federal do Rec&ocirc;ncavo da Bahia</strong><br>
-                Centro de Ci&ecirc;ncia e Tecnologia em Energia e Sustentabilidade &bull; CETENS<br>
-                Sistema de Proje&ccedil;&otilde;es
+        </div>
+
+        <!-- coluna direita: cliente de proje&ccedil;&atilde;o -->
+        <div class="card card-side">
+            <h2>&#128229; Cliente de proje&ccedil;&atilde;o (Windows)</h2>
+            <div class="side-desc">
+                Baixe o app que espelha sua tela no projetor. Ao abrir, defina uma senha
+                na janela &mdash; esse valor ser&aacute; o <strong>PIN</strong> usado neste painel.
+            </div>
+            <a class="btn-download" href="{{ vnc_download_url }}" download>
+                &#11015; Baixar cliente (.exe)
+            </a>
+            <div class="side-warn">
+                &#9888; Software de terceiros (TightVNC), pode ser sinalizado pelo navegador.
+                &Eacute; <strong>autenticado e distribu&iacute;do pela UFRB/CETENS</strong>.
+            </div>
+            <div class="side-steps">
+                <ol>
+                    <li>Baixe e execute o <strong>caraprojetada-vnc.exe</strong>.</li>
+                    <li>Em <strong>Administration</strong>, defina a senha do VNC.</li>
+                    <li>Fa&ccedil;a login aqui e clique em <strong>Conectar</strong>.</li>
+                    <li>Informe a senha definida como <strong>PIN</strong>.</li>
+                </ol>
+            </div>
+            <div class="side-foot">
+                <span>D&uacute;vidas? <a href="/ajuda">Veja o tutorial &rarr;</a></span>
             </div>
         </div>
     </div>
+
+    <a class="gh-logo" href="https://github.com/Deivisan/caraprojetada" target="_blank" rel="noopener" title="Reposit&oacute;rio no GitHub">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+        GitHub
+    </a>
 </body>
 </html>"""
 
@@ -644,6 +570,127 @@ CONTROL_HTML = """<!DOCTYPE html>
 </body>
 </html>"""
 
+HELP_HTML = """<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Como usar &mdash; Sistema de Proje&ccedil;&otilde;es UFRB/CETENS</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; overflow: hidden; }
+        body {
+            font-family: 'Segoe UI', 'Open Sans', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #003366 0%, #005580 40%, #6A1B9A 100%);
+            height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px;
+        }
+        .wrap { width: 100%; max-width: 760px; max-height: 94vh; overflow-y: auto; }
+        .card {
+            background: #fff; border-radius: 16px; padding: 28px 32px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.25); border-top: 5px solid #008B9E;
+        }
+        .brand { margin-bottom: 16px; }
+        .brand img { max-height: 40px; width: auto; margin-bottom: 8px; }
+        .brand h1 { font-size: 19px; color: #003366; font-weight: 700; }
+        .brand .sub { font-size: 12px; color: #666; }
+        .brand .sub strong { color: #008B9E; }
+        h2 { font-size: 15px; color: #005580; margin: 18px 0 8px; }
+        p, li { font-size: 13px; color: #2c3e50; line-height: 1.6; }
+        ol, ul { padding-left: 20px; }
+        li { margin-bottom: 5px; }
+        .step {
+            display: flex; gap: 12px; align-items: flex-start; margin-bottom: 12px;
+            background: #f0f4f8; border: 1px solid #d0dce8; border-radius: 10px; padding: 12px 14px;
+        }
+        .step .num {
+            flex: 0 0 26px; height: 26px; border-radius: 50%; background: #003366; color: #fff;
+            display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;
+        }
+        .step .txt { font-size: 13px; color: #2c3e50; line-height: 1.55; }
+        .step .txt strong { color: #003366; }
+        .warn {
+            font-size: 11.5px; color: #8a5a00; background: #fff7e6; border: 1px solid #ffe0a3;
+            border-radius: 8px; padding: 10px 12px; margin: 14px 0; line-height: 1.55;
+        }
+        .btn-back {
+            display: inline-block; margin-top: 16px; padding: 11px 22px; text-decoration: none;
+            background: linear-gradient(135deg, #003366, #005580); color: #fff; border-radius: 8px;
+            font-size: 14px; font-weight: 600;
+        }
+        .btn-back:hover { background: linear-gradient(135deg, #004480, #006699); }
+        .gh-logo {
+            position: fixed; right: 14px; bottom: 12px; display: flex; align-items: center; gap: 6px;
+            font-size: 11px; color: #fff; text-decoration: none; background: rgba(0,0,0,0.25);
+            padding: 6px 10px; border-radius: 20px;
+        }
+        .gh-logo:hover { background: rgba(0,0,0,0.45); }
+        .gh-logo svg { width: 18px; height: 18px; fill: #fff; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="card">
+            <div class="brand">
+                <img src="/static/UFRB-20_assinatura_principal_preto.png" alt="UFRB">
+                <h1>Como usar o Sistema de Proje&ccedil;&otilde;es</h1>
+                <div class="sub"><strong>CETENS</strong> &middot; UFRB &middot; Feira de Santana</div>
+            </div>
+
+            <p>Espelhe a tela do seu computador no projetor da sala, de forma segura, usando
+            suas credenciais institucionais (AD/UFRB).</p>
+
+            <h2>1. Prepare o cliente no seu computador (Windows)</h2>
+            <div class="step">
+                <div class="num">1</div>
+                <div class="txt">Baixe o <strong>caraprojetada-vnc.exe</strong> na tela de login
+                (bot&atilde;o &ldquo;Baixar cliente&rdquo;).</div>
+            </div>
+            <div class="step">
+                <div class="num">2</div>
+                <div class="txt">Execute o arquivo. Na janela do TightVNC, v&aacute; em
+                <strong>Administration</strong> e defina a <strong>senha do VNC</strong>.
+                Guarde essa senha &mdash; ela ser&aacute; o seu PIN.</div>
+            </div>
+            <div class="step">
+                <div class="num">3</div>
+                <div class="txt">Mantenha o programa aberto durante a proje&ccedil;&atilde;o.</div>
+            </div>
+
+            <h2>2. Conecte no projetor</h2>
+            <div class="step">
+                <div class="num">4</div>
+                <div class="txt">Na tela de login, informe seu <strong>SIAPE</strong> e senha
+                institucional (AD).</div>
+            </div>
+            <div class="step">
+                <div class="num">5</div>
+                <div class="txt">Clique em <strong>Conectar</strong> e informe a senha que voc&ecirc;
+                definiu no TightVNC como <strong>PIN</strong>.</div>
+            </div>
+            <div class="step">
+                <div class="num">6</div>
+                <div class="txt">Sua tela aparece no projetor. Ao terminar, clique em
+                <strong>Desconectar</strong>.</div>
+            </div>
+
+            <div class="warn">
+                &#9888; O <strong>caraprojetada-vnc.exe</strong> &eacute; um software de terceiros
+                (TightVNC) e pode ser sinalizado pelo navegador como potencialmente inseguro.
+                Ele &eacute; <strong>autenticado e distribu&iacute;do pela UFRB/CETENS</strong>
+                para uso institucional.
+            </div>
+
+            <a class="btn-back" href="/">&larr; Voltar ao login</a>
+        </div>
+    </div>
+
+    <a class="gh-logo" href="https://github.com/Deivisan/caraprojetada" target="_blank" rel="noopener" title="Reposit&oacute;rio no GitHub">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+        GitHub
+    </a>
+</body>
+</html>"""
+
 PROJECTOR_IDLE_HTML = """<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -882,6 +929,10 @@ def projetor_idle():
     except Exception:
         projector_ip = '127.0.0.1'
     return render_template_string(PROJECTOR_IDLE_HTML, projector_ip=projector_ip)
+
+@app.route('/ajuda')
+def ajuda():
+    return render_template_string(HELP_HTML)
 
 @app.route('/login', methods=['POST'])
 def login():
