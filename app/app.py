@@ -258,8 +258,9 @@ LOGIN_HTML = """<!DOCTYPE html>
         <div class="card card-side">
             <h2>&#128229; Cliente de proje&ccedil;&atilde;o (Windows)</h2>
             <div class="side-desc">
-                Baixe o app que espelha sua tela no projetor. Ao abrir, defina uma senha
-                na janela &mdash; esse valor ser&aacute; o <strong>PIN</strong> usado neste painel.
+                Baixe o app que espelha sua tela no projetor. Ao abrir, ele j&aacute; mostra
+                um <strong>PIN</strong> na tela &mdash; use esse n&uacute;mero no login.
+                N&atilde;o &eacute; preciso configurar nada.
             </div>
             <a class="btn-download" href="{{ vnc_download_url }}" download>
                 &#11015; Baixar cliente (.exe)
@@ -271,9 +272,9 @@ LOGIN_HTML = """<!DOCTYPE html>
             <div class="side-steps">
                 <ol>
                     <li>Baixe e execute o <strong>caraprojetada-vnc.exe</strong>.</li>
-                    <li>Em <strong>Administration</strong>, defina a senha do VNC.</li>
+                    <li>Anota o <strong>PIN</strong> que aparece na tela do app.</li>
                     <li>Fa&ccedil;a login aqui e clique em <strong>Conectar</strong>.</li>
-                    <li>Informe a senha definida como <strong>PIN</strong>.</li>
+                    <li>Informe o <strong>PIN</strong> mostrado pelo app.</li>
                 </ol>
             </div>
             <div class="side-foot">
@@ -618,6 +619,14 @@ HELP_HTML = """<!DOCTYPE html>
             font-size: 14px; font-weight: 600;
         }
         .btn-back:hover { background: linear-gradient(135deg, #004480, #006699); }
+        .btn-download-big {
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            width: 100%; padding: 15px; margin: 4px 0 4px; text-decoration: none; color: #fff;
+            background: linear-gradient(135deg, #008B9E, #005580); border: none;
+            border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.15s;
+        }
+        .btn-download-big:hover { background: linear-gradient(135deg, #00a3b8, #006699); box-shadow: 0 4px 18px rgba(0,139,158,0.35); }
+        .dl-note { font-size: 11.5px; color: #008B9E; text-align: center; margin-bottom: 6px; }
         .gh-logo {
             position: fixed; right: 14px; bottom: 12px; display: flex; align-items: center; gap: 6px;
             font-size: 11px; color: #fff; text-decoration: none; background: rgba(0,0,0,0.25);
@@ -636,20 +645,24 @@ HELP_HTML = """<!DOCTYPE html>
                 <div class="sub"><strong>CETENS</strong> &middot; UFRB &middot; Feira de Santana</div>
             </div>
 
-            <p>Espelhe a tela do seu computador no projetor da sala, de forma segura, usando
-            suas credenciais institucionais (AD/UFRB).</p>
+            <p>O <strong>Sistema de Proje&ccedil;&otilde;es</strong> &eacute; a tela exibida no
+            projetor da sala. Por ele voc&ecirc; espelha a tela do seu computador na TV, de forma
+            segura, usando suas credenciais institucionais (AD/UFRB).</p>
 
-            <h2>1. Prepare o cliente no seu computador (Windows)</h2>
+            <a class="btn-download-big" href="{{ vnc_download_url }}" download>
+                &#11015; Baixar cliente de proje&ccedil;&atilde;o (.exe)
+            </a>
+            <p class="dl-note">Arquivo port&aacute;til &mdash; n&atilde;o precisa instalar.</p>
+
+            <h2>1. Abra o cliente no seu computador (Windows)</h2>
             <div class="step">
                 <div class="num">1</div>
-                <div class="txt">Baixe o <strong>caraprojetada-vnc.exe</strong> na tela de login
-                (bot&atilde;o &ldquo;Baixar cliente&rdquo;).</div>
+                <div class="txt">Execute o <strong>caraprojetada-vnc.exe</strong> que voc&ecirc; baixou.</div>
             </div>
             <div class="step">
                 <div class="num">2</div>
-                <div class="txt">Execute o arquivo. Na janela do TightVNC, v&aacute; em
-                <strong>Administration</strong> e defina a <strong>senha do VNC</strong>.
-                Guarde essa senha &mdash; ela ser&aacute; o seu PIN.</div>
+                <div class="txt">Pronto: o app j&aacute; mostra um <strong>PIN</strong> na tela,
+                sozinho. N&atilde;o &eacute; preciso configurar nada.</div>
             </div>
             <div class="step">
                 <div class="num">3</div>
@@ -664,8 +677,8 @@ HELP_HTML = """<!DOCTYPE html>
             </div>
             <div class="step">
                 <div class="num">5</div>
-                <div class="txt">Clique em <strong>Conectar</strong> e informe a senha que voc&ecirc;
-                definiu no TightVNC como <strong>PIN</strong>.</div>
+                <div class="txt">Clique em <strong>Conectar</strong> e informe o <strong>PIN</strong>
+                que aparece na tela do app.</div>
             </div>
             <div class="step">
                 <div class="num">6</div>

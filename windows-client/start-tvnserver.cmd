@@ -22,8 +22,8 @@ echo   caraprojetada - tightvnc server (portatil)
 echo  ===============================================
 echo.
 echo  1. vai abrir a janela do tightvnc server.
-echo  2. em "administration" defina a senha do vnc.
-echo  3. essa senha e o PIN usado no painel do projetor.
+echo  2. o app ja mostra um PIN na tela (automatico).
+echo  3. use esse PIN no painel do projetor ao conectar.
 echo  4. mantenha a janela aberta durante a projecao.
 echo.
 echo  aguarde a interface abrir...

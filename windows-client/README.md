@@ -10,11 +10,14 @@ acompanha este cliente.
 
 ### como funciona
 
-1. o usuário roda `start-tvnserver.cmd` (ou direto o `tvnserver.exe`).
+1. o usuário roda `start-tvnserver.cmd` (ou direto o `caraprojetada-vnc.exe`).
 2. abre a janela do tightvnc server.
-3. em **administration** o usuário define a **senha do vnc**.
-4. essa senha é exatamente o **PIN** que ele digita no painel do projetor.
+3. o app **já mostra um PIN** na tela, automaticamente.
+4. esse PIN é exatamente o número que a pessoa digita no painel do projetor.
 5. mantenha a janela aberta durante a projeção.
+
+> não é preciso configurar senha nem nada — o binário é portátil e
+> autogera o PIN ao abrir.
 
 ### comando
 
@@ -22,13 +25,13 @@ acompanha este cliente.
 start-tvnserver.cmd
 ```
 
-o launcher apenas executa o `tvnserver.exe` ao lado — sem instalação,
+o launcher apenas executa o `caraprojetada-vnc.exe` ao lado — sem instalação,
 sem registro, sem serviço, sem download.
 
 ### fluxo no projetor
 
 - a box roda `xtightvncviewer` e passa o PIN como senha (`-autopass`).
-- o PIN precisa bater com a senha definida na GUI do tightvnc.
+- o PIN é o que aparece na tela do app ao abrir.
 - display padrão windows: `0` (porta 5900).
 
 ---
