@@ -88,6 +88,17 @@ Suporta também: 1920×1080i, 1280×720, 1024×768
 
 O guardian tenta forçar 1920×1080 mas a resolução nativa do display conectado é 1360×768.
 
+## Faixa de IP de Produção (definida 08/07/2026)
+
+```
+faixa padrao: 172.17.7.50+
+exemplo atual: 172.17.7.51 (carapreta-box em teste de pre-producao)
+```
+
+> As boxes de produção ficarão na faixa **172.17.7.50+** (rede UFRB/CETENS).
+> O binário do cliente VNC é servido por cada box em `/download/vnc`
+> (arquivo em `/home/carapreta/caraprojetada-vnc.exe`).
+
 ## Notas Técnicas
 
 - O watchdog detectou que `xfwm4` é crítico — sem ele, o cursor vira um "X"
