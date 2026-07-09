@@ -3,7 +3,6 @@ import 'package:caraprojetada/models/user_prefs.dart';
 import 'package:caraprojetada/services/api_service.dart';
 import 'package:caraprojetada/services/prefs_service.dart';
 import 'package:caraprojetada/screens/home/home_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsScreen extends StatelessWidget {
   final UserPrefs prefs;

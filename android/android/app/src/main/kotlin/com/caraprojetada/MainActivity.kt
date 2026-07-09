@@ -2,27 +2,29 @@ package com.caraprojetada
 
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.util.Log
 import androidx.annotation.NonNull
+import androidx.core.content.ContextCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import net.christianbeier.droidvnc_ng.MainService
 
 class MainActivity : FlutterActivity() {
     private val channel = "caraprojetada/vnc"
-    private lateinit var vncIntent: Intent
+    private var vncRunning = false
 
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channel).setMethodCallHandler { call, result ->
             when (call.method) {
                 "startVnc" -> {
-                    val password = call.argument<String>("password") ?: ""
+                    val password = call.argument<String>("password") ?: "caraprojetada"
                     val port = call.argument<String>("port") ?: "5900"
                     val bindInterface = call.argument<Boolean>("bindInterface") ?: false
                     try {
                         startVncService(password, port, bindInterface)
+                        vncRunning = true
                         result.success(true)
                     } catch (e: Exception) {
                         Log.e("VncEngine", "erro ao iniciar VNC", e)
@@ -31,47 +33,34 @@ class MainActivity : FlutterActivity() {
                 }
                 "stopVnc" -> {
                     stopVncService()
+                    vncRunning = false
                     result.success(null)
                 }
                 "isRunning" -> {
-                    val running = isVncRunning()
-                    result.success(running)
+                    result.success(vncRunning)
                 }
                 else -> result.notImplemented()
             }
         }
     }
 
+    // Inicia o backend VNC do droidVNC-NG (embutido neste APK) via MainService.
+    // O próprio MainService solicita as permissões de captura (MediaProjection)
+    // e sobe o servidor VNC na porta informada.
     private fun startVncService(password: String, port: String, bindInterface: Boolean) {
-        // intent para o droidVNC-NG — ajustar package para o apk real
-        val intent = Intent()
-        intent.setClassName(
-            "net.christianbeier.droidvnc_ng",
-            "net.christianbeier.droidvnc_ng.MainActivity"
-        )
-        intent.action = "net.christianbeier.droidvnc_ng.START_VNC"
-        intent.putExtra("password", password)
-        intent.putExtra("port", port.toIntOrNull() ?: 5900)
-        intent.putExtra("bindInterface", bindInterface)
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        startActivity(intent)
-        Log.i("VncEngine", "droidVNC-NG iniciado na porta $port")
+        val intent = Intent(this, MainService::class.java)
+        intent.action = "net.christianbeier.droidvnc_ng.ACTION_START"
+        intent.putExtra("net.christianbeier.droidvnc_ng.EXTRA_PASSWORD", password)
+        intent.putExtra("net.christianbeier.droidvnc_ng.EXTRA_PORT", port.toIntOrNull() ?: 5900)
+        intent.putExtra("net.christianbeier.droidvnc_ng.EXTRA_INTERFACE", if (bindInterface) "0.0.0.0" else "")
+        ContextCompat.startForegroundService(this, intent)
+        Log.i("VncEngine", "droidVNC-NG (embutido) iniciado na porta $port")
     }
 
     private fun stopVncService() {
-        val intent = Intent()
-        intent.setClassName(
-            "net.christianbeier.droidvnc_ng",
-            "net.christianbeier.droidvnc_ng.MainActivity"
-        )
-        intent.action = "net.christianbeier.droidvnc_ng.STOP_VNC"
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        startActivity(intent)
-        Log.i("VncEngine", "droidVNC-NG parado")
-    }
-
-    private fun isVncRunning(): Boolean {
-        val pm = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
-        return pm.getRunningServices(100).any { it.service.className.contains("vnc", true) }
+        val intent = Intent(this, MainService::class.java)
+        intent.action = "net.christianbeier.droidvnc_ng.ACTION_STOP"
+        ContextCompat.startForegroundService(this, intent)
+        Log.i("VncEngine", "droidVNC-NG (embutido) parado")
     }
 }

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:caraprojetada/models/connection_info.dart';
 
 class ApiService {
   final String host; // ex: "192.168.1.100" — sem protocolo nem porta
@@ -18,7 +19,7 @@ class ApiService {
   /// e verifica qual responde na porta 80
   Future<List<String>> discoverBoxes({Duration timeout = const Duration(seconds: 8)}) async {
     final candidates = <String>[];
-    final subnets = _guessLocalSubnets();
+    final subnets = await _guessLocalSubnets();
 
     for (final subnet in subnets) {
       // escaneia apenas até 20 hosts por subnet para não travar
@@ -116,7 +117,7 @@ class ApiService {
 
   // ---- internos ----
 
-  List<String> _guessLocalSubnets() {
+  Future<List<String>> _guessLocalSubnets() async {
     final result = <String>[];
     try {
       final interfaces = await NetworkInterface.list(
@@ -127,13 +128,15 @@ class ApiService {
         for (final addr in iface.addresses) {
           final parts = addr.address.split('.');
           if (parts.length == 4) {
-            // assume máscara /24 comum
-            final subnet = '${parts[0]}.${parts[1]}.${parts[2]}';
             final first = int.tryParse(parts[0]) ?? 0;
-            if (first == 192) result.add('192.168.${parts[1]}.${parts[2]}');
-            else if (first == 10) result.add('10.${parts[1]}.${parts[2]}');
-            else if (first == 172 && int.tryParse(parts[1]) != null && (int.parse(parts[1]) >= 16 && int.parse(parts[1]) <= 31)) {
-              result.add('172.${parts[1]}.${parts[2]}');
+            if (first == 192) {
+              result.add('192.168.${parts[1]}');
+            } else if (first == 10) {
+              result.add('10.${parts[1]}');
+            } else if (first == 172 &&
+                int.tryParse(parts[1]) != null &&
+                (int.parse(parts[1]) >= 16 && int.parse(parts[1]) <= 31)) {
+              result.add('172.${parts[1]}');
             }
           }
         }
@@ -154,9 +157,9 @@ class ApiService {
       final client = HttpClient();
       client.connectionTimeout = timeout;
       final request = await client.getUrl(Uri.parse('http://$ip/api/v1/status'));
-      final response = await request.close().timeout(timeout);
+      await request.close().timeout(timeout);
       client.close();
-      // não brincamos com o resultado aqui, só marca que o host responde
+      // não inspecionamos o resultado aqui, só marca que o host responde
     } catch (_) {
       // host offline — silencioso
     }

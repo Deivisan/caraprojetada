@@ -25,59 +25,46 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  late final PageController _pageController;
-  int _currentPage = 0;
   String? _selectedMode;
   List<dynamic> _boxes = [];
   bool _loading = false;
   bool _discovering = false;
-  String? _hostInput;
   String? _error;
   bool _vncRunning = false;
-  String? _connectingTo;
+  late ApiService _api;
   final TextEditingController _hostController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController();
+    _api = widget.api;
     _selectedMode = widget.prefs.selectedMode;
-    if (_selectedMode != null) _goToBoxList();
+    if (_api.isConfigured) _loadDevices();
   }
 
   @override
   void dispose() {
-    _pageController.dispose();
     _hostController.dispose();
     super.dispose();
   }
-
-  void _onPageChanged(int page) => setState(() => _currentPage = page);
 
   void _onModeSelected(String mode) async {
     final prefs = widget.prefs.copyWith(selectedMode: mode, onboarded: true);
     await widget.prefsService.save(prefs);
     setState(() => _selectedMode = mode);
-    await Future.delayed(const Duration(milliseconds: 300));
-    _goToBoxList();
-  }
-
-  void _goToBoxList() {
-    _pageController.animateToPage(
-      1,
-      duration: const Duration(milliseconds: 400),
-      curve: Curves.easeInOutCubic,
-    );
   }
 
   Future<void> _loadDevices() async {
-    if (!widget.api.isConfigured) {
+    if (!_api.isConfigured) {
       setState(() => _error = 'Configure o IP da box primeiro');
       return;
     }
-    setState(() => _loading = true, _error = null);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
-      final boxes = await widget.api.getDevices();
+      final boxes = await _api.getDevices();
       setState(() => _boxes = boxes);
     } catch (e) {
       setState(() => _error = 'Erro: ${e.toString()}');
@@ -87,14 +74,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _discoverAndConnect() async {
-    setState(() => _discovering = true, _error = null);
+    setState(() {
+      _discovering = true;
+      _error = null;
+    });
     try {
-      final found = await widget.api.discoverBoxes();
+      final found = await _api.discoverBoxes();
       if (found.isEmpty) {
         setState(() => _error = 'Nenhuma box encontrada. Insira o IP manualmente.');
         return;
       }
-      widget.api = ApiService(host: found.first, port: ApiService.defaultPort);
+      _api = ApiService(host: found.first, port: ApiService.defaultPort);
       await _loadDevices();
     } catch (e) {
       setState(() => _error = 'Descoberta falhou: ${e.toString()}');
@@ -104,7 +94,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _connectBox(dynamic box) async {
-    setState(() => _loading = true, _error = null, _connectingTo = box.name);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       // solicita permissões
       final permOk = await VncService.requestPermissions();
@@ -120,26 +113,28 @@ class _HomeScreenState extends State<HomeScreen> {
       final localIp = await getLocalIpAddress();
 
       // registra dispositivo na box
-      await widget.api.registerDevice(
+      await _api.registerDevice(
         deviceIp: localIp,
         deviceName: 'Android ${_selectedMode ?? "usuario"}',
         orientation: 'retrato',
       );
 
       // inicia VNC nativo
-      await VncService.startVncServer(
+      await VncService().startVncServer(
         password: 'caraprojetada',
         port: '5900',
       );
 
       // conecta via API da box
-      await widget.api.connectMobile(
+      await _api.connectMobile(
         deviceIp: localIp,
         pin: 'caraprojetada',
         orientation: 'retrato',
       );
 
-      setState(() => _vncRunning = true, _connectingTo = null);
+      setState(() {
+        _vncRunning = true;
+      });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -150,7 +145,9 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       }
     } catch (e) {
-      setState(() => _error = e.toString(), _connectingTo = null);
+      setState(() {
+        _error = e.toString();
+      });
     } finally {
       setState(() => _loading = false);
     }
@@ -164,8 +161,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       body: showOnboarding
           ? OnboardingScreen(
-              controller: _pageController,
-              onPageChanged: _onPageChanged,
               onModeSelected: _onModeSelected,
             )
           : _buildContent(),
@@ -186,7 +181,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 builder: (_) => SettingsScreen(
                   prefs: widget.prefs,
                   prefsService: widget.prefsService,
-                  api: widget.api,
+                  api: _api,
                 ),
               ),
             ),
@@ -227,7 +222,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.25),
+                color: Colors.white.withValues(alpha: 0.25),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(Icons.cast_connected, color: Colors.white, size: 28),
@@ -249,7 +244,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 setState(() => _vncRunning = false);
               },
               style: TextButton.styleFrom(
-                backgroundColor: Colors.white.withOpacity(0.2),
+                backgroundColor: Colors.white.withValues(alpha: 0.2),
                 foregroundColor: Colors.white,
               ),
               child: const Text('Parar'),
@@ -352,7 +347,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               icon: const Icon(Icons.clear, size: 18),
                               onPressed: () {
                                 _hostController.clear();
-                                widget.api = ApiService(host: '', port: ApiService.defaultPort);
+                                _api = ApiService(host: '', port: ApiService.defaultPort);
                               },
                             )
                           : null,
@@ -361,7 +356,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       final parts = v.trim().split(':');
                       final h = parts.first.trim();
                       final p = parts.length > 1 ? int.tryParse(parts[1]) : null;
-                      widget.api = ApiService(host: h, port: p ?? ApiService.defaultPort);
+                      _api = ApiService(host: h, port: p ?? ApiService.defaultPort);
                     },
                   ),
                 ),

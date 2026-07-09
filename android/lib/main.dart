@@ -1,10 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:caraprojetada/models/user_prefs.dart';
 import 'package:caraprojetada/services/api_service.dart';
-import 'package:caraprojetada/services/vnc_service.dart';
 import 'package:caraprojetada/services/prefs_service.dart';
 import 'package:caraprojetada/screens/home/home_screen.dart';
-import 'package:caraprojetada/screens/onboarding/onboarding_screen.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final prefsService = await UserPrefsService.initialize();
+  final prefs = prefsService.prefs;
+  final api = ApiService();
+  runApp(
+    CaraProjetadaApp(
+      prefs: prefs,
+      prefsService: prefsService,
+      api: api,
+    ),
+  );
+}
 
 class CaraProjetadaApp extends StatelessWidget {
   final UserPrefs prefs;
@@ -35,7 +47,6 @@ class CaraProjetadaApp extends StatelessWidget {
   ThemeData _buildTheme() {
     const primary = Color(0xFF003366);
     const accent = Color(0xFF005580);
-    const highlight = Color(0xFFFFB300);
     const purple = Color(0xFF6A1B9A);
 
     return ThemeData(
@@ -48,7 +59,7 @@ class CaraProjetadaApp extends StatelessWidget {
         tertiary: purple,
       ),
       scaffoldBackgroundColor: const Color(0xFFF5F7FA),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),

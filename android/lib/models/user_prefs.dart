@@ -1,10 +1,4 @@
 class UserPrefs {
-  static const String _selectedMode = 'selected_mode';
-  static const String _boxIp = 'box_ip';
-  static const String _boxPort = 'box_port';
-  static const String _vncPassword = 'vnc_password';
-  static const String _onboarded = 'onboarded';
-
   final String? selectedMode;
   final String? boxIp;
   final int boxPort;

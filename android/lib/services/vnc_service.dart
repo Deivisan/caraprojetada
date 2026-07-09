@@ -46,11 +46,8 @@ class VncService {
 
   static Future<bool> requestPermissions() async {
     final result = await [
-      Permission.mediaProjection,
       Permission.systemAlertWindow,
-      Permission.accessibilityService,
       Permission.notification,
-      Permission.wakeLock,
     ].request();
 
     final granted = result.values.every((s) => s.isGranted);
@@ -63,14 +60,14 @@ class VncService {
 
   static Future<void> initializeBackgroundService() async {
     await FlutterBackgroundService().configure(
-      androidConfiguration: const AndroidConfiguration(
+      androidConfiguration: AndroidConfiguration(
         onStart: _onBackgroundStart,
-        autoStart: true,
+        autoStart: false,
         isForegroundMode: true,
-        notificationTitle: 'CaraProjetada',
-        notificationContent: 'Servidor VNC ativo',
+        initialNotificationTitle: 'CaraProjetada',
+        initialNotificationContent: 'Servidor VNC ativo',
       ),
-      iosConfiguration: const IosConfiguration(),
+      iosConfiguration: IosConfiguration(),
     );
   }
 
