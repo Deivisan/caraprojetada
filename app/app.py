@@ -1,8 +1,10 @@
 from flask import Flask, render_template_string, request, session, redirect, jsonify
 import subprocess
 import time
+import threading
 from datetime import datetime
 import os
+from concurrent.futures import ThreadPoolExecutor
 import re
 
 # ldap3 é opcional em dev; obrigatório em produção
@@ -24,11 +26,15 @@ current_session = {
     'active': False,
     'username': None,
     'user_ip': None,
+    'pin': None,
     'display': None,
     'os_type': None,
     'started_at': None,
     'user_fullname': None
 }
+
+# processo do viewer VNC (mantido pelo watchdog)
+viewer_proc = None
 
 def detect_os(user_agent):
     ua = user_agent.lower() if user_agent else ''
@@ -965,10 +971,18 @@ def api_status():
 @app.route('/api/v1/force-disconnect', methods=['POST'])
 def api_force_disconnect():
     subprocess.run(['pkill', '-9', 'xtightvncviewer'])
+    global viewer_proc
+    if viewer_proc is not None:
+        try:
+            viewer_proc.kill()
+        except Exception:
+            pass
+        viewer_proc = None
     registrar_log('FORCE_DISCONNECT_API', 'por API')
     current_session['active'] = False
     current_session['username'] = None
     current_session['user_ip'] = None
+    current_session['pin'] = None
     current_session['display'] = None
     current_session['os_type'] = None
     current_session['started_at'] = None
@@ -982,6 +996,28 @@ def api_force_disconnect():
 
 @app.route('/api/v1/devices', methods=['GET'])
 def api_list_devices():
+    boxes = []
+    def _ping(ip_base, i):
+        ip = f"{ip_base}.{50 + i}"
+        try:
+            online = subprocess.run(
+                ['ping', '-c', '1', '-W', '1', ip],
+                capture_output=True, timeout=2
+            ).returncode == 0
+        except:
+            online = False
+        return {
+            'id': f"box-{i}",
+            'ip': ip,
+            'name': f"Projetor Sala {i}" if i > 1 else 'Projetor Sala 1',
+            'status': 'online' if online else 'offline',
+            'resolution': '1360x768',
+            'available': online and not current_session['active']
+        }
+    with ThreadPoolExecutor(max_workers=10) as ex:
+        boxes = list(ex.map(lambda i: _ping('172.17.7', i), range(1, 11)))
+    return jsonify({'boxes': boxes, 'total': len(boxes)})
+
     boxes = []
     for i in range(1, 11):
         ip = f'172.17.7.{50 + i}'
@@ -1036,6 +1072,45 @@ def api_discover():
         ]
     })
 
+def _start_viewer(device_ip, pin):
+    """Lanca o viewer VNC desacoplado, com log de erros visivel.
+    Retorna o Popen ou None."""
+    global viewer_proc
+    log_path = '/tmp/projetor/viewer.log'
+    os.makedirs('/tmp/projetor', exist_ok=True)
+    # XAUTHORITY do usuario da sessao X (carapreta); setsid desacopla do flask
+    vnc_cmd = (f'echo "{pin}" | DISPLAY=:0 XAUTHORITY=/home/carapreta/.Xauthority '
+               f'setsid /usr/bin/xtightvncviewer -autopass -quality 6 -compresslevel 9 '
+               f'-fullscreen {device_ip}:0')
+    try:
+        viewer_proc = subprocess.Popen(
+            vnc_cmd, shell=True,
+            stdout=open(log_path, 'a'), stderr=subprocess.STDOUT)
+        registrar_log('VIEWER_START', f'pid={viewer_proc.pid} ip={device_ip}')
+        return viewer_proc
+    except Exception as e:
+        registrar_log('VIEWER_ERR', f'{e}')
+        return None
+
+
+def _viewer_watchdog():
+    """Mantem o viewer vivo enquanto a sessao estiver ativa. Roda em thread."""
+    global viewer_proc
+    while True:
+        try:
+            if current_session.get('active'):
+                alive = viewer_proc is not None and viewer_proc.poll() is None
+                if not alive:
+                    ip = current_session.get('user_ip')
+                    pin = current_session.get('pin') or 'caraprojetada'
+                    if ip:
+                        registrar_log('VIEWER_WATCHDOG', f'religando viewer -> {ip}')
+                        _start_viewer(ip, pin)
+            time.sleep(3)
+        except Exception:
+            time.sleep(3)
+
+
 @app.route('/api/v1/connect-mobile', methods=['POST'])
 def api_connect_mobile():
     global current_session
@@ -1046,36 +1121,135 @@ def api_connect_mobile():
     d = request.get_json() or {}
     device_ip   = d.get('device_ip', '').strip()
     port        = d.get('port', '5900')
-    pin         = d.get('pin', '').strip()
+    pin         = d.get('pin', 'caraprojetada')
     orientation = d.get('orientation', 'retrato')
-    if not device_ip or not pin:
-        return jsonify({'success': False, 'error': 'device_ip e pin obrigatorios'}), 400
-    vnc_cmd = (f'echo "{pin}" | DISPLAY=:0 XAUTHORITY=/var/run/lightdm/root/:0 '
-               f'/usr/bin/xtightvncviewer -autopass -quality 6 -compresslevel 9 '
-               f'-fullscreen {device_ip}:0')
+    if not device_ip:
+        return jsonify({'success': False, 'error': 'device_ip obrigatorio'}), 400
     registrar_log('MOBILE_CONNECT', f'ip={device_ip} port={port} orien={orientation}')
     current_session.update({
         'active': True,
         'username': 'mobile-user',
         'user_ip': device_ip,
+        'pin': pin,
         'display': ':0',
         'os_type': 'Android (VNC)',
         'started_at': datetime.now().strftime('%H:%M'),
         'user_fullname': 'Usuário Mobile'
     })
-    # o viewer roda em background para nao bloquear a resposta http
-    subprocess.Popen(vnc_cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    _start_viewer(device_ip, pin)
     return jsonify({
         'success': True,
-        'message': 'conectando ao projetor',
+        'message': 'conectado ao projetor',
         'box_ip': '172.17.7.51',
         'session': current_session,
-        'hint': 'gire o celular para landscape para melhor legibilidade' if orientation == 'retrato' else ''
+        'hint': 'use a tela de controle para navegar ou enviar arquivos'
     })
 
+# PROJECAO DE ARQUIVOS (PDF)
+# ============================================================
+
+UPLOAD_DIR = '/tmp/projetor'
+PROJECTION_PID = None
+
+@app.route('/api/v1/upload', methods=['POST'])
+def api_upload_file():
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'error': 'nenhum arquivo enviado'}), 400
+    f = request.files['file']
+    if f.filename == '':
+        return jsonify({'success': False, 'error': 'arquivo vazio'}), 400
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    ext = f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else 'bin'
+    fpath = os.path.join(UPLOAD_DIR, f'projecao.{ext}')
+    f.save(fpath)
+    registrar_log('FILE_UPLOAD', f'arquivo={f.filename} formato={ext}')
+    page_count = 0
+    if ext == 'pdf':
+        try:
+            import subprocess
+            # tenta contar paginas com python
+            with open(fpath, 'rb') as pf:
+                content = pf.read()
+                # conta ocorrencias de /Type /Page (nao perfeito mas funcional)
+                page_count = content.count(b'/Type /Page')
+                if page_count == 0:
+                    page_count = 1
+        except:
+            page_count = 1
+    return jsonify({
+        'success': True,
+        'path': fpath,
+        'format': ext,
+        'pages': page_count,
+        'filename': f.filename
+    })
+
+@app.route('/api/v1/project-start', methods=['POST'])
+def api_project_start():
+    global PROJECTION_PID
+    d = request.get_json() or {}
+    page = d.get('page', 1)
+    fpath = os.path.join(UPLOAD_DIR, 'projecao.pdf')
+    if not os.path.exists(fpath):
+        return jsonify({'success': False, 'error': 'nenhum arquivo enviado'}), 400
+    # mata projecao anterior
+    _kill_projection()
+    DISPLAY_VAR = ':0'
+    XAUTH = '/home/carapreta/.Xauthority'
+    env = os.environ.copy()
+    env['DISPLAY'] = DISPLAY_VAR
+    env['XAUTHORITY'] = XAUTH
+    try:
+        # abre o pdf no evince em modo apresentacao
+        proc = subprocess.Popen(
+            ['/usr/bin/evince', '--presentation', fpath],
+            env=env,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        PROJECTION_PID = proc.pid
+        # se não for pagina 1, navega
+        if page > 1:
+            time.sleep(1.5)
+            for _ in range(page - 1):
+                subprocess.run(['xdotool', 'key', 'Right'],
+                             env=env, capture_output=True)
+                time.sleep(0.3)
+        registrar_log('PROJECT_START', f'pagina={page} pid={proc.pid}')
+        return jsonify({'success': True, 'page': page, 'pid': proc.pid})
+    except Exception as e:
+        registrar_log('PROJECT_ERR', str(e))
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/v1/project-next', methods=['POST'])
+def api_project_next():
+    env = {'DISPLAY': ':0', 'XAUTHORITY': '/home/carapreta/.Xauthority'}
+    subprocess.run(['xdotool', 'key', 'Right'], env=env, capture_output=True)
+    return jsonify({'success': True})
+
+@app.route('/api/v1/project-prev', methods=['POST'])
+def api_project_prev():
+    env = {'DISPLAY': ':0', 'XAUTHORITY': '/home/carapreta/.Xauthority'}
+    subprocess.run(['xdotool', 'key', 'Left'], env=env, capture_output=True)
+    return jsonify({'success': True})
+
+@app.route('/api/v1/project-stop', methods=['POST'])
+def api_project_stop():
+    _kill_projection()
+    return jsonify({'success': True})
+
+def _kill_projection():
+    global PROJECTION_PID
+    # mata evince
+    subprocess.run(['pkill', '-f', 'evince.*projecao'], capture_output=True)
+    PROJECTION_PID = None
 if __name__ == '__main__':
     try:
         os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
     except:
         pass
+    # watchdog que mantem o viewer VNC vivo enquanto a sessao estiver ativa
+    threading.Thread(target=_viewer_watchdog, daemon=True).start()
     app.run(host='0.0.0.0', port=80)
+
+# ============================================================

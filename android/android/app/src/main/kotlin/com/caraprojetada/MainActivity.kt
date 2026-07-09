@@ -53,6 +53,9 @@ class MainActivity : FlutterActivity() {
         intent.putExtra("net.christianbeier.droidvnc_ng.EXTRA_PASSWORD", password)
         intent.putExtra("net.christianbeier.droidvnc_ng.EXTRA_PORT", port.toIntOrNull() ?: 5900)
         intent.putExtra("net.christianbeier.droidvnc_ng.EXTRA_INTERFACE", if (bindInterface) "0.0.0.0" else "")
+        // projetor: apenas espelha a tela (saída), não precisa de input nem
+        // pointer injection -> evita o caminho arriscado de InputService.addClient
+        intent.putExtra("net.christianbeier.droidvnc_ng.EXTRA_VIEW_ONLY", true)
         ContextCompat.startForegroundService(this, intent)
         Log.i("VncEngine", "droidVNC-NG (embutido) iniciado na porta $port")
     }
