@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:caraprojetada/models/user_prefs.dart';
 import 'package:caraprojetada/services/api_service.dart';
 import 'package:caraprojetada/services/prefs_service.dart';
-import 'package:caraprojetada/screens/home/home_screen.dart';
+import 'package:caraprojetada/screens/splash/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,7 +36,7 @@ class CaraProjetadaApp extends StatelessWidget {
       title: 'CaraProjetada',
       debugShowCheckedModeBanner: false,
       theme: _buildTheme(),
-      home: HomeScreen(
+      home: SplashScreen(
         prefs: prefs,
         prefsService: prefsService,
         api: api,
@@ -45,9 +45,10 @@ class CaraProjetadaApp extends StatelessWidget {
   }
 
   ThemeData _buildTheme() {
-    const primary = Color(0xFF003366);
-    const accent = Color(0xFF005580);
-    const purple = Color(0xFF6A1B9A);
+    const primary = Color(0xFF1e1b4b);
+    const accentGold = Color(0xFFfbbf24);
+    const violet = Color(0xFF7c5cff);
+    const surface = Color(0xFFF5F7FA);
 
     return ThemeData(
       useMaterial3: true,
@@ -55,52 +56,93 @@ class CaraProjetadaApp extends StatelessWidget {
         seedColor: primary,
         brightness: Brightness.light,
         primary: primary,
-        secondary: accent,
-        tertiary: purple,
+        secondary: violet,
+        tertiary: accentGold,
+        surface: surface,
       ),
-      scaffoldBackgroundColor: const Color(0xFFF5F7FA),
+      scaffoldBackgroundColor: surface,
+      appBarTheme: AppBarTheme(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        titleTextStyle: TextStyle(
+          color: primary,
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.3,
+        ),
+        iconTheme: IconThemeData(color: primary),
+      ),
       cardTheme: CardThemeData(
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           side: BorderSide(color: Colors.grey.shade200, width: 1),
         ),
+        clipBehavior: Clip.antiAlias,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: primary,
           foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
           ),
-          elevation: 2,
+          elevation: 0,
+          textStyle: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.2,
+          ),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          textStyle: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: primary,
-          side: const BorderSide(color: primary),
+          side: BorderSide(color: violet.withValues(alpha: 0.4)),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
           ),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Colors.white,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.grey.shade200),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.grey.shade200),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: primary, width: 2),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: violet, width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
+          horizontal: 18,
+          vertical: 16,
         ),
+        hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
     );
   }

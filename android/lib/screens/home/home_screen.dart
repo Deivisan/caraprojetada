@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:caraprojetada/models/user_prefs.dart';
+import 'package:caraprojetada/models/connection_info.dart';
 import 'package:caraprojetada/services/api_service.dart';
 import 'package:caraprojetada/services/vnc_service.dart';
 import 'package:caraprojetada/services/prefs_service.dart';
 import 'package:caraprojetada/screens/onboarding/onboarding_screen.dart';
 import 'package:caraprojetada/screens/settings/settings_screen.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class HomeScreen extends StatefulWidget {
   final UserPrefs prefs;
@@ -26,13 +29,15 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   String? _selectedMode;
-  List<dynamic> _boxes = [];
+  List<ConnectionInfo> _boxes = [];
   bool _loading = false;
   bool _discovering = false;
   String? _error;
   bool _vncRunning = false;
   late ApiService _api;
   final TextEditingController _hostController = TextEditingController();
+  Timer? _statusTimer;
+  final _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -40,12 +45,29 @@ class _HomeScreenState extends State<HomeScreen> {
     _api = widget.api;
     _selectedMode = widget.prefs.selectedMode;
     if (_api.isConfigured) _loadDevices();
+
+    // polling de status
+    _statusTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (_api.isConfigured && mounted) _checkVncStatus();
+    });
   }
 
   @override
   void dispose() {
+    _statusTimer?.cancel();
     _hostController.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _checkVncStatus() async {
+    try {
+      final status = await _api.getStatus();
+      final vncActive = status['vnc_active'] == true;
+      if (mounted && vncActive != _vncRunning) {
+        setState(() => _vncRunning = vncActive);
+      }
+    } catch (_) {}
   }
 
   void _onModeSelected(String mode) async {
@@ -56,7 +78,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadDevices() async {
     if (!_api.isConfigured) {
-      setState(() => _error = 'Configure o IP da box primeiro');
+      setState(() => _error = 'digite o ip da box primeiro');
       return;
     }
     setState(() {
@@ -65,11 +87,11 @@ class _HomeScreenState extends State<HomeScreen> {
     });
     try {
       final boxes = await _api.getDevices();
-      setState(() => _boxes = boxes);
+      if (mounted) setState(() => _boxes = boxes);
     } catch (e) {
-      setState(() => _error = 'Erro: ${e.toString()}');
+      if (mounted) setState(() => _error = 'box offline: ${e.toString()}');
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -81,75 +103,71 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final found = await _api.discoverBoxes();
       if (found.isEmpty) {
-        setState(() => _error = 'Nenhuma box encontrada. Insira o IP manualmente.');
+        if (mounted) {
+          setState(() => _error = 'nenhuma box encontrada. insira o ip manualmente.');
+        }
         return;
       }
       _api = ApiService(host: found.first, port: ApiService.defaultPort);
       await _loadDevices();
     } catch (e) {
-      setState(() => _error = 'Descoberta falhou: ${e.toString()}');
+      if (mounted) setState(() => _error = 'descoberta falhou: ${e.toString()}');
     } finally {
-      setState(() => _discovering = false);
+      if (mounted) setState(() => _discovering = false);
     }
   }
 
-  Future<void> _connectBox(dynamic box) async {
+  Future<void> _connectBox(ConnectionInfo box) async {
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      // solicita permissões
+      // limpa sessão anterior pendente na box
+      await _api.forceDisconnect();
+
       final permOk = await VncService.requestPermissions();
       if (!permOk && mounted) {
-        setState(() => _error = 'Permissoes negadas. Habilite nas configurações.');
+        setState(() => _error = 'permissoes negadas. habilite nas configs.');
         return;
       }
 
-      // inicializa serviço background
       await VncService.initializeBackgroundService();
 
-      // pega IP local do celular para registrar
       final localIp = await getLocalIpAddress();
 
-      // registra dispositivo na box
       await _api.registerDevice(
         deviceIp: localIp,
         deviceName: 'Android ${_selectedMode ?? "usuario"}',
         orientation: 'retrato',
       );
 
-      // inicia VNC nativo
       await VncService().startVncServer(
         password: 'caraprojetada',
         port: '5900',
       );
 
-      // conecta via API da box
       await _api.connectMobile(
         deviceIp: localIp,
         pin: 'caraprojetada',
         orientation: 'retrato',
       );
 
-      setState(() {
-        _vncRunning = true;
-      });
       if (mounted) {
+        setState(() => _vncRunning = true);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Conectado a ${box.name ?? "box"}!'),
-            backgroundColor: Colors.green,
+            content: const Text('transmitindo!'),
+            backgroundColor: const Color(0xFF059669),
             behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
           ),
         );
       }
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-      });
+      if (mounted) setState(() => _error = e.toString());
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -160,28 +178,62 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       body: showOnboarding
-          ? OnboardingScreen(
-              onModeSelected: _onModeSelected,
-            )
+          ? OnboardingScreen(onModeSelected: _onModeSelected)
           : _buildContent(),
     );
   }
 
   Widget _buildContent() {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('CaraProjetada'),
-        elevation: 0,
-        backgroundColor: Colors.transparent,
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF4f46e5), Color(0xFF7c5cff)],
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.present_to_all_rounded,
+                  color: Colors.white, size: 18),
+            ),
+            const SizedBox(width: 10),
+            const Text('CaraProjetada'),
+          ],
+        ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_rounded),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => SettingsScreen(
-                  prefs: widget.prefs,
-                  prefsService: widget.prefsService,
-                  api: _api,
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.9),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.tune_rounded,
+                  color: Theme.of(context).colorScheme.primary),
+              onPressed: () => Navigator.of(context).push(
+                PageRouteBuilder(
+                  pageBuilder: (_, __, ___) => SettingsScreen(
+                    prefs: widget.prefs,
+                    prefsService: widget.prefsService,
+                    api: _api,
+                  ),
+                  transitionsBuilder: (_, animation, __, child) =>
+                      SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(1, 0),
+                      end: Offset.zero,
+                    ).animate(CurvedAnimation(
+                        parent: animation, curve: Curves.easeOutCubic)),
+                    child: child,
+                  ),
+                  transitionDuration: const Duration(milliseconds: 350),
                 ),
               ),
             ),
@@ -191,16 +243,21 @@ class _HomeScreenState extends State<HomeScreen> {
       body: RefreshIndicator(
         onRefresh: _loadDevices,
         child: ListView(
-          padding: const EdgeInsets.all(20),
+          controller: _scrollController,
+          padding: const EdgeInsets.fromLTRB(20, 100, 20, 20),
           children: [
-            // banner de status
-            _buildStatusBanner(),
+            // status banner animado
+            _buildStatusBanner().animate().fadeIn(duration: 400.ms),
+
             const SizedBox(height: 24),
+
             // seção de descoberta
-            _buildDiscoverSection(),
-            const SizedBox(height: 20),
+            _buildDiscoverSection().animate().fadeIn(duration: 500.ms, delay: 100.ms),
+
+            const SizedBox(height: 24),
+
             // lista de boxes
-            _buildBoxList(),
+            _buildBoxList().animate().fadeIn(duration: 600.ms, delay: 200.ms),
           ],
         ),
       ),
@@ -209,45 +266,50 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildStatusBanner() {
     if (_vncRunning) {
-      return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.green.shade400, Colors.green.shade600],
-          ),
-          borderRadius: BorderRadius.circular(16),
-        ),
+      return _buildGlassCard(
+        gradientColors: [const Color(0xFF059669), const Color(0xFF047857)],
         child: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.25),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.cast_connected, color: Colors.white, size: 28),
-            ),
-            const SizedBox(width: 14),
+            _pulsingDot(Colors.greenAccent),
+            const SizedBox(width: 12),
             const Expanded(
-              child: Text(
-                'Transmitindo para o projetor',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'transmitindo agora',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'sua tela está no projetor',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
               ),
             ),
             TextButton(
               onPressed: () async {
                 await VncService().stopVncServer();
-                setState(() => _vncRunning = false);
+                await _api.forceDisconnect();
+                if (mounted) setState(() => _vncRunning = false);
               },
               style: TextButton.styleFrom(
                 backgroundColor: Colors.white.withValues(alpha: 0.2),
                 foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-              child: const Text('Parar'),
+              child: const Text('parar',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
             ),
           ],
         ),
@@ -256,16 +318,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (_error != null) {
       return Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.red.shade50,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.red.shade200),
+          color: const Color(0xFFFEF2F2),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFFECACA)),
         ),
         child: Row(
           children: [
-            Icon(Icons.error_outline, color: Colors.red.shade700),
-            const SizedBox(width: 10),
+            Icon(Icons.error_outline_rounded,
+                color: Colors.red.shade600, size: 22),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
                 _error!,
@@ -274,37 +337,39 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             IconButton(
               onPressed: () => setState(() => _error = null),
-              icon: Icon(Icons.close, color: Colors.red.shade700, size: 18),
+              icon: Icon(Icons.close_rounded,
+                  color: Colors.red.shade600, size: 20),
             ),
           ],
         ),
       );
     }
 
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.blue.shade50, Colors.purple.shade50],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.blue.shade100),
-      ),
+    return _buildGlassCard(
+      gradientColors: [
+        const Color(0xFF1e1b4b).withValues(alpha: 0.85),
+        const Color(0xFF312e81).withValues(alpha: 0.85),
+      ],
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.blue.shade100,
-              borderRadius: BorderRadius.circular(12),
+              color: Colors.white.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(Icons.info_outline, color: Colors.blue.shade700, size: 24),
+            child: const Icon(Icons.wifi_rounded,
+                color: Colors.white, size: 20),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Conecte-se a mesma rede Wi-Fi do projetor para transmitir.',
-              style: TextStyle(color: Colors.blue.shade900, fontSize: 14),
+              'conecte-se à mesma rede wi-fi do projetor para transmitir.',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.85),
+                fontSize: 13,
+                height: 1.4,
+              ),
             ),
           ),
         ],
@@ -312,208 +377,435 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildGlassCard({
+    required List<Color> gradientColors,
+    required Widget child,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: gradientColors,
+        ),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: gradientColors.first.withValues(alpha: 0.25),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  Widget _pulsingDot(Color color) {
+    return Container(
+      width: 12,
+      height: 12,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.6),
+            blurRadius: 8,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDiscoverSection() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.explore, color: Colors.blue.shade700, size: 22),
-                const SizedBox(width: 8),
-                Text(
-                  'Buscar projetor',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.grey.shade800,
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF4f46e5), Color(0xFF7c5cff)],
                   ),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _hostController,
-                    decoration: InputDecoration(
-                      hintText: 'IP da box (ex: 192.168.1.100)',
-                      prefixIcon: const Icon(Icons.dns, size: 20),
-                      suffixIcon: _hostController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear, size: 18),
-                              onPressed: () {
-                                _hostController.clear();
-                                _api = ApiService(host: '', port: ApiService.defaultPort);
-                              },
-                            )
-                          : null,
-                    ),
-                    onChanged: (v) {
-                      final parts = v.trim().split(':');
-                      final h = parts.first.trim();
-                      final p = parts.length > 1 ? int.tryParse(parts[1]) : null;
-                      _api = ApiService(host: h, port: p ?? ApiService.defaultPort);
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                FilledButton.icon(
-                  onPressed: _discovering ? null : _loadDevices,
-                  icon: _loading
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Icon(Icons.search, size: 18),
-                  label: Text(_discovering ? 'Buscando...' : 'Conectar'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _discovering ? null : _discoverAndConnect,
-                icon: _discovering
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.wifi_find, size: 18),
-                label: Text(
-                  _discovering ? 'Escaneando rede...' : 'Auto-detectar na rede',
+                child: const Icon(Icons.explore_rounded,
+                    color: Colors.white, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                'buscar projetor',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF1e1b4b),
                 ),
               ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _hostController,
+                  decoration: InputDecoration(
+                    hintText: 'ip da box (ex: 192.168.1.100)',
+                    prefixIcon: const Icon(Icons.dns_outlined, size: 20),
+                    suffixIcon: _hostController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear_rounded, size: 18),
+                            onPressed: () {
+                              _hostController.clear();
+                              setState(() {
+                                _api = ApiService(
+                                    host: '', port: ApiService.defaultPort);
+                              });
+                            },
+                          )
+                        : null,
+                  ),
+                  onChanged: (v) {
+                    final parts = v.trim().split(':');
+                    final h = parts.first.trim();
+                    final p = parts.length > 1 ? int.tryParse(parts[1]) : null;
+                    setState(() {
+                      _api = ApiService(
+                          host: h, port: p ?? ApiService.defaultPort);
+                    });
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              FilledButton(
+                onPressed: _discovering ? null : _loadDevices,
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 16),
+                  backgroundColor: const Color(0xFF1e1b4b),
+                ),
+                child: _loading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.search_rounded, size: 20),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _discovering ? null : _discoverAndConnect,
+              icon: _discovering
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.wifi_find_rounded, size: 18),
+              label: Text(
+                _discovering ? 'escaneando rede...' : 'auto-detectar na rede',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildBoxList() {
     if (_loading && _boxes.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(32),
-          child: CircularProgressIndicator(),
-        ),
-      );
+      return _buildShimmerLoading();
     }
 
     if (_boxes.isEmpty && !_loading) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(40),
-          child: Column(
-            children: [
-              Icon(Icons.tv_off, size: 64, color: Colors.grey.shade300),
-              const SizedBox(height: 16),
-              Text(
-                'Nenhum projetor encontrado',
-                style: TextStyle(fontSize: 16, color: Colors.grey.shade500),
-              ),
-            ],
+      return Column(
+        children: [
+          const SizedBox(height: 40),
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Icon(Icons.tv_off_rounded,
+                size: 40, color: Colors.grey.shade300),
           ),
-        ),
+          const SizedBox(height: 16),
+          Text(
+            'nenhum projetor encontrado',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade500,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'tente auto-detectar ou digite o ip manualmente',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade400,
+            ),
+          ),
+        ],
       );
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Icon(Icons.bolt, color: Colors.amber.shade700, size: 20),
-            const SizedBox(width: 6),
-            Text(
-              'Projetores disponiveis (${_boxes.length})',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: Colors.grey.shade800,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        ..._boxes.map((b) => _buildBoxCard(b)),
-      ],
-    );
-  }
-
-  Widget _buildBoxCard(dynamic box) {
-    final name = box.name ?? 'Projetor';
-    final ip = box.ip ?? '--';
-    final available = box.available ?? false;
-    final resolution = box.resolution ?? '--';
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: available ? Colors.green.shade50 : Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(
-            available ? Icons.cast : Icons.cast_connected,
-            color: available ? Colors.green.shade700 : Colors.grey,
-          ),
-        ),
-        title: Text(
-          name,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-        ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 4),
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 14),
           child: Row(
             children: [
-              Text(ip, style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontFamily: 'monospace')),
-              const SizedBox(width: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(6),
+                width: 8,
+                height: 8,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF10B981),
+                  shape: BoxShape.circle,
                 ),
-                child: Text(resolution, style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'projetores disponíveis (${_boxes.length})',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF1e1b4b),
+                ),
               ),
             ],
           ),
         ),
-        trailing: available
-            ? FilledButton(
-                onPressed: _loading ? null : () => _connectBox(box),
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                child: const Text('Transmitir'),
-              )
-            : Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  'Ocupado',
-                  style: TextStyle(color: Colors.red.shade700, fontSize: 13, fontWeight: FontWeight.w600),
-                ),
+        ..._boxes.asMap().entries.map((entry) {
+          final index = entry.key;
+          final box = entry.value;
+          return _buildBoxCard(box).animate().fadeIn(
+                duration: 300.ms,
+                delay: (index * 80).ms,
+              );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildShimmerLoading() {
+    return Column(
+      children: List.generate(3, (i) => Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(12),
               ),
+            ),
+            const SizedBox(width: 14),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 120,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  width: 80,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      )),
+    );
+  }
+
+  Widget _buildBoxCard(ConnectionInfo box) {
+    final name = box.name;
+    final ip = box.ip;
+    final available = box.available;
+    final resolution = box.resolution;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: available
+              ? const Color(0xFFA7F3D0).withValues(alpha: 0.5)
+              : Colors.grey.shade200,
+          width: available ? 1.5 : 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: available && !_loading ? () => _connectBox(box) : null,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    gradient: available
+                        ? const LinearGradient(
+                            colors: [Color(0xFF059669), Color(0xFF10B981)],
+                          )
+                        : LinearGradient(
+                            colors: [Colors.grey.shade300, Colors.grey.shade400],
+                          ),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    available ? Icons.cast_rounded : Icons.cast_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                          color: Color(0xFF1e1b4b),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Text(
+                            ip,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                              fontFamily: 'monospace',
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              resolution,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey.shade700,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                if (available)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF1e1b4b), Color(0xFF312e81)],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      'transmitir',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      'ocupado',
+                      style: TextStyle(
+                        color: Colors.red.shade700,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
