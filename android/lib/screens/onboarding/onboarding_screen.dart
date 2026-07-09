@@ -1,138 +1,224 @@
 import 'package:flutter/material.dart';
 
-class OnboardingScreen extends StatelessWidget {
-  final PageController controller;
-  final Function(int) onPageChanged;
+class OnboardingScreen extends StatefulWidget {
   final Function(String) onModeSelected;
 
   const OnboardingScreen({
     super.key,
-    required this.controller,
-    required this.onPageChanged,
     required this.onModeSelected,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return PageView(
-      controller: controller,
-      onPageChanged: onPageChanged,
-      children: [
-        _buildPage(
-          context,
-          icon: Icons.present_to_all,
-          title: 'Modo de Uso',
-          subtitle: 'Como voce quer usar?',
-          description: 'Aula, reuniao, apresentacao ou demonstracao',
-          options: const ['aula', 'reuniao', 'apresentacao', 'demo'],
-          onSelect: onModeSelected,
-        ),
-        _buildPage(
-          context,
-          icon: Icons.wifi,
-          title: 'Rede Wi-Fi',
-          subtitle: 'Conecte-se a mesma rede',
-          description: 'Ambos dispositivos devem estar na mesma rede Wi-Fi',
-          showButton: true,
-          buttonText: 'Ja estou conectado',
-        ),
-        _buildPage(
-          context,
-          icon: Icons.qr_code_scanner,
-          title: 'Escaneie ou Digite',
-          subtitle: 'Encontre o projetor',
-          description: 'Escaneie o QR code da tela idle do projetor ou digite o IP',
-          showButton: true,
-          buttonText: 'Escanear QR Code',
-        ),
-      ],
+  State<OnboardingScreen> createState() => _OnboardingScreenState();
+}
+
+class _OnboardingScreenState extends State<OnboardingScreen> {
+  final PageController _controller = PageController();
+  int _page = 0;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _go(int page) {
+    _controller.animateToPage(
+      page,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeInOutCubic,
     );
   }
 
-  Widget _buildPage(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    String? description,
-    List<String>? options,
-    Function(String)? onSelect,
-    bool showButton = false,
-    String buttonText = '',
-  }) {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Column(
+          children: [
+            // indicador de página
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(3, (i) {
+                  final active = i == _page;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    margin: const EdgeInsets.symmetric(horizontal: 5),
+                    width: active ? 28 : 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: active
+                          ? Theme.of(context).colorScheme.primary
+                          : Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  );
+                }),
+              ),
+            ),
+            Expanded(
+              child: PageView(
+                controller: _controller,
+                onPageChanged: (p) => setState(() => _page = p),
+                children: [
+                  _buildModePage(),
+                  _buildWifiPage(),
+                  _buildQrPage(),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModePage() {
     return Padding(
-      padding: const EdgeInsets.all(32),
+      padding: const EdgeInsets.symmetric(horizontal: 32),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 100, color: Theme.of(context).primaryColor),
-          const SizedBox(height: 40),
-          Text(
-            title,
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.bold,
+          Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(32),
             ),
+            child: Icon(Icons.present_to_all_rounded, size: 64, color: Colors.blue.shade700),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 36),
           Text(
-            subtitle,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
-          ),
-          const SizedBox(height: 24),
-          if (description != null)
-            Text(
-              description,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 15),
+            'Modo de Apresentacao',
+            style: TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+              color: Colors.grey.shade900,
+              height: 1.2,
             ),
-          if (options != null && onSelect != null) ...[
-            const SizedBox(height: 32),
-            ...options.map(
-              (opt) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Como voce quer usar o CaraProjetada?',
+            style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 36),
+          ...['Aula', 'Reuniao', 'Apresentacao', 'Demo'].map((opt) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
                 child: SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => onSelect(opt),
-                    style: ElevatedButton(
+                  child: FilledButton(
+                    onPressed: () => widget.onModeSelected(opt.toLowerCase()),
+                    style: FilledButton.styleFrom(
                       backgroundColor: Colors.white,
-                      foregroundColor: Colors.blue[800],
-                    ).style?.copyWith(
-                      padding: const MaterialStatePropertyAll(
-                        EdgeInsets.symmetric(vertical: 18),
+                      foregroundColor: Colors.blue.shade700,
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        side: BorderSide(color: Colors.blue.shade200),
                       ),
                     ),
-                    child: Text(
-                      opt.charAt(0).toUpperCase() + opt.substring(1),
-                      style: const TextStyle(fontSize: 16),
-                    ),
+                    child: Text(opt, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                   ),
                 ),
-              ),
+              )),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWifiPage() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              color: Colors.purple.shade50,
+              borderRadius: BorderRadius.circular(32),
             ),
-          ],
-          if (showButton) ...[
-            const SizedBox(height: 40),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                style: ElevatedButton(
-                  backgroundColor: Theme.of(context).primaryColor,
-                  foregroundColor: Colors.white,
-                ).style?.copyWith(
-                  padding: const MaterialStatePropertyAll(
-                    EdgeInsets.symmetric(vertical: 18),
-                  ),
-                ),
-                child: Text(buttonText, style: const TextStyle(fontSize: 16)),
-              ),
+            child: Icon(Icons.wifi_rounded, size: 64, color: Colors.purple.shade700),
+          ),
+          const SizedBox(height: 36),
+          Text(
+            'Conecte-se à Rede',
+            style: TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+              color: Colors.grey.shade900,
             ),
-          ],
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Conecte este celular na mesma rede Wi-Fi do projetor.',
+            style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 40),
+          FilledButton.icon(
+            onPressed: () => widget.onModeSelected('aula'),
+            icon: const Icon(Icons.check_rounded),
+            label: const Text('Estou conectado'),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQrPage() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              color: Colors.amber.shade50,
+              borderRadius: BorderRadius.circular(32),
+            ),
+            child: Icon(Icons.qr_code_scanner_rounded, size: 64, color: Colors.amber.shade700),
+          ),
+          const SizedBox(height: 36),
+          Text(
+            'Encontre o Projetor',
+            style: TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+              color: Colors.grey.shade900,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Escaneie o QR code da tela idle ou digite o IP manualmente.',
+            style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 40),
+          FilledButton.icon(
+            onPressed: () => widget.onModeSelected('aula'),
+            icon: const Icon(Icons.camera_alt_rounded),
+            label: const Text('Escanear QR Code'),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+          ),
         ],
       ),
     );
