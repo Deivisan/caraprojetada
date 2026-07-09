@@ -5,8 +5,12 @@ from datetime import datetime
 import os
 import re
 
-# ldap3 obrigatório em produção
-from ldap3 import Server, Connection, ALL
+# ldap3 é opcional em dev; obrigatório em produção
+try:
+    from ldap3 import Server, Connection, ALL
+    ldap3_disponivel = True
+except ImportError:
+    ldap3_disponivel = False
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'chave_secreta_projecoes_ufrb_cetens')
@@ -48,6 +52,8 @@ def registrar_log(evento, detalhes=''):
         pass
 
 def autenticar_ad(username, password):
+    if not ldap3_disponivel:
+        return False, None, None
     try:
         user_principal = f'{username}@{AD_DOMAIN}'
         server = Server(AD_SERVER, get_info=ALL)
@@ -968,6 +974,98 @@ def api_force_disconnect():
     current_session['started_at'] = None
     current_session['user_fullname'] = None
     return jsonify({'success': True, 'message': 'Projetor liberado a forca'})
+
+
+# ============================================================
+# ENDPOINTS APP FLUTTER + ANDROID
+# ============================================================
+
+@app.route('/api/v1/devices', methods=['GET'])
+def api_list_devices():
+    boxes = []
+    for i in range(1, 11):
+        ip = f'172.17.7.{50 + i}'
+        boxes.append({
+            'id': f'box-{i}',
+            'ip': ip,
+            'name': f'Projetor Sala {i}' if i > 1 else 'Projetor Sala 1',
+            'status': 'online',
+            'resolution': '1360x768',
+            'available': not current_session['active']
+        })
+    return jsonify({'boxes': boxes, 'total': len(boxes)})
+
+@app.route('/api/v1/register', methods=['POST'])
+def api_register_device():
+    if not request.is_json:
+        return jsonify({'success': False, 'error': 'Content-Type application/json required'}), 415
+    d = request.get_json() or {}
+    device_ip   = d.get('device_ip', '').strip()
+    device_name = d.get('device_name', 'Celular').strip()
+    port        = d.get('port', '5900')
+    orientation = d.get('orientation', 'retrato')
+    device_type = d.get('device_type', 'android')
+    if not device_ip:
+        return jsonify({'success': False, 'error': 'device_ip obrigatorio'}), 400
+    registrar_log('DEVICE_REGISTER', f'ip={device_ip} nome={device_name} tipo={device_type} port={port} orien={orientation}')
+    box_info = {
+        'id': f'box-1',
+        'ip': '172.17.7.51',
+        'name': 'Projetor Sala 1',
+        'status': 'online',
+        'resolution': '1360x768',
+        'available': not current_session['active']
+    }
+    return jsonify({
+        'success': True,
+        'message': 'dispositivo registrado',
+        'box': box_info,
+        'preview_url': f'http://172.17.7.51:80/api/v1/status'
+    })
+
+@app.route('/api/v1/discover', methods=['GET'])
+def api_discover():
+    return jsonify({
+        'service': '_vnc._tcp.local',
+        'boxes': [
+            {'id': 'box-1', 'ip': '172.17.7.51', 'name': 'Projetor Sala 1', 'port': 80}
+        ]
+    })
+
+@app.route('/api/v1/connect-mobile', methods=['POST'])
+def api_connect_mobile():
+    global current_session
+    if current_session['active']:
+        return jsonify({'success': False, 'error': 'projetor ocupado', 'session': current_session}), 409
+    if not request.is_json:
+        return jsonify({'success': False, 'error': 'Content-Type application/json required'}), 415
+    d = request.get_json() or {}
+    device_ip   = d.get('device_ip', '').strip()
+    port        = d.get('port', '5900')
+    pin         = d.get('pin', '').strip()
+    orientation = d.get('orientation', 'retrato')
+    if not device_ip or not pin:
+        return jsonify({'success': False, 'error': 'device_ip e pin obrigatorios'}), 400
+    vnc_cmd = ['xtightvncviewer', device_ip, '-port', port, '-autopass', '-quality', '6', '-compresslevel', '9', '-fullscreen']
+    registrar_log('MOBILE_CONNECT', f'ip={device_ip} port={port} orien={orientation}')
+    current_session.update({
+        'active': True,
+        'username': 'mobile-user',
+        'user_ip': device_ip,
+        'display': ':0',
+        'os_type': 'Android (VNC)',
+        'started_at': datetime.now().strftime('%H:%M'),
+        'user_fullname': 'Usuário Mobile'
+    })
+    # o viewer roda em background para nao bloquear a resposta http
+    subprocess.Popen(vnc_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return jsonify({
+        'success': True,
+        'message': 'conectando ao projetor',
+        'box_ip': '172.17.7.51',
+        'session': current_session,
+        'hint': 'gire o celular para landscape para melhor legibilidade' if orientation == 'retrato' else ''
+    })
 
 if __name__ == '__main__':
     try:
