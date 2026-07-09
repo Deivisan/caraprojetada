@@ -2,6 +2,7 @@ package com.caraprojetada
 
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.util.Log
 import androidx.annotation.NonNull
 import androidx.core.content.ContextCompat
@@ -9,10 +10,48 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import net.christianbeier.droidvnc_ng.MainService
+import java.io.File
+import java.io.FileWriter
+import java.io.PrintWriter
+import java.io.StringWriter
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class MainActivity : FlutterActivity() {
     private val channel = "caraprojetada/vnc"
     private var vncRunning = false
+
+    override fun onCreate(savedInstanceState: android.os.Bundle?) {
+        super.onCreate(savedInstanceState)
+        installCrashHandler()
+    }
+
+    // Grava o stack trace de qualquer crash nao tratado em um arquivo legivel,
+    // para que possamos diagnosticar o crash ao transmitir sem depender de logcat.
+    private fun installCrashHandler() {
+        val default = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            try {
+                val dir = getExternalFilesDir(null) ?: filesDir
+                val ts = SimpleDateFormat("yyyy-MM-dd_HHmmss", Locale.US).format(Date())
+                val file = File(dir, "crash_$ts.log")
+                FileWriter(file).use { fw ->
+                    fw.write("=== CaraProjetada crash @ $ts ===\n")
+                    fw.write("thread=${thread.name}\n")
+                    fw.write("android=${Build.VERSION.RELEASE} (sdk ${Build.VERSION.SDK_INT})\n")
+                    fw.write("device=${Build.MANUFACTURER} ${Build.MODEL}\n\n")
+                    val sw = StringWriter()
+                    throwable.printStackTrace(PrintWriter(sw))
+                    fw.write(sw.toString())
+                }
+                Log.e("VncEngine", "crash gravado em ${file.absolutePath}")
+            } catch (e: Exception) {
+                Log.e("VncEngine", "falha ao gravar crash", e)
+            }
+            default?.uncaughtException(thread, throwable)
+        }
+    }
 
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
