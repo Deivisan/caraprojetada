@@ -9,39 +9,46 @@ class ApiService {
   final int port;
   static const int defaultPort = 80;
 
+  /// faixa fixa de ips da rede do cetens (172.17.7.50 a 172.17.7.60)
+  static const List<String> knownIps = [
+    '172.17.7.50', '172.17.7.51', '172.17.7.52', '172.17.7.53',
+    '172.17.7.54', '172.17.7.55', '172.17.7.56', '172.17.7.57',
+    '172.17.7.58', '172.17.7.59', '172.17.7.60',
+  ];
+
   ApiService({this.host = '', this.port = defaultPort});
 
   String get baseUrl => host.isEmpty ? '' : 'http://$host:$port';
   bool get isConfigured => host.isNotEmpty && port > 0;
 
-  /// descobre boxes na rede local escaneando subnets comuns
+  /// descobre boxes escaneando a faixa fixa 172.17.7.50-60
   Future<List<String>> discoverBoxes({
-    Duration timeout = const Duration(seconds: 3),
+    Duration timeout = const Duration(seconds: 2),
   }) async {
     final candidates = <String>[];
-    final subnets = await _guessLocalSubnets();
+    final futures = <Future<String?>>[];
 
-    for (final subnet in subnets) {
-      final futures = <Future<String?>>[];
-      for (int i = 1; i <= 20; i++) {
-        final ip = '$subnet.$i';
-        futures.add(_checkHost(ip, timeout));
-      }
-      final results = await Future.wait(futures, eagerError: false);
-      for (final ip in results) {
-        if (ip != null && !candidates.contains(ip)) {
-          candidates.add(ip);
-        }
-      }
+    // sempre escaneia a faixa conhecida primeiro
+    for (final ip in knownIps) {
+      futures.add(_checkHost(ip, timeout));
     }
 
-    // tenta mDNS também
+    // tambem tenta subnets detectadas
     try {
-      final mdnsHosts = await _discoverViaMdns();
-      for (final h in mdnsHosts) {
-        if (!candidates.contains(h)) candidates.add(h);
+      final subnets = await _guessLocalSubnets();
+      for (final subnet in subnets) {
+        for (int i = 1; i <= 20; i++) {
+          futures.add(_checkHost('$subnet.$i', timeout));
+        }
       }
     } catch (_) {}
+
+    final results = await Future.wait(futures, eagerError: false);
+    for (final ip in results) {
+      if (ip != null && !candidates.contains(ip)) {
+        candidates.add(ip);
+      }
+    }
 
     return candidates;
   }
@@ -79,15 +86,15 @@ class ApiService {
         )
         .timeout(const Duration(seconds: 5));
     if (resp.statusCode != 200 && resp.statusCode != 201) {
-      final err = _tryParseError(resp.body);
-      throw Exception(err);
+      throw Exception(_tryParseError(resp.body));
     }
     return json.decode(resp.body) as Map<String, dynamic>;
   }
 
+  /// conecta ao projetor — sem pin para android (box ignora)
   Future<Map<String, dynamic>> connectMobile({
     required String deviceIp,
-    required String pin,
+    String? pin,
     String orientation = 'retrato',
   }) async {
     if (!isConfigured) throw Exception('ip da box nao configurado');
@@ -98,17 +105,15 @@ class ApiService {
           body: json.encode({
             'device_ip': deviceIp,
             'port': '5900',
-            'pin': pin,
             'orientation': orientation,
           }),
         )
         .timeout(const Duration(seconds: 10));
     if (resp.statusCode == 409) {
-      throw Exception('projetor ocupado por outro usuario');
+      throw Exception('projetor ocupado');
     }
     if (resp.statusCode != 200) {
-      final err = _tryParseError(resp.body);
-      throw Exception(err);
+      throw Exception(_tryParseError(resp.body));
     }
     return json.decode(resp.body) as Map<String, dynamic>;
   }
@@ -122,16 +127,71 @@ class ApiService {
     return json.decode(resp.body) as Map<String, dynamic>;
   }
 
-  /// libera a sessao na box (força desconexao do viewer remoto)
   Future<void> forceDisconnect() async {
     if (!isConfigured) return;
     try {
       await http
           .post(Uri.parse('$baseUrl/api/v1/force-disconnect'))
           .timeout(const Duration(seconds: 3));
-    } catch (_) {
-      // falha silenciosa — o disconnect local já é o suficiente
-    }
+    } catch (_) {}
+  }
+
+  // === PROJEÇÃO DE ARQUIVOS (PDF) ===
+
+  /// envia um arquivo (pdf) para a box projetar
+  Future<Map<String, dynamic>> uploadFile(String filePath) async {
+    if (!isConfigured) throw Exception('ip da box nao configurado');
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/api/v1/upload'),
+    );
+    request.files.add(await http.MultipartFile.fromPath('file', filePath));
+    final streamed = await request.send().timeout(const Duration(seconds: 30));
+    final resp = await http.Response.fromStream(streamed);
+    if (resp.statusCode != 200) throw Exception(_tryParseError(resp.body));
+    return json.decode(resp.body) as Map<String, dynamic>;
+  }
+
+  /// inicia projeção do arquivo enviado
+  Future<void> projectStart({int page = 1}) async {
+    if (!isConfigured) return;
+    try {
+      await http
+          .post(Uri.parse('$baseUrl/api/v1/project-start'),
+              headers: {'Content-Type': 'application/json'},
+              body: json.encode({'page': page}))
+          .timeout(const Duration(seconds: 5));
+    } catch (_) {}
+  }
+
+  /// próxima página
+  Future<void> projectNext() async {
+    if (!isConfigured) return;
+    try {
+      await http
+          .post(Uri.parse('$baseUrl/api/v1/project-next'))
+          .timeout(const Duration(seconds: 3));
+    } catch (_) {}
+  }
+
+  /// página anterior
+  Future<void> projectPrev() async {
+    if (!isConfigured) return;
+    try {
+      await http
+          .post(Uri.parse('$baseUrl/api/v1/project-prev'))
+          .timeout(const Duration(seconds: 3));
+    } catch (_) {}
+  }
+
+  /// para a projeção
+  Future<void> projectStop() async {
+    if (!isConfigured) return;
+    try {
+      await http
+          .post(Uri.parse('$baseUrl/api/v1/project-stop'))
+          .timeout(const Duration(seconds: 3));
+    } catch (_) {}
   }
 
   // ---- helpers ----
@@ -145,17 +205,15 @@ class ApiService {
     }
   }
 
-  /// verifica se um host responde na porta 80 com /api/v1/status
-  /// retorna o ip se responder, null caso contrario
   Future<String?> _checkHost(String ip, Duration timeout) async {
     try {
       final client = HttpClient()
         ..connectionTimeout = timeout
         ..autoUncompress = false;
       try {
-        final request = await client.getUrl(
-          Uri.parse('http://$ip/api/v1/status'),
-        ).timeout(timeout);
+        final request = await client
+            .getUrl(Uri.parse('http://$ip/api/v1/status'))
+            .timeout(timeout);
         final response = await request.close().timeout(timeout);
         if (response.statusCode == 200) return ip;
       } finally {
@@ -166,7 +224,7 @@ class ApiService {
   }
 
   Future<List<String>> _guessLocalSubnets() async {
-    final result = <String>[];
+    final result = <String>['172.17.7']; // sempre inclui a faixa do cetens
     try {
       final interfaces = await NetworkInterface.list(
         includeLoopback: true,
@@ -190,21 +248,11 @@ class ApiService {
           }
         }
       }
-    } catch (_) {
-      result
-        ..add('192.168.1')
-        ..add('192.168.0')
-        ..add('10.0.0');
-    }
+    } catch (_) {}
     return result.toSet().toList();
-  }
-
-  Future<List<String>> _discoverViaMdns() async {
-    return <String>[];
   }
 }
 
-/// obtem o ip local do dispositivo (primeiro ipv4 nao loopback)
 Future<String> getLocalIpAddress() async {
   try {
     final interfaces = await NetworkInterface.list(

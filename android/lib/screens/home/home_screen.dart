@@ -7,6 +7,7 @@ import 'package:caraprojetada/services/vnc_service.dart';
 import 'package:caraprojetada/services/prefs_service.dart';
 import 'package:caraprojetada/screens/onboarding/onboarding_screen.dart';
 import 'package:caraprojetada/screens/settings/settings_screen.dart';
+import 'package:caraprojetada/screens/projection/projection_control_screen.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -34,6 +35,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _discovering = false;
   String? _error;
   bool _vncRunning = false;
+  ConnectionInfo? _connectedBox;
   late ApiService _api;
   final TextEditingController _hostController = TextEditingController();
   Timer? _statusTimer;
@@ -64,10 +66,19 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final status = await _api.getStatus();
       final vncActive = status['vnc_active'] == true;
-      if (mounted && vncActive != _vncRunning) {
-        setState(() => _vncRunning = vncActive);
+      final sessionUser = status['current_user'];
+      if (mounted) {
+        setState(() {
+          _vncRunning = vncActive;
+          if (!vncActive) _connectedBox = null;
+        });
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) setState(() {
+        _vncRunning = false;
+        _connectedBox = null;
+      });
+    }
   }
 
   void _onModeSelected(String mode) async {
@@ -154,13 +165,30 @@ class _HomeScreenState extends State<HomeScreen> {
       );
 
       if (mounted) {
-        setState(() => _vncRunning = true);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('transmitindo!'),
-            backgroundColor: const Color(0xFF059669),
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 2),
+        setState(() {
+          _vncRunning = true;
+          _connectedBox = box;
+        });
+        Navigator.of(context).push(
+          PageRouteBuilder(
+            pageBuilder: (_, __, ___) => ProjectionControlScreen(
+              boxIp: box.ip,
+              boxName: box.name,
+              onStop: () {
+                _api.forceDisconnect();
+                setState(() => _vncRunning = false);
+              },
+            ),
+            transitionsBuilder: (_, animation, __, child) =>
+                SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(1, 0),
+                end: Offset.zero,
+              ).animate(CurvedAnimation(
+                  parent: animation, curve: Curves.easeOutCubic)),
+              child: child,
+            ),
+            transitionDuration: const Duration(milliseconds: 350),
           ),
         );
       }
@@ -296,10 +324,32 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             TextButton(
-              onPressed: () async {
-                await VncService().stopVncServer();
-                await _api.forceDisconnect();
-                if (mounted) setState(() => _vncRunning = false);
+              onPressed: () {
+                if (_connectedBox != null) {
+                  Navigator.of(context).push(
+                    PageRouteBuilder(
+                      pageBuilder: (_, __, ___) => ProjectionControlScreen(
+                        boxIp: _connectedBox!.ip,
+                        boxName: _connectedBox!.name,
+                        onStop: () {
+                          _api.forceDisconnect();
+                          setState(() => _vncRunning = false);
+                        },
+                      ),
+                      transitionsBuilder: (_, animation, __, child) =>
+                          SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(1, 0),
+                          end: Offset.zero,
+                        ).animate(CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.easeOutCubic)),
+                        child: child,
+                      ),
+                      transitionDuration: const Duration(milliseconds: 350),
+                    ),
+                  );
+                }
               },
               style: TextButton.styleFrom(
                 backgroundColor: Colors.white.withValues(alpha: 0.2),
@@ -308,7 +358,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text('parar',
+              child: const Text('controles',
                   style: TextStyle(fontWeight: FontWeight.w600)),
             ),
           ],
