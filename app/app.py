@@ -985,13 +985,17 @@ def api_list_devices():
     boxes = []
     for i in range(1, 11):
         ip = f'172.17.7.{50 + i}'
+        online = subprocess.run(
+            ['ping', '-c', '1', '-W', '1', ip],
+            capture_output=True, timeout=2
+        ).returncode == 0
         boxes.append({
             'id': f'box-{i}',
             'ip': ip,
             'name': f'Projetor Sala {i}' if i > 1 else 'Projetor Sala 1',
-            'status': 'online',
+            'status': 'online' if online else 'offline',
             'resolution': '1360x768',
-            'available': not current_session['active']
+            'available': online and not current_session['active']
         })
     return jsonify({'boxes': boxes, 'total': len(boxes)})
 
@@ -1046,7 +1050,9 @@ def api_connect_mobile():
     orientation = d.get('orientation', 'retrato')
     if not device_ip or not pin:
         return jsonify({'success': False, 'error': 'device_ip e pin obrigatorios'}), 400
-    vnc_cmd = ['xtightvncviewer', device_ip, '-port', port, '-autopass', '-quality', '6', '-compresslevel', '9', '-fullscreen']
+    vnc_cmd = (f'echo "{pin}" | DISPLAY=:0 XAUTHORITY=/var/run/lightdm/root/:0 '
+               f'/usr/bin/xtightvncviewer -autopass -quality 6 -compresslevel 9 '
+               f'-fullscreen {device_ip}:0')
     registrar_log('MOBILE_CONNECT', f'ip={device_ip} port={port} orien={orientation}')
     current_session.update({
         'active': True,
@@ -1058,7 +1064,7 @@ def api_connect_mobile():
         'user_fullname': 'Usuário Mobile'
     })
     # o viewer roda em background para nao bloquear a resposta http
-    subprocess.Popen(vnc_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.Popen(vnc_cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return jsonify({
         'success': True,
         'message': 'conectando ao projetor',
