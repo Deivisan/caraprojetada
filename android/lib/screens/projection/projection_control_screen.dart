@@ -88,7 +88,7 @@ class _ProjectionControlScreenState extends State<ProjectionControlScreen> {
       }
       if (mounted) {
         setState(() {
-          if (action == 'next') _currentPage++;
+          if (action == 'next' && _currentPage < _totalPages) _currentPage++;
           if (action == 'prev' && _currentPage > 1) _currentPage--;
         });
       }

@@ -1428,6 +1428,8 @@ def api_project_start():
         return jsonify({'success': False, 'error': 'nenhum arquivo enviado'}), 400
     # mata projecao anterior
     _kill_projection()
+    # mata vnc viewer para o pdf aparecer na tela
+    subprocess.run(['pkill', '-9', 'xtightvncviewer'], capture_output=True)
     DISPLAY_VAR = ':0'
     XAUTH = '/home/carapreta/.Xauthority'
     env = os.environ.copy()
@@ -1470,7 +1472,13 @@ def api_project_prev():
 @app.route('/api/v1/project-stop', methods=['POST'])
 def api_project_stop():
     _kill_projection()
+    _restart_viewer()
     return jsonify({'success': True})
+
+def _restart_viewer():
+    """restart vnc viewer after pdf projection ends"""
+    if current_session.get('active') and current_session.get('user_ip'):
+        _start_viewer(current_session['user_ip'], current_session.get('pin', 'caraprojetada'))
 
 def _kill_projection():
     global PROJECTION_PID

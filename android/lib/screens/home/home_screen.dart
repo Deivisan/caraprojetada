@@ -223,6 +223,9 @@ class _HomeScreenState extends State<HomeScreen> {
       // pede nome do usuario se ainda nao tem
       final userFullname = await _ensureUserFullname();
 
+      // trava orientacao em landscape ANTES de tudo
+      await _lockOrientationLandscape();
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -236,6 +239,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
       // limpa sessão anterior pendente na box
       await _api.forceDisconnect();
+
+      // para servidor vnc anterior se ainda estiver rodando
+      await VncService().stopVncServer();
 
       final permOk = await VncService.requestPermissions();
       if (!permOk && mounted) {
@@ -258,9 +264,6 @@ class _HomeScreenState extends State<HomeScreen> {
         password: 'caraprojetada',
         port: '5900',
       );
-
-      // trava orientacao em landscape
-      await _lockOrientationLandscape();
 
       await _api.connectMobile(
         deviceIp: localIp,
