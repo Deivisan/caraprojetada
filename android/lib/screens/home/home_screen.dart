@@ -223,8 +223,9 @@ class _HomeScreenState extends State<HomeScreen> {
       // pede nome do usuario se ainda nao tem
       final userFullname = await _ensureUserFullname();
 
-      // trava orientacao em landscape ANTES de tudo
+      // trava orientacao em landscape e aguarda rotacionar
       await _lockOrientationLandscape();
+      await Future.delayed(const Duration(milliseconds: 1500));
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

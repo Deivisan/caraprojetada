@@ -1444,9 +1444,13 @@ def api_project_start():
             stderr=subprocess.DEVNULL
         )
         PROJECTION_PID = proc.pid
+        time.sleep(1)
+        # garante fullscreen (F5 no evince) e foco
+        subprocess.run(['xdotool', 'key', 'F5'], env=env, capture_output=True)
+        subprocess.run(['xdotool', 'key', 'F5'], env=env, capture_output=True)
+        time.sleep(0.2)
         # se não for pagina 1, navega
         if page > 1:
-            time.sleep(1.5)
             for _ in range(page - 1):
                 subprocess.run(['xdotool', 'key', 'Right'],
                              env=env, capture_output=True)

@@ -14,6 +14,7 @@ import java.io.File
 import java.io.FileWriter
 import java.io.PrintWriter
 import java.io.StringWriter
+import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -87,6 +88,25 @@ class MainActivity : FlutterActivity() {
     // O próprio MainService solicita as permissões de captura (MediaProjection)
     // e sobe o servidor VNC na porta informada.
     private fun startVncService(password: String, port: String, bindInterface: Boolean) {
+        // cria defaults.json antes de iniciar para forçar resolução máxima nativa
+        try {
+            val dir = getExternalFilesDir(null) ?: filesDir
+            val defaults = JSONObject()
+            defaults.put("port", port.toIntOrNull() ?: 5900)
+            defaults.put("password", password)
+            defaults.put("quality", 85)
+            defaults.put("max_size", 0)   // 0 = sem limite, usa resolução nativa
+            defaults.put("view_only", true)
+            defaults.put("bind_interface", if (bindInterface) "0.0.0.0" else "")
+            defaults.put("frame_interval", 0)
+            defaults.put("use_video_codec", false)
+            val f = File(dir, "defaults.json")
+            FileWriter(f).use { it.write(defaults.toString(2)) }
+            Log.i("VncEngine", "defaults.json criado em ${f.absolutePath}")
+        } catch (e: Exception) {
+            Log.e("VncEngine", "falha ao criar defaults.json", e)
+        }
+
         val intent = Intent(this, MainService::class.java)
         intent.action = "net.christianbeier.droidvnc_ng.ACTION_START"
         intent.putExtra("net.christianbeier.droidvnc_ng.EXTRA_PASSWORD", password)
