@@ -70,6 +70,7 @@ class ApiService {
     required String deviceName,
     int port = 5900,
     String orientation = 'retrato',
+    String? userFullname,
   }) async {
     if (!isConfigured) throw Exception('ip da box nao configurado');
     final resp = await http
@@ -82,6 +83,7 @@ class ApiService {
             'port': port.toString(),
             'orientation': orientation,
             'device_type': 'android',
+            if (userFullname != null) 'user_fullname': userFullname,
           }),
         )
         .timeout(const Duration(seconds: 5));
@@ -96,6 +98,7 @@ class ApiService {
     required String deviceIp,
     String? pin,
     String orientation = 'retrato',
+    String? userFullname,
   }) async {
     if (!isConfigured) throw Exception('ip da box nao configurado');
     final resp = await http
@@ -106,6 +109,7 @@ class ApiService {
             'device_ip': deviceIp,
             'port': '5900',
             'orientation': orientation,
+            if (userFullname != null) 'user_fullname': userFullname,
           }),
         )
         .timeout(const Duration(seconds: 10));
@@ -259,11 +263,34 @@ Future<String> getLocalIpAddress() async {
       includeLoopback: false,
       type: InternetAddressType.IPv4,
     );
+
+    String? wifiIp;
+    String? subnetIp;
+    String? fallbackIp;
+
     for (final iface in interfaces) {
       for (final addr in iface.addresses) {
-        if (!addr.address.startsWith('127.')) return addr.address;
+        final ip = addr.address;
+        if (ip.startsWith('127.')) continue;
+
+        // ignora interfaces de usb/rmnet (tethering, dados moveis)
+        final name = iface.name.toLowerCase();
+        if (name.contains('rndis') || name.contains('usb') ||
+            name.contains('rmnet') || name.contains('tun') ||
+            name.contains('gre') || name.contains('sit')) continue;
+
+        fallbackIp ??= ip;
+
+        // prioridade 1: wifi explicito
+        if (name.startsWith('wlan')) wifiIp = ip;
+
+        // prioridade 2: mesma sub-rede da box (172.17.x.x)
+        if (ip.startsWith('172.17.')) subnetIp = ip;
       }
     }
-  } catch (_) {}
-  return '0.0.0.0';
+
+    return wifiIp ?? subnetIp ?? fallbackIp ?? '0.0.0.0';
+  } catch (_) {
+    return '0.0.0.0';
+  }
 }

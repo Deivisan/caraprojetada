@@ -4,6 +4,7 @@ class UserPrefs {
   final int boxPort;
   final String? vncPassword;
   final bool onboarded;
+  final String? userFullname;
 
   const UserPrefs({
     this.selectedMode,
@@ -11,6 +12,7 @@ class UserPrefs {
     this.boxPort = 5900,
     this.vncPassword,
     this.onboarded = false,
+    this.userFullname,
   });
 
   UserPrefs copyWith({
@@ -19,6 +21,7 @@ class UserPrefs {
     int? boxPort,
     String? vncPassword,
     bool? onboarded,
+    String? userFullname,
   }) {
     return UserPrefs(
       selectedMode: selectedMode ?? this.selectedMode,
@@ -26,6 +29,7 @@ class UserPrefs {
       boxPort: boxPort ?? this.boxPort,
       vncPassword: vncPassword ?? this.vncPassword,
       onboarded: onboarded ?? this.onboarded,
+      userFullname: userFullname ?? this.userFullname,
     );
   }
 
@@ -35,6 +39,7 @@ class UserPrefs {
     'boxPort': boxPort,
     'vncPassword': vncPassword,
     'onboarded': onboarded,
+    'userFullname': userFullname,
   };
 
   factory UserPrefs.fromJson(Map<String, dynamic> json) => UserPrefs(
@@ -43,5 +48,6 @@ class UserPrefs {
     boxPort: json['boxPort'] ?? 5900,
     vncPassword: json['vncPassword'],
     onboarded: json['onboarded'] ?? false,
+    userFullname: json['userFullname'],
   );
 }

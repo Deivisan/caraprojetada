@@ -9,12 +9,14 @@ import 'package:google_fonts/google_fonts.dart';
 class ProjectionControlScreen extends StatefulWidget {
   final String boxIp;
   final String boxName;
+  final String? userFullname;
   final VoidCallback onStop;
 
   const ProjectionControlScreen({
     super.key,
     required this.boxIp,
     required this.boxName,
+    this.userFullname,
     required this.onStop,
   });
 
@@ -28,6 +30,7 @@ class _ProjectionControlScreenState extends State<ProjectionControlScreen> {
   String? _uploadStatus;
   int _currentPage = 1;
   int _totalPages = 0;
+  bool _projectionActive = false;
 
   Future<void> _pickAndUploadPdf() async {
     final result = await FilePicker.platform.pickFiles(
@@ -79,7 +82,10 @@ class _ProjectionControlScreenState extends State<ProjectionControlScreen> {
 
     try {
       final uri = Uri.parse('http://${widget.boxIp}$endpoint');
-      await http.post(uri);
+      final resp = await http.post(uri);
+      if (mounted && action == 'start' && resp.statusCode == 200) {
+        setState(() => _projectionActive = true);
+      }
       if (mounted) {
         setState(() {
           if (action == 'next') _currentPage++;
@@ -92,6 +98,7 @@ class _ProjectionControlScreenState extends State<ProjectionControlScreen> {
   Future<void> _stopProjection() async {
     try {
       await http.post(Uri.parse('http://${widget.boxIp}/api/v1/project-stop'));
+      if (mounted) setState(() => _projectionActive = false);
     } catch (_) {}
   }
 
@@ -109,8 +116,12 @@ class _ProjectionControlScreenState extends State<ProjectionControlScreen> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text('controle — ${widget.boxName}',
-            style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+        title: Text(
+          widget.userFullname != null
+              ? '${widget.userFullname} — ${widget.boxName}'
+              : 'controle — ${widget.boxName}',
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16),
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
@@ -183,7 +194,9 @@ class _ProjectionControlScreenState extends State<ProjectionControlScreen> {
       children: [
         _infoCard(
           icon: Icons.monitor_heart,
-          title: 'projetando tela',
+          title: widget.userFullname != null
+              ? '${widget.userFullname} — transmitindo'
+              : 'projetando tela',
           subtitle: 'sua tela está sendo transmitida para o projetor',
           color: Colors.greenAccent,
         ),
@@ -223,77 +236,97 @@ class _ProjectionControlScreenState extends State<ProjectionControlScreen> {
         ),
         if (_totalPages > 0) ...[
           const SizedBox(height: 16),
-          // navigation card
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.white.withValues(alpha: 0.08),
-                  Colors.white.withValues(alpha: 0.03),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-            ),
-            child: Column(
-              children: [
-                Text(
-                  'navegação',
-                  style: GoogleFonts.poppins(
-                    color: Colors.white70,
-                    fontSize: 13,
-                    letterSpacing: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _navButton(
-                      Icons.skip_previous,
-                      'anterior',
-                      onTap: () => _projectAction('prev'),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '$_currentPage / $_totalPages',
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    _navButton(
-                      Icons.skip_next,
-                      'próximo',
-                      onTap: () => _projectAction('next'),
-                    ),
+
+          // botoes de acao: iniciar / parar projecao
+          if (!_projectionActive)
+            _actionCard(
+              icon: Icons.play_circle_outline,
+              title: 'iniciar projeção',
+              subtitle: 'exibe o pdf no projetor ($_totalPages páginas)',
+              color: Colors.greenAccent,
+              onTap: () => _projectAction('start'),
+            )
+          else ...[
+            // navigation card (so aparece com projecao ativa)
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.white.withValues(alpha: 0.08),
+                    Colors.white.withValues(alpha: 0.03),
                   ],
                 ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: TextButton.icon(
-                    onPressed: () {
-                      _projectAction('start');
-                      _stopProjection();
-                    },
-                    icon: const Icon(Icons.stop, color: Colors.redAccent),
-                    label: Text('parar projeção',
-                        style: GoogleFonts.poppins(color: Colors.redAccent)),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    'navegação',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white70,
+                      fontSize: 13,
+                      letterSpacing: 1.5,
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _navButton(
+                        Icons.skip_previous,
+                        'anterior',
+                        onTap: () => _projectAction('prev'),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '$_currentPage / $_totalPages',
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      _navButton(
+                        Icons.skip_next,
+                        'próximo',
+                        onTap: () => _projectAction('next'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.2),
+            const SizedBox(height: 12),
+            _actionCard(
+              icon: Icons.stop_circle_outlined,
+              title: 'parar projeção',
+              subtitle: 'interrompe a exibição do pdf',
+              color: Colors.redAccent,
+              onTap: _stopProjection,
             ),
-          ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.2),
+          ],
+          const SizedBox(height: 12),
+
+          // voltar a espelhar tela (para pdf e volta pra tab screen)
+          _actionCard(
+            icon: Icons.monitor_heart,
+            title: 'voltar a espelhar tela',
+            subtitle: 'para o pdf e volta a transmitir a tela do celular',
+            color: Colors.blueAccent,
+            onTap: () async {
+              await _stopProjection();
+              if (mounted) setState(() => _selectedTab = 0);
+            },
+          ),
         ],
         const SizedBox(height: 32),
         // stop all

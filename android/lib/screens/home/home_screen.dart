@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:caraprojetada/models/user_prefs.dart';
 import 'package:caraprojetada/models/connection_info.dart';
 import 'package:caraprojetada/services/api_service.dart';
@@ -154,12 +155,74 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  /// pergunta o nome do usuario antes de conectar (se ainda nao foi salvo)
+  Future<String?> _ensureUserFullname() async {
+    if (widget.prefs.userFullname != null &&
+        widget.prefs.userFullname!.trim().isNotEmpty) {
+      return widget.prefs.userFullname;
+    }
+    final nameController = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1B4B),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('quem está transmitindo?',
+            style: TextStyle(color: Colors.white, fontSize: 18)),
+        content: TextField(
+          controller: nameController,
+          autofocus: true,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            hintText: 'seu nome',
+            hintStyle: const TextStyle(color: Colors.white38),
+            filled: true,
+            fillColor: Colors.white.withValues(alpha: 0.08),
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, ''),
+            child: const Text('pular', style: TextStyle(color: Colors.white54)),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, nameController.text.trim()),
+            child: const Text('confirmar'),
+          ),
+        ],
+      ),
+    );
+    if (name != null && name.isNotEmpty) {
+      final prefs = widget.prefs.copyWith(userFullname: name);
+      await widget.prefsService.save(prefs);
+    }
+    return (name != null && name.isNotEmpty) ? name : null;
+  }
+
+  Future<void> _lockOrientationLandscape() {
+    return SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+  }
+
+  Future<void> _restoreOrientation() {
+    return SystemChrome.setPreferredOrientations([]);
+  }
+
   Future<void> _connectBox(ConnectionInfo box) async {
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
+      // pede nome do usuario se ainda nao tem
+      final userFullname = await _ensureUserFullname();
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -186,8 +249,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
       await _api.registerDevice(
         deviceIp: localIp,
-        deviceName: 'Android ${_selectedMode ?? "usuario"}',
-        orientation: 'retrato',
+        deviceName: userFullname ?? 'Android ${_selectedMode ?? "usuario"}',
+        orientation: 'paisagem',
+        userFullname: userFullname,
       );
 
       await VncService().startVncServer(
@@ -195,10 +259,14 @@ class _HomeScreenState extends State<HomeScreen> {
         port: '5900',
       );
 
+      // trava orientacao em landscape
+      await _lockOrientationLandscape();
+
       await _api.connectMobile(
         deviceIp: localIp,
         pin: 'caraprojetada',
-        orientation: 'retrato',
+        orientation: 'paisagem',
+        userFullname: userFullname,
       );
 
       if (mounted) {
@@ -221,8 +289,10 @@ class _HomeScreenState extends State<HomeScreen> {
             pageBuilder: (_, __, ___) => ProjectionControlScreen(
               boxIp: box.ip,
               boxName: box.name,
+              userFullname: userFullname,
               onStop: () {
                 _api.forceDisconnect();
+                _restoreOrientation();
                 setState(() => _vncRunning = false);
               },
             ),
@@ -240,6 +310,8 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       }
     } catch (e) {
+      // restaura orientacao em caso de erro
+      _restoreOrientation();
       if (mounted) {
         setState(() => _error = e.toString());
         ScaffoldMessenger.of(context).showSnackBar(
