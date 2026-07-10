@@ -46,9 +46,21 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _api = widget.api;
     _selectedMode = widget.prefs.selectedMode;
+
+    // restaura ip salvo
+    if (widget.prefs.boxIp != null && widget.prefs.boxIp!.isNotEmpty) {
+      _hostController.text = widget.prefs.boxIp!;
+      if (!_api.isConfigured) {
+        _api = ApiService(
+          host: widget.prefs.boxIp!,
+          port: widget.prefs.boxPort,
+        );
+      }
+    }
+
     if (_api.isConfigured) _loadDevices();
 
-    // polling de status
+    // polling de status (corrigido: active_session)
     _statusTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       if (_api.isConfigured && mounted) _checkVncStatus();
     });
@@ -65,12 +77,11 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _checkVncStatus() async {
     try {
       final status = await _api.getStatus();
-      final vncActive = status['vnc_active'] == true;
-      final sessionUser = status['current_user'];
+      final active = status['active_session'] == true;
       if (mounted) {
         setState(() {
-          _vncRunning = vncActive;
-          if (!vncActive) _connectedBox = null;
+          _vncRunning = active;
+          if (!active) _connectedBox = null;
         });
       }
     } catch (_) {
@@ -119,7 +130,22 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         return;
       }
-      _api = ApiService(host: found.first, port: ApiService.defaultPort);
+      final discoveredIp = found.first;
+      _api = ApiService(host: discoveredIp, port: ApiService.defaultPort);
+      _hostController.text = discoveredIp;
+      // persiste ip descoberto
+      final prefs = widget.prefs.copyWith(boxIp: discoveredIp, boxPort: ApiService.defaultPort);
+      await widget.prefsService.save(prefs);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('box encontrada: $discoveredIp'),
+            backgroundColor: const Color(0xFF059669),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
       await _loadDevices();
     } catch (e) {
       if (mounted) setState(() => _error = 'descoberta falhou: ${e.toString()}');
@@ -134,6 +160,17 @@ class _HomeScreenState extends State<HomeScreen> {
       _error = null;
     });
     try {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('preparando conexão...'),
+            backgroundColor: const Color(0xFF4f46e5),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+
       // limpa sessão anterior pendente na box
       await _api.forceDisconnect();
 
@@ -165,6 +202,16 @@ class _HomeScreenState extends State<HomeScreen> {
       );
 
       if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('conectado! sua tela está no projetor'),
+            backgroundColor: const Color(0xFF059669),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            duration: const Duration(seconds: 3),
+          ),
+        );
         setState(() {
           _vncRunning = true;
           _connectedBox = box;
@@ -193,7 +240,17 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       }
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
+      if (mounted) {
+        setState(() => _error = e.toString());
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('erro: $e'),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -533,7 +590,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           )
                         : null,
                   ),
-                  onChanged: (v) {
+                  onChanged: (v) async {
                     final parts = v.trim().split(':');
                     final h = parts.first.trim();
                     final p = parts.length > 1 ? int.tryParse(parts[1]) : null;
@@ -541,6 +598,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       _api = ApiService(
                           host: h, port: p ?? ApiService.defaultPort);
                     });
+                    // persiste ip automaticamente
+                    if (h.isNotEmpty) {
+                      final prefs = widget.prefs.copyWith(
+                        boxIp: h,
+                        boxPort: p ?? ApiService.defaultPort,
+                      );
+                      await widget.prefsService.save(prefs);
+                    }
                   },
                 ),
               ),

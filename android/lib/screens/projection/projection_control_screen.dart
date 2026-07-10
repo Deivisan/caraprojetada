@@ -98,7 +98,7 @@ class _ProjectionControlScreenState extends State<ProjectionControlScreen> {
   Future<void> _stopAll() async {
     await _stopProjection();
     try {
-      await http.post(Uri.parse('http://${widget.boxIp}/api/disconnect'));
+      await http.post(Uri.parse('http://${widget.boxIp}/api/v1/force-disconnect'));
     } catch (_) {}
     widget.onStop();
     if (mounted) Navigator.of(context).pop();

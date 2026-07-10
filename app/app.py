@@ -1,4 +1,4 @@
-from flask import Flask, render_template_string, request, session, redirect, jsonify
+from flask import Flask, render_template_string, request, session, redirect, jsonify, send_file
 import subprocess
 import time
 import threading
@@ -6,6 +6,8 @@ from datetime import datetime
 import os
 from concurrent.futures import ThreadPoolExecutor
 import re
+import socket
+import struct
 
 # ldap3 é opcional em dev; obrigatório em produção
 try:
@@ -22,6 +24,13 @@ AD_DOMAIN = os.environ.get('AD_DOMAIN', 'intranet.ufrb.edu.br')
 AD_BASE_DN = os.environ.get('AD_BASE_DN', 'dc=intranet,dc=ufrb,dc=edu,dc=br')
 LOG_FILE = os.environ.get('LOG_FILE', '/home/carapreta/projetor-acessos.log')
 
+# modo dev para testes locais
+DEV_MODE = os.environ.get('CARAPROJETADA_ENV', 'prod') == 'dev'
+
+# caminho do binario vnc para download
+VNC_BINARY_PATH = os.environ.get('VNC_BINARY_PATH', '/home/carapreta/caraprojetada-vnc.exe')
+VNC_DOWNLOAD_URL = os.environ.get('VNC_DOWNLOAD_URL', '/download/vnc')
+
 current_session = {
     'active': False,
     'username': None,
@@ -30,7 +39,8 @@ current_session = {
     'display': None,
     'os_type': None,
     'started_at': None,
-    'user_fullname': None
+    'user_fullname': None,
+    'original_resolution': None
 }
 
 # processo do viewer VNC (mantido pelo watchdog)
@@ -57,7 +67,62 @@ def registrar_log(evento, detalhes=''):
     except:
         pass
 
+def probe_vnc_resolution(host, port=5900):
+    """Conecta no servidor VNC e descobre resolucao do framebuffer.
+    Retorna (width, height) ou (None, None) em caso de erro."""
+    sock = socket.socket()
+    sock.settimeout(4)
+    try:
+        sock.connect((host, port))
+        proto = sock.recv(12)
+        if not proto.startswith(b'RFB'):
+            return None, None
+        sock.send(proto)
+        sec_types = sock.recv(1)
+        if not sec_types:
+            return None, None
+        sec_count = sec_types[0]
+        sec_list = list(sock.recv(sec_count)) if sec_count > 0 else []
+        sec_chosen = 2
+        for sec in sec_list:
+            if sec == 16:
+                sec_chosen = 16
+                break
+            elif sec == 2:
+                sec_chosen = 2
+                break
+        if sec_chosen not in sec_list:
+            return None, None
+        sock.send(bytes([sec_chosen]))
+        if sec_chosen == 16:
+            sub = ord(sock.recv(1))
+            if sub > 0:
+                sock.recv(sub)
+            result = struct.unpack('>I', sock.recv(4))[0]
+            if result != 0:
+                return None, None
+        elif sec_chosen == 2:
+            result = struct.unpack('>I', sock.recv(4))[0]
+            if result != 0:
+                return None, None
+        sock.send(b'\x01')
+        si = sock.recv(4)
+        w = struct.unpack('>H', si[0:2])[0]
+        h = struct.unpack('>H', si[2:4])[0]
+        return w, h
+    except Exception as e:
+        registrar_log('RES_PROBE_ERRO', f'{host}:{port} {type(e).__name__}:{e}')
+        return None, None
+    finally:
+        sock.close()
+
 def autenticar_ad(username, password):
+    if DEV_MODE:
+        if username == 'admin' and password == 'admin':
+            return True, 'Administrador DEV'
+        if password == 'dev' or username == password:
+            return True, username.title() + ' (DEV)'
+        return False, None
     if not ldap3_disponivel:
         return False, None, None
     try:
@@ -100,9 +165,10 @@ LOGIN_HTML = """<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Projeções &mdash; UFRB &middot; CETENS</title>
+    <title>Sistema de Proje&ccedil;&otilde;es &mdash; UFRB &middot; CETENS</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; overflow: auto; }
         body {
             font-family: 'Segoe UI', 'Open Sans', system-ui, -apple-system, sans-serif;
             background: linear-gradient(135deg, #003366 0%, #005580 40%, #6A1B9A 100%);
@@ -110,152 +176,112 @@ LOGIN_HTML = """<!DOCTYPE html>
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            padding: 16px;
         }
-        .login-wrapper { max-width: 520px; width: 100%; }
-        .login-card {
+        .layout {
+            width: 100%;
+            max-width: 980px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 22px;
+            align-items: stretch;
+        }
+        .card {
             background: #fff;
             border-radius: 16px;
-            padding: 40px 36px;
+            padding: 28px 30px;
             box-shadow: 0 8px 40px rgba(0,0,0,0.25);
-            border-top: 5px solid #FFB300;
+            display: flex;
+            flex-direction: column;
         }
-        .brand {
-            text-align: center;
-            margin-bottom: 28px;
-        }
-        .brand img {
-            max-width: 240px;
-            height: auto;
-            margin-bottom: 14px;
-        }
+        .card.login { border-top: 5px solid #FFB300; }
+        .card.side  { border-top: 5px solid #008B9E; }
+        .brand { margin-bottom: 18px; text-align: center; }
+        .brand img { max-height: 44px; width: auto; margin-bottom: 10px; }
         .brand h1 {
-            font-size: 22px;
-            color: #003366;
-            font-weight: 700;
-            letter-spacing: -0.3px;
+            font-size: 19px; color: #003366; font-weight: 700; letter-spacing: -0.3px;
         }
-        .brand .sub {
-            font-size: 13px;
-            color: #666;
-            margin-top: 2px;
-        }
-        .brand .sub strong {
-            color: #008B9E;
-        }
+        .brand .sub { font-size: 12px; color: #666; margin-top: 2px; }
+        .brand .sub strong { color: #008B9E; }
         .brand .divider {
-            width: 60px;
-            height: 3px;
+            width: 56px; height: 3px; margin: 12px auto 0; border-radius: 3px;
             background: linear-gradient(90deg, #003366, #008B9E, #6A1B9A, #FFB300);
-            margin: 14px auto 0;
-            border-radius: 3px;
         }
         .info-box {
-            background: #f0f4f8;
-            border: 1px solid #d0dce8;
-            border-radius: 10px;
-            padding: 16px 18px;
-            margin-bottom: 20px;
-            font-size: 13.5px;
-            color: #2c3e50;
-            line-height: 1.7;
+            background: #f0f4f8; border: 1px solid #d0dce8; border-radius: 10px;
+            padding: 14px 16px; font-size: 13px; color: #2c3e50; line-height: 1.6; margin-bottom: 18px;
         }
         .info-box strong { color: #003366; }
-        .info-box .highlight {
-            display: inline-block;
-            background: #FFB300;
-            color: #003366;
-            font-weight: 700;
-            padding: 0 6px;
-            border-radius: 3px;
+        .info-box .hl {
+            display: inline-block; background: #FFB300; color: #003366;
+            font-weight: 700; padding: 0 6px; border-radius: 3px;
         }
-        .form-group {
-            margin-bottom: 18px;
-        }
+        .form-group { margin-bottom: 14px; }
         .form-group label {
-            display: block;
-            font-size: 13px;
-            font-weight: 600;
-            color: #444;
-            margin-bottom: 6px;
+            display: block; font-size: 12.5px; font-weight: 600; color: #444; margin-bottom: 5px;
         }
         .form-group input {
-            width: 100%;
-            padding: 13px 14px;
-            border: 1.5px solid #d0d5dd;
-            border-radius: 8px;
-            font-size: 15px;
-            transition: all 0.2s;
-            outline: none;
-            background: #fafafa;
+            width: 100%; padding: 12px 14px; border: 1.5px solid #d0d5dd; border-radius: 8px;
+            font-size: 15px; outline: none; background: #fafafa; transition: all 0.2s;
         }
         .form-group input:focus {
-            border-color: #003366;
-            background: #fff;
-            box-shadow: 0 0 0 3px rgba(0,51,102,0.10);
+            border-color: #003366; background: #fff; box-shadow: 0 0 0 3px rgba(0,51,102,0.10);
         }
         .btn-login {
-            width: 100%;
-            padding: 14px;
-            background: linear-gradient(135deg, #003366, #005580);
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            margin-top: 4px;
+            width: 100%; padding: 13px; margin-top: 4px;
+            background: linear-gradient(135deg, #003366, #005580); color: #fff;
+            border: none; border-radius: 8px; font-size: 15px; font-weight: 600;
+            cursor: pointer; transition: all 0.2s;
         }
-        .btn-login:hover {
-            background: linear-gradient(135deg, #004480, #006699);
-            box-shadow: 0 4px 15px rgba(0,51,102,0.3);
-        }
-        .btn-login:active {
-            transform: scale(0.98);
-        }
+        .btn-login:hover { background: linear-gradient(135deg, #004480, #006699); box-shadow: 0 4px 15px rgba(0,51,102,0.3); }
+        .btn-login:active { transform: scale(0.98); }
         .error-msg {
-            background: #fef2f2;
-            color: #991b1b;
-            padding: 12px 16px;
-            border-radius: 8px;
-            font-size: 14px;
-            margin-bottom: 18px;
-            border: 1px solid #fecaca;
+            background: #fef2f2; color: #991b1b; padding: 10px 14px; border-radius: 8px;
+            font-size: 13px; margin-bottom: 14px; border: 1px solid #fecaca;
         }
-        .footer {
-            text-align: center;
-            margin-top: 24px;
-            font-size: 11.5px;
-            color: #888;
-            line-height: 1.7;
+        .card-side h2 {
+            font-size: 15px; color: #005580; font-weight: 700; margin-bottom: 6px;
+            display: flex; align-items: center; gap: 7px;
         }
-        .footer strong { color: #003366; }
-        @media (max-width: 500px) {
-            .login-card { padding: 24px 18px; }
+        .side-desc { font-size: 12.5px; color: #2c3e50; line-height: 1.55; margin-bottom: 14px; }
+        .btn-download {
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            width: 100%; padding: 12px; text-decoration: none; color: #fff;
+            background: linear-gradient(135deg, #008B9E, #005580); border: none;
+            border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.15s;
+        }
+        .btn-download:hover { background: linear-gradient(135deg, #00a3b8, #006699); box-shadow: 0 4px 15px rgba(0,139,158,0.3); }
+        .side-warn {
+            margin-top: 10px; font-size: 10.5px; color: #8a5a00; line-height: 1.5;
+            background: #fff7e6; border: 1px solid #ffe0a3; border-radius: 8px; padding: 8px 10px;
+        }
+        .side-steps { margin-top: 14px; font-size: 12px; color: #2c3e50; line-height: 1.6; }
+        .side-steps ol { padding-left: 18px; margin: 0; }
+        .side-steps li { margin-bottom: 4px; }
+        .side-steps strong { color: #003366; }
+        .side-foot {
+            margin-top: auto; padding-top: 14px; font-size: 11px; color: #888; line-height: 1.5;
+            display: flex; align-items: center; justify-content: space-between; gap: 8px;
+        }
+        .side-foot a { color: #008B9E; text-decoration: none; }
+        @media (max-width: 720px) {
+            html, body { overflow: auto; }
+            .layout { grid-template-columns: 1fr; max-width: 440px; }
         }
     </style>
 </head>
 <body>
-    <div class="login-wrapper">
-        <div class="login-card">
+    <div class="layout">
+        <div class="card login">
             <div class="brand">
-                <div style="display:flex;justify-content:center;align-items:center;margin-bottom:16px;">
-                    <img src="/static/UFRB-20_assinatura_principal_preto.png"
-                         alt="UFRB"
-                         style="max-height:52px;width:auto;">
-                </div>
+                <img src="/static/UFRB-20_assinatura_principal_preto.png" alt="UFRB">
                 <h1>Sistema de Proje&ccedil;&otilde;es</h1>
                 <div class="sub"><strong>CETENS</strong> &middot; UFRB &middot; Feira de Santana</div>
                 <div class="divider"></div>
             </div>
             <div class="info-box">
-                <strong>&#128161; Para que serve este sistema?</strong><br>
-                Este sistema permite que voc&ecirc; <strong>espelhe a tela do seu computador</strong>
-                no projetor multim&iacute;dia da sala, utilizando suas credenciais institucionais.
-                Funciona em computadores da UFRB com Windows ou Linux.<br><br>
-                <strong>&#128272; Acesso:</strong> informe seu <span class="highlight">SIAPE</span>
-                (nome de usu&aacute;rio da rede UFRB) e sua senha institucional (AD).
+                Espelhe a tela do seu computador no projetor da sala usando suas
+                credenciais institucionais. Funciona em Windows ou Linux da UFRB.
             </div>
             {% if error %}
             <div class="error-msg">&#9888; {{ error }}</div>
@@ -271,12 +297,33 @@ LOGIN_HTML = """<!DOCTYPE html>
                     <input type="password" name="password" placeholder="Sua senha da rede UFRB"
                            required autocomplete="off">
                 </div>
-                <button type="submit" class="btn-login">Acessar o Sistema de Proje&ccedil;&otilde;es</button>
+                <button type="submit" class="btn-login">Acessar</button>
             </form>
-            <div class="footer">
-                <strong>Universidade Federal do Rec&ocirc;ncavo da Bahia</strong><br>
-                Centro de Ci&ecirc;ncia e Tecnologia em Energia e Sustentabilidade &bull; CETENS<br>
-                Sistema de Proje&ccedil;&otilde;es
+        </div>
+        <div class="card card-side">
+            <h2>&#128229; Cliente de proje&ccedil;&atilde;o (Windows)</h2>
+            <div class="side-desc">
+                Baixe o app que espelha sua tela no projetor. Ao abrir, ele j&aacute; mostra
+                um <strong>PIN</strong> na tela &mdash; use esse n&uacute;mero no login.
+                N&atilde;o &eacute; preciso configurar nada.
+            </div>
+            <a class="btn-download" href="{{ vnc_download_url }}" download>
+                &#11015; Baixar cliente (.exe)
+            </a>
+            <div class="side-warn">
+                &#9888; Software de terceiros (TightVNC), pode ser sinalizado pelo navegador.
+                &Eacute; <strong>autenticado e distribu&iacute;do pela UFRB/CETENS</strong>.
+            </div>
+            <div class="side-steps">
+                <ol>
+                    <li>Baixe e execute o <strong>caraprojetada-vnc.exe</strong>.</li>
+                    <li>Anote o <strong>PIN</strong> que aparece na tela do app.</li>
+                    <li>Fa&ccedil;a login aqui e clique em <strong>Conectar</strong>.</li>
+                    <li>Informe o <strong>PIN</strong> mostrado pelo app.</li>
+                </ol>
+            </div>
+            <div class="side-foot">
+                <span>D&uacute;vidas? <a href="/ajuda">Veja o tutorial &rarr;</a></span>
             </div>
         </div>
     </div>
@@ -768,6 +815,120 @@ document.addEventListener('DOMContentLoaded', function(){
 </body>
 </html>"""
 
+HELP_HTML = """<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Como usar &mdash; Sistema de Proje&ccedil;&otilde;es UFRB/CETENS</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; overflow: hidden; }
+        body {
+            font-family: 'Segoe UI', 'Open Sans', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #003366 0%, #005580 40%, #6A1B9A 100%);
+            height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px;
+        }
+        .wrap { width: 100%; max-width: 760px; max-height: 94vh; overflow-y: auto; }
+        .card {
+            background: #fff; border-radius: 16px; padding: 28px 32px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.25); border-top: 5px solid #008B9E;
+        }
+        .brand { margin-bottom: 16px; }
+        .brand img { max-height: 40px; width: auto; margin-bottom: 8px; }
+        .brand h1 { font-size: 19px; color: #003366; font-weight: 700; }
+        .brand .sub { font-size: 12px; color: #666; }
+        .brand .sub strong { color: #008B9E; }
+        h2 { font-size: 15px; color: #005580; margin: 18px 0 8px; }
+        p, li { font-size: 13px; color: #2c3e50; line-height: 1.6; }
+        ol, ul { padding-left: 20px; }
+        li { margin-bottom: 5px; }
+        .step {
+            display: flex; gap: 12px; align-items: flex-start; margin-bottom: 12px;
+            background: #f0f4f8; border: 1px solid #d0dce8; border-radius: 10px; padding: 12px 14px;
+        }
+        .step .num {
+            flex: 0 0 26px; height: 26px; border-radius: 50%; background: #003366; color: #fff;
+            display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;
+        }
+        .step .txt { font-size: 13px; color: #2c3e50; line-height: 1.55; }
+        .step .txt strong { color: #003366; }
+        .warn {
+            font-size: 11.5px; color: #8a5a00; background: #fff7e6; border: 1px solid #ffe0a3;
+            border-radius: 8px; padding: 10px 12px; margin: 14px 0; line-height: 1.55;
+        }
+        .btn-back {
+            display: inline-block; margin-top: 16px; padding: 11px 22px; text-decoration: none;
+            background: linear-gradient(135deg, #003366, #005580); color: #fff; border-radius: 8px;
+            font-size: 14px; font-weight: 600;
+        }
+        .btn-back:hover { background: linear-gradient(135deg, #004480, #006699); }
+        .btn-download-big {
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            width: 100%; padding: 15px; margin: 4px 0 4px; text-decoration: none; color: #fff;
+            background: linear-gradient(135deg, #008B9E, #005580); border: none;
+            border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.15s;
+        }
+        .btn-download-big:hover { background: linear-gradient(135deg, #00a3b8, #006699); box-shadow: 0 4px 18px rgba(0,139,158,0.35); }
+        .dl-note { font-size: 11.5px; color: #008B9E; text-align: center; margin-bottom: 6px; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="card">
+            <div class="brand">
+                <img src="/static/UFRB-20_assinatura_principal_preto.png" alt="UFRB">
+                <h1>Como usar o Sistema de Proje&ccedil;&otilde;es</h1>
+                <div class="sub"><strong>CETENS</strong> &middot; UFRB &middot; Feira de Santana</div>
+            </div>
+            <p>O <strong>Sistema de Proje&ccedil;&otilde;es</strong> espelha a tela do seu
+            computador no projetor, usando suas credenciais institucionais (AD/UFRB).</p>
+
+            <a class="btn-download-big" href="{{ vnc_download_url }}" download>
+                &#11015; Baixar cliente de proje&ccedil;&atilde;o (.exe)
+            </a>
+            <p class="dl-note">Arquivo port&aacute;til &mdash; n&atilde;o precisa instalar.</p>
+
+            <h2>1. Abra o cliente no seu computador (Windows)</h2>
+            <div class="step">
+                <div class="num">1</div>
+                <div class="txt">Execute o <strong>caraprojetada-vnc.exe</strong>.</div>
+            </div>
+            <div class="step">
+                <div class="num">2</div>
+                <div class="txt">O app j&aacute; mostra um <strong>PIN</strong> na tela.</div>
+            </div>
+            <div class="step">
+                <div class="num">3</div>
+                <div class="txt">Mantenha o programa aberto durante a proje&ccedil;&atilde;o.</div>
+            </div>
+
+            <h2>2. Conecte no projetor</h2>
+            <div class="step">
+                <div class="num">4</div>
+                <div class="txt">Fa&ccedil;a login com seu <strong>SIAPE</strong> e senha AD.</div>
+            </div>
+            <div class="step">
+                <div class="num">5</div>
+                <div class="txt">Clique em <strong>Conectar</strong> e informe o <strong>PIN</strong>.</div>
+            </div>
+            <div class="step">
+                <div class="num">6</div>
+                <div class="txt">Ao terminar, clique em <strong>Desconectar</strong>.</div>
+            </div>
+
+            <div class="warn">
+                &#9888; O <strong>caraprojetada-vnc.exe</strong> &eacute; um software de terceiros
+                (TightVNC) e pode ser sinalizado pelo navegador. Ele &eacute;
+                <strong>autenticado e distribu&iacute;do pela UFRB/CETENS</strong>.
+            </div>
+
+            <a class="btn-back" href="/">&larr; Voltar ao login</a>
+        </div>
+    </div>
+</body>
+</html>"""
+
 # ══════════════════════════════════════════════════════════════════
 # ROTAS
 # ══════════════════════════════════════════════════════════════════
@@ -775,7 +936,7 @@ document.addEventListener('DOMContentLoaded', function(){
 @app.route('/')
 def index():
     if 'username' not in session:
-        return render_template_string(LOGIN_HTML)
+        return render_template_string(LOGIN_HTML, vnc_download_url=VNC_DOWNLOAD_URL)
     disp, os_name = detect_os(request.headers.get('User-Agent', ''))
     fullname = session.get('user_fullname', session['username'])
     return render_template_string(CONTROL_HTML,
@@ -783,6 +944,7 @@ def index():
         username=session['username'],
         user_fullname=fullname,
         os_detect=os_name,
+        dev_mode=DEV_MODE,
         session_active=current_session['active'],
         session_user=current_session.get('username', ''),
         session_user_full=current_session.get('user_fullname', current_session.get('username', '')),
@@ -802,12 +964,16 @@ def projetor_idle():
         projector_ip = '127.0.0.1'
     return render_template_string(PROJECTOR_IDLE_HTML, projector_ip=projector_ip)
 
+@app.route('/ajuda')
+def ajuda():
+    return render_template_string(HELP_HTML, vnc_download_url=VNC_DOWNLOAD_URL)
+
 @app.route('/login', methods=['POST'])
 def login():
     username = request.form.get('username', '').strip().lower()
     password = request.form.get('password')
     if not username or not password:
-        return render_template_string(LOGIN_HTML, error='Informe seu SIAPE e senha institucional.')
+        return render_template_string(LOGIN_HTML, error='Informe seu SIAPE e senha institucional.', vnc_download_url=VNC_DOWNLOAD_URL)
     username = re.sub(r'@.*$', '', username)
     ok, nome_completo, email = autenticar_ad(username, password)
     if ok:
@@ -816,7 +982,8 @@ def login():
         session['user_email'] = email
         return redirect('/')
     return render_template_string(LOGIN_HTML,
-        error='SIAPE ou senha inv&aacute;lidos. Use suas credenciais institucionais (AD/UFRB).')
+        error='SIAPE ou senha inv&aacute;lidos. Use suas credenciais institucionais (AD/UFRB).',
+        vnc_download_url=VNC_DOWNLOAD_URL)
 
 @app.route('/logout', methods=['POST'])
 def logout():
@@ -830,6 +997,7 @@ def logout():
         current_session['os_type'] = None
         current_session['started_at'] = None
         current_session['user_fullname'] = None
+        current_session['original_resolution'] = None
     session.pop('username', None)
     session.pop('user_fullname', None)
     session.pop('user_email', None)
@@ -854,7 +1022,7 @@ def conectar():
                'para conectar sua tela.')
         return render_template_string(CONTROL_HTML,
             user_ip=notebook_ip, username=user, user_fullname=fullname,
-            os_detect=os_name,
+            os_detect=os_name, dev_mode=DEV_MODE,
             session_active=True,
             session_user=current_session['username'],
             session_user_full=current_session.get('user_fullname', current_session['username']),
@@ -886,7 +1054,7 @@ def conectar():
                        'servidor VNC est&aacute; ativo no seu computador.')
                 return render_template_string(CONTROL_HTML,
                     user_ip=notebook_ip, username=user, user_fullname=fullname,
-                    os_detect=os_name,
+                    os_detect=os_name, dev_mode=DEV_MODE,
                     session_active=current_session['active'],
                     session_user=current_session.get('username', ''),
                     session_user_full=current_session.get('user_fullname', current_session.get('username', '')),
@@ -898,6 +1066,38 @@ def conectar():
             time.sleep(0.1)
         # nao saiu do loop => viewer continua rodando => conexao estabelecida
         conectado = True
+        # ─── Ajuste de resolução: probe VNC + xrandr ───
+        try:
+            xrandr_out = subprocess.run(
+                ['xrandr', '--current'],
+                capture_output=True, text=True, timeout=5
+            ).stdout
+            modos_suportados = set()
+            for line in xrandr_out.splitlines():
+                m_mode = re.search(r'^\s+(\d+x\d+)', line)
+                if m_mode:
+                    modos_suportados.add(m_mode.group(1))
+                if 'HDMI-1' in line and '*' in line:
+                    m_cur = re.search(r'(\d+)x(\d+)', line)
+                    if m_cur:
+                        orig_res = f'{m_cur.group(1)}x{m_cur.group(2)}'
+                        current_session['original_resolution'] = orig_res
+            vnc_w, vnc_h = probe_vnc_resolution(notebook_ip, 5900)
+            if vnc_w and vnc_h:
+                nova_res = f'{vnc_w}x{vnc_h}'
+                registrar_log('RES_PROBE', f'notebook={nova_res} display={orig_res}')
+                if nova_res != orig_res and nova_res in modos_suportados:
+                    subprocess.run(
+                        ['xrandr', '--output', 'HDMI-1', '--mode', nova_res],
+                        timeout=5
+                    )
+                elif nova_res not in modos_suportados:
+                    registrar_log('RES_PROBE', f'resolucao {nova_res} nao suportada')
+            else:
+                registrar_log('RES_PROBE', 'sem resposta VNC, mantem resolucao')
+        except Exception as res_err:
+            registrar_log('RES_ERRO', str(res_err))
+        # ─── fim do ajuste de resolução ───
         current_session['active'] = True
         current_session['username'] = user
         current_session['user_fullname'] = fullname
@@ -912,7 +1112,7 @@ def conectar():
         msg = f'<strong>Erro ao conectar:</strong> {str(e)}'
     return render_template_string(CONTROL_HTML,
         user_ip=notebook_ip, username=user, user_fullname=fullname,
-        os_detect=os_name,
+        os_detect=os_name, dev_mode=DEV_MODE,
         session_active=current_session['active'],
         session_user=current_session.get('username', ''),
         session_user_full=current_session.get('user_fullname', ''),
@@ -929,6 +1129,18 @@ def desconectar():
     user = session['username']
     fullname = session.get('user_fullname', user)
     subprocess.run(['pkill', '-9', 'xtightvncviewer'])
+    # ─── Restaura resolução original do display ───
+    orig_res = current_session.get('original_resolution')
+    if orig_res:
+        try:
+            subprocess.run(
+                ['xrandr', '--output', 'HDMI-1', '--mode', orig_res],
+                timeout=5
+            )
+            registrar_log('RES_RESTORE', f'restaurado {orig_res}')
+        except Exception as res_err:
+            registrar_log('RES_ERRO', f'falha restore {orig_res}: {res_err}')
+    # ─── fim restauração ───
     registrar_log('DESCONECTOU', f'SIAPE={user} nome="{fullname}"')
     current_session['active'] = False
     current_session['username'] = None
@@ -937,14 +1149,36 @@ def desconectar():
     current_session['os_type'] = None
     current_session['started_at'] = None
     current_session['user_fullname'] = None
+    current_session['original_resolution'] = None
     disp, os_name = detect_os(request.headers.get('User-Agent', ''))
     return render_template_string(CONTROL_HTML,
         user_ip=request.remote_addr, username=user, user_fullname=fullname,
-        os_detect=os_name,
+        os_detect=os_name, dev_mode=DEV_MODE,
         session_active=False,
         session_user='', session_user_full='',
         session_start='', session_display='', session_os='', session_ip='',
         msg='<strong>Projetor liberado.</strong> Voc&ecirc; pode fechar a p&aacute;gina.')
+
+@app.route('/download/vnc')
+def download_vnc():
+    """Serve o cliente VNC direto da box."""
+    import os.path as _osp
+    if _osp.exists(VNC_BINARY_PATH):
+        try:
+            return send_file(
+                VNC_BINARY_PATH,
+                as_attachment=True,
+                download_name='caraprojetada-vnc.exe',
+                mimetype='application/octet-stream'
+            )
+        except TypeError:
+            return send_file(
+                VNC_BINARY_PATH,
+                as_attachment=True,
+                attachment_filename='caraprojetada-vnc.exe',
+                mimetype='application/octet-stream'
+            )
+    return 'Cliente VNC indisponível nesta box.', 404
 
 # ══════════════════════════════════════════════════════════════════
 # API
