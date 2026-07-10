@@ -1327,12 +1327,16 @@ def _start_viewer(device_ip, pin):
         return None
 
 
+# flag global: True durante projecao de PDF, watchdog nao deve restartar viewer
+PROJECTION_ACTIVE = False
+
 def _viewer_watchdog():
-    """Mantem o viewer vivo enquanto a sessao estiver ativa. Roda em thread."""
-    global viewer_proc
+    """Mantem o viewer vivo enquanto a sessao estiver ativa. Roda em thread.
+    NAO restartar o viewer durante PROJECTION_ACTIVE (senao o pdf nunca aparece)."""
+    global viewer_proc, PROJECTION_ACTIVE
     while True:
         try:
-            if current_session.get('active'):
+            if current_session.get('active') and not PROJECTION_ACTIVE:
                 alive = viewer_proc is not None and viewer_proc.poll() is None
                 if not alive:
                     ip = current_session.get('user_ip')
@@ -1420,7 +1424,7 @@ def api_upload_file():
 
 @app.route('/api/v1/project-start', methods=['POST'])
 def api_project_start():
-    global PROJECTION_PID
+    global PROJECTION_PID, PROJECTION_ACTIVE
     d = request.get_json() or {}
     page = d.get('page', 1)
     fpath = os.path.join(UPLOAD_DIR, 'projecao.pdf')
@@ -1430,6 +1434,7 @@ def api_project_start():
     _kill_projection()
     # mata vnc viewer para o pdf aparecer na tela
     subprocess.run(['pkill', '-9', 'xtightvncviewer'], capture_output=True)
+    PROJECTION_ACTIVE = True
     DISPLAY_VAR = ':0'
     XAUTH = '/home/carapreta/.Xauthority'
     env = os.environ.copy()
@@ -1458,6 +1463,7 @@ def api_project_start():
         registrar_log('PROJECT_START', f'pagina={page} pid={proc.pid}')
         return jsonify({'success': True, 'page': page, 'pid': proc.pid})
     except Exception as e:
+        PROJECTION_ACTIVE = False
         registrar_log('PROJECT_ERR', str(e))
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -1475,7 +1481,9 @@ def api_project_prev():
 
 @app.route('/api/v1/project-stop', methods=['POST'])
 def api_project_stop():
+    global PROJECTION_ACTIVE
     _kill_projection()
+    PROJECTION_ACTIVE = False
     _restart_viewer()
     return jsonify({'success': True})
 

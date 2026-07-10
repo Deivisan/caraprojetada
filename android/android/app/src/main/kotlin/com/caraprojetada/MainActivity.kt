@@ -34,7 +34,7 @@ class MainActivity : FlutterActivity() {
         val default = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             try {
-                val dir = getExternalFilesDir(null) ?: filesDir
+                val dir = filesDir
                 val ts = SimpleDateFormat("yyyy-MM-dd_HHmmss", Locale.US).format(Date())
                 val file = File(dir, "crash_$ts.log")
                 FileWriter(file).use { fw ->
@@ -88,9 +88,10 @@ class MainActivity : FlutterActivity() {
     // O próprio MainService solicita as permissões de captura (MediaProjection)
     // e sobe o servidor VNC na porta informada.
     private fun startVncService(password: String, port: String, bindInterface: Boolean) {
-        // cria defaults.json antes de iniciar para forçar resolução máxima nativa
+        // cria defaults.json no filesDir (internal) antes de iniciar
+        // IMPORTANTE: droidVNC-NG Defaults.kt lê de context.filesDir, NÃO de getExternalFilesDir!
         try {
-            val dir = getExternalFilesDir(null) ?: filesDir
+            val dir = filesDir
             val defaults = JSONObject()
             defaults.put("port", port.toIntOrNull() ?: 5900)
             defaults.put("password", password)

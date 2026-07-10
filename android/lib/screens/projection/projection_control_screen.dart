@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_fonts/google_fonts.dart';
+import 'pdf_projection_screen.dart';
 
 class ProjectionControlScreen extends StatefulWidget {
   final String boxIp;
@@ -31,6 +32,7 @@ class _ProjectionControlScreenState extends State<ProjectionControlScreen> {
   int _currentPage = 1;
   int _totalPages = 0;
   bool _projectionActive = false;
+  String? _localPdfPath; // path local do pdf para abrir no celular
 
   Future<void> _pickAndUploadPdf() async {
     final result = await FilePicker.platform.pickFiles(
@@ -61,6 +63,7 @@ class _ProjectionControlScreenState extends State<ProjectionControlScreen> {
         setState(() {
           _totalPages = data['pages'] ?? 1;
           _currentPage = 1;
+          _localPdfPath = file.path;
           _uploadStatus = 'pdf carregado (${_totalPages} pg)';
         });
       } else {
@@ -74,24 +77,38 @@ class _ProjectionControlScreenState extends State<ProjectionControlScreen> {
   }
 
   Future<void> _projectAction(String action) async {
-    final endpoint = action == 'start'
-        ? '/api/v1/project-start'
-        : action == 'next'
-            ? '/api/v1/project-next'
-            : '/api/v1/project-prev';
+    if (action == 'start') {
+      try {
+        final uri = Uri.parse('http://${widget.boxIp}/api/v1/project-start');
+        final resp = await http.post(uri);
+        if (mounted && resp.statusCode == 200) {
+          // navega para tela fullscreen de pdf com overlay
+          await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => PdfProjectionScreen(
+                boxIp: widget.boxIp,
+                totalPages: _totalPages,
+                localPdfPath: _localPdfPath,
+                onStop: () {
+                  setState(() => _projectionActive = false);
+                },
+                onBack: () {
+                  // volta pra este controle
+                },
+              ),
+            ),
+          );
+        }
+      } catch (_) {}
+      return;
+    }
 
+    final endpoint = action == 'next'
+        ? '/api/v1/project-next'
+        : '/api/v1/project-prev';
     try {
       final uri = Uri.parse('http://${widget.boxIp}$endpoint');
-      final resp = await http.post(uri);
-      if (mounted && action == 'start' && resp.statusCode == 200) {
-        setState(() => _projectionActive = true);
-      }
-      if (mounted) {
-        setState(() {
-          if (action == 'next' && _currentPage < _totalPages) _currentPage++;
-          if (action == 'prev' && _currentPage > 1) _currentPage--;
-        });
-      }
+      await http.post(uri);
     } catch (_) {}
   }
 
@@ -199,6 +216,34 @@ class _ProjectionControlScreenState extends State<ProjectionControlScreen> {
               : 'projetando tela',
           subtitle: 'sua tela está sendo transmitida para o projetor',
           color: Colors.greenAccent,
+        ),
+        const SizedBox(height: 16),
+        // dica sobre captura seletiva (android 12+)
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.blue.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.info_outline, color: Colors.blue.shade300, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'dica: na primeira vez que autorizar a captura de tela, '
+                  'o android permite selecionar "compartilhar apenas este app" '
+                  'para nao exibir notificacoes ou outros apps no projetor',
+                  style: GoogleFonts.poppins(
+                    color: Colors.blue.shade200,
+                    fontSize: 11,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 24),
         _actionCard(
