@@ -23,21 +23,19 @@ echo ""
 
 cd "$APP_DIR"
 
+# ───────────────────────────────────────────────
 # [1/3] Inicia servidor Flask-SocketIO
+# ───────────────────────────────────────────────
 echo "====== [1/3] Iniciando Servidor Web ======"
 
-# Mata qualquer flask anterior
 pkill -f "python3 app.py" 2>/dev/null
 sleep 1
-
-# Garante que o log está acessível
 rm -f /tmp/flask-webrtc.log 2>/dev/null
 
 python3 app.py > /tmp/flask-webrtc.log 2>&1 &
 FLASK_PID=$!
 sleep 3
 
-# Verifica se subiu (verifica a porta)
 if ! ss -tlnp | grep -q ":${PORT}"; then
     echo "❌ ERRO: Flask não subiu na porta ${PORT}. Log:"
     tail -5 /tmp/flask-webrtc.log
@@ -46,23 +44,49 @@ if ! ss -tlnp | grep -q ":${PORT}"; then
 fi
 echo "✅ Servidor rodando na porta ${PORT} (PID: $FLASK_PID)"
 
-# [2/3] Inicia ocultador de mouse
+# ───────────────────────────────────────────────
+# [2/3] Ocultador de mouse
+# ───────────────────────────────────────────────
 echo "====== [2/3] Ocultando cursor ======"
 unclutter -idle 0 -root 2>/dev/null &
 
-# [3/3] Inicia Chromium Kiosk (SEM --single-process, estável no ARM)
-echo "====== [3/3] Preparando Chromium Kiosk ======"
+# ───────────────────────────────────────────────
+# [3/3] Chromium Kiosk
+# ───────────────────────────────────────────────
+echo "====== [3/3] Iniciando Chromium Kiosk ======"
 echo "URL: http://localhost:${PORT}/display"
 
-# Mata chromium anterior se existir
-pkill -9 -f "chromium.*kiosk" 2>/dev/null
+pkill -9 -f "chromium" 2>/dev/null
 sleep 1
 
-# Monta comando chromium sem --window-size (kiosk preenche a tela)
-CHROMIUM_CMD="/usr/bin/chromium \
+# ── Detecta resolução ──
+RES=""
+XORG_RODANDO=false
+pgrep -x Xorg > /dev/null && XORG_RODANDO=true
+
+if $XORG_RODANDO; then
+    xrandr --output HDMI-1 --auto 2>/dev/null
+    sleep 1
+    RES=$(xdpyinfo 2>/dev/null | grep dimensions | awk '{print $2}')
+fi
+
+if [ -z "$RES" ]; then
+    RES="1440x900"  # fallback
+fi
+
+W="${RES%x*}"  # largura (ex: 1440)
+H="${RES#*x}"  # altura (ex: 900)
+echo "Resolução: $RES (${W}x${H})"
+
+# ── Monta comando chromium ──
+CHROMIUM_BIN=/usr/bin/chromium
+CHROMIUM_URL="http://localhost:${PORT}/display"
+CHROMIUM_FLAGS="\
   --kiosk \
   --no-sandbox \
   --no-first-run \
+  --window-size=$RES \
+  --window-position=0,0 \
   --autoplay-policy=no-user-gesture-required \
   --check-for-update-interval=31536000 \
   --disable-infobars \
@@ -77,54 +101,101 @@ CHROMIUM_CMD="/usr/bin/chromium \
   --disk-cache-dir=/tmp/chromium-cache \
   --disk-cache-size=1 \
   --media-cache-size=1 \
-  --disable-software-rasterizer \
-  http://localhost:${PORT}/display"
+  --disable-software-rasterizer"
 
-# Usa xrandr --auto para garantir o modo nativo/preferido do display
-XRANDR_CMD="echo 'Aplicando modo nativo do display...'; xrandr --output HDMI-1 --auto 2>/dev/null; sleep 1; echo \"Resolução: \$(xdpyinfo 2>/dev/null | grep dimensions | awk '{print \$2}' || echo 'desconhecida')\""
+force_resize() {
+    local pid=$1 w=$2 h=$3
+    for i in 1 2 3 4 5 6 7 8 9 10; do
+        sleep 1
+        # lista TODAS as janelas do processo (pai + filhas)
+        local windows
+        windows=$(xdotool search --pid "$pid" 2>/dev/null | sort -u)
+        if [ -n "$windows" ]; then
+            echo "$windows" | while read -r wid; do
+                xdotool windowmap "$wid" 2>/dev/null
+                xdotool windowsize "$wid" "$w" "$h" 2>/dev/null
+                xdotool windowmove "$wid" 0 0 2>/dev/null
+            done
+            echo "✅ xdotool: $(echo "$windows" | wc -l) janela(s) redim p/ ${w}x${h}"
+            return 0
+        fi
+    done
+    echo "⚠️ xdotool: janela não encontrada após 10s"
+    return 1
+}
 
-# Se Xorg não estiver rodando, usa xinit; senão, usa o display existente
-if pgrep -x Xorg > /dev/null; then
-    # X já rodando — ajusta resolução e inicia chromium
-    echo "====== [3b] Ajustando resolução do display ======"
-    eval "$XRANDR_CMD"
-    sleep 1
-    echo "Resolução: $(xdpyinfo 2>/dev/null | grep dimensions | awk '{print $2}' || echo '?')"
+# ── Helper: redimensiona TODAS as janelas chromium via WM_CLASS ──
+force_xdotool_loop() {
+    local w=$1 h=$2
+    # fica monitorando e redimensionando a cada 2s por 20s
+    # usa --class "chromium" em vez de --pid pra pegar janela principal
+    for i in 1 2 3 4 5 6 7 8 9 10; do
+        sleep 2
+        local wins
+        wins=$(xdotool search --class "chromium" 2>/dev/null | sort -u)
+        if [ -n "$wins" ]; then
+            echo "$wins" | while read -r wid; do
+                xdotool windowmap "$wid" 2>/dev/null
+                xdotool windowsize "$wid" "$w" "$h" 2>/dev/null
+                xdotool windowmove "$wid" 0 0 2>/dev/null
+            done
+            local count
+            count=$(echo "$wins" | wc -l)
+            echo "xdotool: $count janela(s) chromium redim ${w}x${h}"
+        fi
+    done
+}
 
-    $CHROMIUM_CMD &
-    CHROME_PID=$!
-    echo "✅ Chromium lançado no display existente (PID: $CHROME_PID)"
-    # Aguarda o chromium fechar
-    wait $CHROME_PID 2>/dev/null
-else
-    # X não está rodando, usa xinit (inicia X + chromium)
+# ── Se Xorg não rodando: usa xinit ──
+if ! $XORG_RODANDO; then
     echo "Xorg não detectado. Iniciando com xinit..."
-    # Limpa locks anteriores
     rm -f /tmp/.X0-lock /tmp/.X11-unix/X0 2>/dev/null
-    
-    # Cria .xinitrc temporário que ajusta resolução DEPOIS do X iniciar,
-    # e então inicia o chromium. o xrandr funciona aqui pq o display já existe.
+
     cat > /tmp/xinitrc-webrtc << XINITRC
 #!/bin/sh
-# xinitrc para caraprojetada WebRTC
-# xrandr funciona aqui porque o X já está rodando
-$XRANDR_CMD
+xrandr --output HDMI-1 --auto 2>/dev/null
 sleep 1
-echo "Resolução: \$(xdpyinfo 2>/dev/null | grep dimensions | awk '{print \$2}' || echo '?')"
-exec $CHROMIUM_CMD
+export DISPLAY=:0
+$CHROMIUM_BIN $CHROMIUM_FLAGS --window-position=0,0 $CHROMIUM_URL &
+CPID=\$!
+# loop xdotool forçando resize de TODAS as janelas chromium (class match)
+for i in 1 2 3 4 5 6 7 8 9 10; do
+  sleep 2
+  WINS=\$(xdotool search --class "chromium" 2>/dev/null | sort -u)
+  [ -n "\$WINS" ] && {
+    echo "\$WINS" | while read W; do
+      xdotool windowmap \$W 2>/dev/null
+      xdotool windowsize \$W $W $H 2>/dev/null
+      xdotool windowmove \$W 0 0 2>/dev/null
+    done
+    echo "xdotool: \$(echo \"\$WINS\" | wc -l) janelas redim ${W}x${H}"
+  }
+done
+wait \$CPID
 XINITRC
     chmod +x /tmp/xinitrc-webrtc
-    
+
     echo "Rodando: xinit /tmp/xinitrc-webrtc -- :0 vt1 -keeptty"
     xinit /tmp/xinitrc-webrtc -- :0 vt1 -keeptty > /tmp/xinit.log 2>&1
-    XINIT_EXIT=$?
-    echo "xinit exit code: $XINIT_EXIT"
-    tail -15 /tmp/xinit.log
+    echo "xinit exit code: $?"
+    tail -5 /tmp/xinit.log
+
+    echo "⚠️ Xinit encerrou. Parando servidor Flask..."
+    kill $FLASK_PID 2>/dev/null
+    exit 0
 fi
 
-# Se chegou aqui, chromium fechou/crashou
+# ── Xorg já rodando: inicia direto ──
+echo "Iniciando chromium (PID background)..."
+$CHROMIUM_BIN $CHROMIUM_FLAGS $CHROMIUM_URL &
+CHROME_PID=$!
+echo "Chromium PID: $CHROME_PID"
+
+# loop xdotool em background redimensionando
+force_xdotool_loop $W $H &
+
+wait $CHROME_PID 2>/dev/null
+
 echo "⚠️ Chromium encerrou. Parando servidor Flask..."
 kill $FLASK_PID 2>/dev/null
-
-# systemd restartará o serviço com Restart=always
 exit 0
