@@ -532,42 +532,11 @@
             msg.innerHTML = '<span class="spinner"></span> Estabelecendo canal de vídeo...';
             msg.className = 'status-msg';
 
+            // Offer SEM manipulação de SDP — deixa WebRTC negociar normalmente
             const offer = await pc.createOffer({
                 offerToReceiveVideo: false,
                 offerToReceiveAudio: false
             });
-
-            // Remove VP9 do offer SDP (não tem decodificação HW no projetor RK3229)
-            // Isso é mais confiável que setCodecPreferences
-            try {
-                let sdp = offer.sdp;
-                const vp9Match = /a=rtpmap:(\d+) VP9\/90000/gi;
-                const vp9PTs = [];
-                let m;
-                while ((m = vp9Match.exec(sdp)) !== null) {
-                    vp9PTs.push(m[1]);
-                }
-                if (vp9PTs.length > 0) {
-                    let novo = sdp;
-                    vp9PTs.forEach(pt => {
-                        novo = novo.replace(new RegExp('a=rtpmap:' + pt + ' VP9/90000\\r?\\n', 'gi'), '');
-                        novo = novo.replace(new RegExp('a=fmtp:' + pt + ' .*\\r?\\n', 'gi'), '');
-                    });
-                    novo = novo.replace(/^m=video (\d+) (\S+) (.+)$/m, (match, port, proto, pts) => {
-                        const lista = pts.trim().split(/\s+/);
-                        const filtrada = lista.filter(pt => !vp9PTs.includes(pt));
-                        return 'm=video ' + port + ' ' + proto + ' ' + filtrada.join(' ');
-                    });
-                    await pc.setLocalDescription({ type: 'offer', sdp: novo });
-                    console.log('[WEBRTC] Offer SEM VP9 (PTs:', vp9PTs.join(','), ')');
-                } else {
-                    await pc.setLocalDescription(offer);
-                    console.log('[WEBRTC] Offer sem VP9 para remover');
-                }
-            } catch(e) {
-                console.log('[WEBRTC] SDP modification failed, using original offer:', e.message);
-                await pc.setLocalDescription(offer);
-            }
 
             await pc.setLocalDescription(offer);
 
