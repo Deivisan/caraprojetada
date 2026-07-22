@@ -14,7 +14,6 @@
             color: #1e293b;
         }
 
-        /* ─── Layout ─── */
         .app-bar {
             background: #fff;
             border-bottom: 1px solid #e2e8f0;
@@ -37,6 +36,7 @@
         .app-bar-left img {
             width: 36px;
             height: auto;
+            flex-shrink: 0;
         }
         .app-bar-left h1 {
             font-size: 17px;
@@ -117,7 +117,6 @@
             border-radius: 12px;
         }
 
-        /* ─── Salas Grid ─── */
         .salas-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -204,11 +203,6 @@
             background: #ef4444;
             box-shadow: 0 0 6px rgba(239,68,68,0.4);
         }
-        .dot-purple {
-            background: #8b5cf6;
-            box-shadow: 0 0 6px rgba(139,92,246,0.4);
-            animation: blink 1s ease-in-out infinite;
-        }
         @keyframes blink {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.3; }
@@ -251,9 +245,7 @@
             cursor: not-allowed;
             box-shadow: none;
         }
-        .btn-share .icon {
-            font-size: 16px;
-        }
+        .btn-share .icon { font-size: 16px; }
 
         .btn-stop {
             width: 100%;
@@ -283,17 +275,8 @@
             min-height: 20px;
             transition: all 0.3s;
         }
-        .status-msg.active {
-            color: #166534;
-            font-weight: 600;
-        }
-        .status-msg.error {
-            color: #991b1b;
-        }
-        .status-msg.ice {
-            color: #8a6d00;
-            font-size: 11px;
-        }
+        .status-msg.active { color: #166534; font-weight: 600; }
+        .status-msg.error { color: #991b1b; }
         .status-msg .spinner {
             display: inline-block;
             width: 14px; height: 14px;
@@ -304,11 +287,8 @@
             vertical-align: middle;
             margin-right: 6px;
         }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* ─── Smart Messages ─── */
         .smart-msg {
             display: none;
             align-items: center;
@@ -321,32 +301,15 @@
             animation: fadeSlideUp 0.3s ease-out;
         }
         .smart-msg.show { display: flex; }
-        .smart-msg.info {
-            background: #f0f7ff;
-            border: 1px solid #dbeafe;
-            color: #1e40af;
-        }
-        .smart-msg.success {
-            background: #f0fdf4;
-            border: 1px solid #bbf7d0;
-            color: #166534;
-        }
-        .smart-msg.warning {
-            background: #fffbeb;
-            border: 1px solid #fde68a;
-            color: #92400e;
-        }
-        .smart-msg.error {
-            background: #fef2f2;
-            border: 1px solid #fecaca;
-            color: #991b1b;
-        }
+        .smart-msg.info { background: #f0f7ff; border: 1px solid #dbeafe; color: #1e40af; }
+        .smart-msg.success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+        .smart-msg.warning { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+        .smart-msg.error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
         @keyframes fadeSlideUp {
             0%   { opacity: 0; transform: translateY(8px); }
             100% { opacity: 1; transform: translateY(0); }
         }
 
-        /* ─── Mobile warning ─── */
         .mobile-warning {
             display: none;
             background: #fffbeb;
@@ -361,7 +324,6 @@
         .mobile-warning.show { display: block; }
         .mobile-warning strong { color: #78350f; }
 
-        /* ─── Footer ─── */
         .footer {
             text-align: center;
             padding: 16px;
@@ -381,7 +343,6 @@
     </style>
 </head>
 <body>
-    <!-- App Bar -->
     <header class="app-bar">
         <div class="app-bar-left">
             <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/S%C3%ADmbolo_da_UFRB.png/320px-S%C3%ADmbolo_da_UFRB.png"
@@ -401,23 +362,18 @@
     </header>
 
     <div class="container">
-        <!-- Mobile warning -->
         <div class="mobile-warning" id="mobileWarning">
             <strong>&#128241; Modo celular detectado</strong><br>
-            O compartilhamento de tela completo funciona apenas em computadores.
-            Em celulares, você pode:<br>
-            &bull; Escanear o QR Code na tela do projetor para abrir o painel<br>
-            &bull; Usar um computador para compartilhar a tela<br>
-            &bull; Enviar arquivos ou links (em breve)
+            O compartilhamento de tela funciona apenas em computadores.
+            Em celulares, escaneie o QR Code na tela do projetor
+            para controlar ou use um computador para transmitir.
         </div>
 
-        <!-- Section title -->
         <div class="section-title">
-            &#127760; Salas Dispon&iacute;veis
+            &#127760; Salas Disponíveis
             <span class="count" id="salaCount">{{ salas|length }} sala{{ 's' if salas|length != 1 }}</span>
         </div>
 
-        <!-- Salas Grid -->
         <div class="salas-grid" id="salas-grid">
             {% for sala in salas %}
             <div class="sala-card" data-sala="{{ sala.id }}">
@@ -430,7 +386,7 @@
 
                 <div class="status-row">
                     <span class="status-dot dot-green" id="dot-{{ sala.id }}"></span>
-                    <span class="status-text" id="status-{{ sala.id }}">Dispon&iacute;vel</span>
+                    <span class="status-text" id="status-{{ sala.id }}">Disponível</span>
                     <span class="status-detail" id="detail-{{ sala.id }}"></span>
                 </div>
 
@@ -456,28 +412,20 @@
     </div>
 
     <script>
-    // ═════════════════════════════════════════════════════════
-    // Config
-    // ═════════════════════════════════════════════════════════
     const ICE_CONFIG = {{ ice_servers|safe }};
     let localStream = null;
     let peerConnections = {};
     let smartTimeouts = {};
 
-    // ═════════════════════════════════════════════════════════
-    // Mobile detection
-    // ═════════════════════════════════════════════════════════
+    // ─── Detecção mobile ───
     (function() {
-        const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i
-            .test(navigator.userAgent);
-        if (isMobile) {
+        if (/Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i
+            .test(navigator.userAgent)) {
             document.getElementById('mobileWarning').classList.add('show');
         }
     })();
 
-    // ═════════════════════════════════════════════════════════
-    // Socket.IO
-    // ═════════════════════════════════════════════════════════
+    // ─── Socket.IO ───
     const socket = io({
         transports: ['polling', 'websocket'],
         reconnection: true,
@@ -489,8 +437,7 @@
     socket.on('connect', () => {
         console.log('[SOCKET] Conectado:', socket.id);
         document.querySelectorAll('[data-sala]').forEach(el => {
-            const sala = el.dataset.sala;
-            socket.emit('join', { sala: sala, tipo: 'presenter' });
+            socket.emit('join', { sala: el.dataset.sala, tipo: 'presenter' });
         });
     });
 
@@ -500,32 +447,28 @@
 
     socket.on('session-ended', (data) => {
         const sala = data.sala;
-        setStatus(sala, 'disponivel', 'green', 'Dispon&iacute;vel');
-        showSmart(sala, 'Transmiss&atilde;o encerrada pelo outro lado.', 'info');
+        setStatus(sala, 'disponível', 'green', 'Disponível');
+        showSmart(sala, 'Transmissão encerrada pelo outro lado.', 'info');
         resetBotoes(sala);
     });
 
     socket.on('session-active', (data) => {
         const sala = data.sala;
         setStatus(sala, 'ocupado', 'yellow', 'Sala em uso');
-        showSmart(sala, data.user + ' est&aacute; transmitindo nesta sala.', 'warning');
+        showSmart(sala, data.user + ' está transmitindo nesta sala.', 'warning');
     });
 
-    // ═════════════════════════════════════════════════════════
-    // WebRTC
-    // ═════════════════════════════════════════════════════════
+    // ─── WebRTC ───
     async function iniciarTransmissao(sala) {
         try {
             const btn = document.getElementById('btn-' + sala);
             const msg = document.getElementById('msg-' + sala);
-            const smart = document.getElementById('smart-' + sala);
             btn.disabled = true;
 
-            // ─── Smart animation: step 1 ───
-            msg.innerHTML = '<span class="spinner"></span> Solicitando permiss&atilde;o de tela...';
+            // Passo 1: Permissão de tela
+            msg.innerHTML = '<span class="spinner"></span> Solicitando permissão de tela...';
             msg.className = 'status-msg';
 
-            // captura a tela
             localStream = await navigator.mediaDevices.getDisplayMedia({
                 video: {
                     width: { ideal: 1920, max: 1920 },
@@ -536,17 +479,15 @@
             });
 
             const track = localStream.getVideoTracks()[0];
-            const settings = track.getSettings();
-            console.log(`[WEBRTC] Captura: ${settings.width}x${settings.height}`);
+            console.log('[WEBRTC] Captura iniciada');
 
             document.getElementById('btn-' + sala).style.display = 'none';
             document.getElementById('stop-' + sala).style.display = 'flex';
 
-            // ─── Smart animation: step 2 ───
+            // Passo 2: Sincronizando
             msg.innerHTML = '<span class="spinner"></span> Sincronizando com o projetor...';
             msg.className = 'status-msg';
 
-            // cria peer connection
             const pc = new RTCPeerConnection(ICE_CONFIG);
             peerConnections[sala] = pc;
 
@@ -564,37 +505,43 @@
             pc.oniceconnectionstatechange = () => {
                 const state = pc.iceConnectionState;
                 if (state === 'checking') {
-                    msg.innerHTML = '<span class="spinner"></span> Verificando conex&atilde;o...';
+                    msg.innerHTML = '<span class="spinner"></span> Verificando conexão...';
                 } else if (state === 'connected' || state === 'completed') {
+                    // Passo 4: Conectado!
                     msg.innerHTML = '✅ Transmitindo em tempo real!';
                     msg.className = 'status-msg active';
                     setStatus(sala, 'transmitindo', 'yellow', 'Transmitindo...');
-                    showSmart(sala, 'Transmiss&atilde;o ativa. Sua tela est&aacute; sendo projetada.', 'success');
+                    showSmart(sala, 'Transmissão ativa! Sua tela está sendo projetada.', 'success');
                     document.querySelector('.sala-card[data-sala="' + sala + '"]')
                         ?.classList.add('transmitting');
-                } else if (state === 'failed' || state === 'disconnected') {
-                    msg.innerHTML = '❌ Conex&atilde;o perdida. Tente novamente.';
+                } else if (state === 'failed') {
+                    msg.innerHTML = '❌ Falha na conexão. Tentando reconectar...';
                     msg.className = 'status-msg error';
-                    if (!localStream) pararTransmissao(sala);
+                    showSmart(sala, 'A conexão caiu. Tentando reconectar automaticamente.', 'warning');
+                } else if (state === 'disconnected') {
+                    msg.innerHTML = '<span class="spinner"></span> Reconectando...';
+                    msg.className = 'status-msg';
+                    showSmart(sala, 'Conexão instável. Reconectando...', 'warning');
+                } else if (state === 'connected') {
+                    msg.innerHTML = '✅ Transmitindo em tempo real!';
+                    msg.className = 'status-msg active';
                 }
             };
 
-            // ─── Smart animation: step 3 ───
-            msg.innerHTML = '<span class="spinner"></span> Estabelecendo canal de v&iacute;deo...';
+            // Passo 3: Estabelecendo canal
+            msg.innerHTML = '<span class="spinner"></span> Estabelecendo canal de vídeo...';
             msg.className = 'status-msg';
 
+            // Cria offer SEM forçar codec H.264
+            // (Chromium Linux não tem encoder H.264, causa tela preta)
             const offer = await pc.createOffer({
                 offerToReceiveVideo: false,
                 offerToReceiveAudio: false
             });
 
-            const sdpComH264 = priorizarH264(offer.sdp);
-            await pc.setLocalDescription({
-                type: 'offer',
-                sdp: sdpComH264
-            });
+            await pc.setLocalDescription(offer);
 
-            // avisa servidor
+            // Avisa servidor
             socket.emit('session-start', {
                 sala: sala,
                 username: '{{ login_name }}',
@@ -609,13 +556,16 @@
             console.error('[WEBRTC] Erro:', err.name, err.message);
             const msg = document.getElementById('msg-' + sala);
             if (err.name === 'NotAllowedError') {
-                msg.textContent = '❌ Permiss&atilde;o negada. Autorize o compartilhamento de tela.';
-                showSmart(sala, 'Voc&ecirc; precisa autorizar o compartilhamento de tela nas configura&ccedil;&otilde;es do navegador.', 'error');
+                msg.textContent = '❌ Permissão negada. Autorize o compartilhamento de tela nas configurações do navegador.';
+                showSmart(sala, 'Você precisa autorizar o compartilhamento de tela.', 'error');
             } else if (err.name === 'NotFoundError') {
                 msg.textContent = '❌ Nenhuma tela encontrada para compartilhar.';
                 showSmart(sala, 'Conecte um monitor externo ou tente novamente.', 'warning');
+            } else if (err.name === 'NotReadableError') {
+                msg.textContent = '❌ Erro ao acessar a tela. Feche outros programas que estejam usando a tela.';
+                showSmart(sala, 'Feche outros programas e tente novamente.', 'error');
             } else {
-                msg.textContent = '❌ ' + err.message;
+                msg.textContent = '❌ Erro: ' + err.message;
             }
             msg.className = 'status-msg error';
             resetBotoes(sala);
@@ -634,37 +584,15 @@
         socket.emit('session-end', { sala: sala });
         resetBotoes(sala);
         const msg = document.getElementById('msg-' + sala);
-        msg.textContent = '⏹️ Transmiss&atilde;o encerrada.';
+        msg.textContent = '⏹️ Transmissão encerrada.';
         msg.className = 'status-msg';
-        setStatus(sala, 'disponivel', 'green', 'Dispon&iacute;vel');
-        showSmart(sala, 'Transmiss&atilde;o encerrada. Pronto para uma nova conex&atilde;o.', 'info');
+        setStatus(sala, 'disponível', 'green', 'Disponível');
+        showSmart(sala, 'Transmissão encerrada. Pronto para uma nova conexão.', 'info');
         document.querySelector('.sala-card[data-sala="' + sala + '"]')
             ?.classList.remove('transmitting');
     }
 
-    // ═════════════════════════════════════════════════════════
-    // H.264 prioritization
-    // ═════════════════════════════════════════════════════════
-    function priorizarH264(sdp) {
-        const lines = sdp.split('\r\n');
-        const mLineIdx = lines.findIndex(l => l.startsWith('m=video'));
-        if (mLineIdx === -1) return sdp;
-
-        const terms = lines[mLineIdx].split(' ');
-        const rtpmapH264 = lines.find(l =>
-            l.startsWith('a=rtpmap:') && l.includes('H264'));
-        if (rtpmapH264) {
-            const pt = rtpmapH264.split(':')[1].split(' ')[0];
-            const filtered = terms.filter(t => t !== pt);
-            filtered.splice(3, 0, pt);
-            lines[mLineIdx] = filtered.join(' ');
-        }
-        return lines.join('\r\n');
-    }
-
-    // ═════════════════════════════════════════════════════════
-    // Socket.IO event handlers
-    // ═════════════════════════════════════════════════════════
+    // ─── Socket.IO handlers ───
     socket.on('answer', async (data) => {
         const sala = data.sala;
         const pc = peerConnections[sala];
@@ -672,7 +600,7 @@
             try {
                 await pc.setRemoteDescription(
                     new RTCSessionDescription(data.sdp));
-                console.log(`[WEBRTC] Answer recebida para ${sala}`);
+                console.log('[WEBRTC] Answer recebida para', sala);
             } catch(e) {
                 console.error('[WEBRTC] Erro answer:', e);
             }
@@ -691,22 +619,16 @@
         }
     });
 
-    // ═════════════════════════════════════════════════════════
-    // Helpers
-    // ═════════════════════════════════════════════════════════
+    // ─── Helpers ───
     function setStatus(sala, texto, cor, descricao) {
         const dot = document.getElementById('dot-' + sala);
         const status = document.getElementById('status-' + sala);
         const detail = document.getElementById('detail-' + sala);
-        if (dot) {
-            dot.className = 'status-dot dot-' + cor;
-        }
+        if (dot) { dot.className = 'status-dot dot-' + cor; }
         if (status) {
             status.textContent = texto.charAt(0).toUpperCase() + texto.slice(1);
         }
-        if (detail) {
-            detail.textContent = descricao || '';
-        }
+        if (detail) { detail.textContent = descricao || ''; }
     }
 
     function resetBotoes(sala) {
@@ -729,7 +651,6 @@
         }, 8000);
     }
 
-    // join inicial
     document.addEventListener('DOMContentLoaded', () => {
         if (socket.connected) {
             document.querySelectorAll('[data-sala]').forEach(el => {
