@@ -608,12 +608,16 @@
     });
 
     socket.on('ice-candidate', async (data) => {
+        console.log('[DASHBOARD-ICE] Recebido candidate:', data.candidate ? data.candidate.substring(0, 80) : 'null');
         for (const [sala, pc] of Object.entries(peerConnections)) {
             if (pc && data.candidate) {
                 try {
                     await pc.addIceCandidate(
                         new RTCIceCandidate(data.candidate));
-                } catch(e) {}
+                    console.log('[DASHBOARD-ICE] addIceCandidate OK');
+                } catch(e) {
+                    console.error('[DASHBOARD-ICE] addIceCandidate ERRO:', e.message);
+                }
                 break;
             }
         }

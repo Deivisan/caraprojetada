@@ -115,6 +115,9 @@ socketio = SocketIO(
 # sessões ativas por sala: { sala_id: { username, started_at, sid_presenter } }
 active_sessions = {}
 
+# última offer por sala: { sala_id: offer_data }
+last_offer = {}
+
 # heartbeat tracking: { sid: last_ping_time }
 heartbeats = {'_start': time.time()}
 
@@ -361,12 +364,18 @@ def on_join(data):
     join_room(sala)
     logger.info(f'{tipo} {request.sid} entrou na sala: {sala}')
 
+    # se for display e houver offer pendente, reenvia
+    if tipo == 'display' and sala in last_offer:
+        logger.info(f'Reenviando offer pendente para display em {sala}')
+        emit('offer', last_offer[sala], room=sala, include_self=False)
+
 
 @socketio.on('offer')
 def handle_offer(data):
     """offer WebRTC: encaminha para o display da sala"""
     sala = data.get('sala', SALA_ID)
     logger.info(f'Offer de {request.sid} para sala {sala}')
+    last_offer[sala] = data
     emit('offer', data, room=sala, include_self=False)
 
 
@@ -382,7 +391,7 @@ def handle_answer(data):
 def handle_ice(data):
     """ICE candidate: encaminha para o peer na sala"""
     sala = data.get('sala', SALA_ID)
-    logger.debug(f'ICE de {request.sid} para sala {sala}')
+    logger.info(f'ICE de {request.sid} para sala {sala} (tipo={data.get("candidate", {}).get("candidate", "")[:50]}...)')
     emit('ice-candidate', data['candidate'], room=sala, include_self=False)
 
 
@@ -417,6 +426,17 @@ def handle_session_end(data):
         del active_sessions[sala]
     # avisa o display
     emit('session-ended', {'sala': sala}, room=sala, include_self=False)
+
+
+@socketio.on('debug-ontrack')
+def handle_debug_ontrack(data):
+    sala = data.get('sala', SALA_ID)
+    logger.info(f'[DISPLAY] ontrack streams={data.get("streamCount")} kind={data.get("kind")} ready={data.get("readyState")}')
+
+
+@socketio.on('debug-video')
+def handle_debug_video(data):
+    logger.info(f'[VIDEO] srcObject={data.get("srcObject")} trackCount={data.get("trackCount")} paused={data.get("paused")} currentTime={data.get("currentTime")} readyState={data.get("readyState")} networkState={data.get("networkState")} videoWidth={data.get("videoWidth")} videoHeight={data.get("videoHeight")} trackReadyState={data.get("trackReadyState")} error={data.get("error")}')
 
 
 @socketio.on('heartbeat')

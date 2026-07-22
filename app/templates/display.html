@@ -274,6 +274,15 @@
     let peerConnection = null;
     let heartbeatTimer = null;
     let connected = false;
+    let displayStatus = 'disponivel';
+    let lastResetTime = 0;
+    const RESET_COOLDOWN = 4000;   // evita reset em loop
+    let resetting = false;
+    let resetCount = 0;
+
+    // Log inicial
+    console.log('[DISPLAY] Pagina carregada. Sala:', SALA_ID);
+    console.log('[DISPLAY] ICE_CONFIG:', ICE_CONFIG);
 
     function criarSocket() {
         const s = io({
@@ -309,6 +318,7 @@
         s.on('offer', async (data) => {
             try {
                 console.log('[WEBRTC] Offer recebida');
+                window._iceStart = performance.now();
                 setStatusDisplay('conectando', 'Recebendo transmissão...', 'yellow');
 
                 limparPeerConnection();
@@ -318,69 +328,80 @@
                 peerConnection.ontrack = (event) => {
                     console.log('[WEBRTC] Stream recebido!');
                     const video = document.getElementById('remoteVideo');
-                    video.srcObject = event.streams[0];
+                    if (event.streams && event.streams[0]) {
+                        video.srcObject = event.streams[0];
 
-                    // Mostra video IMEDIATAMENTE + tenta play com retry
-                    video.classList.add('showing');
-                    document.getElementById('waiting').classList.add('hidden');
-                    connected = true;
-                    setStatusDisplay('conectado', 'Transmitindo', 'yellow');
-                    document.getElementById('connected-overlay').classList.add('showing');
+                        // Mostra video IMEDIATAMENTE + tenta play com retry
+                        video.classList.add('showing');
+                        document.getElementById('waiting').classList.add('hidden');
+                        connected = true;
+                        setStatusDisplay('conectado', 'Transmitindo', 'yellow');
+                        document.getElementById('connected-overlay').classList.add('showing');
 
-                    // Tenta play() com retry a cada 500ms (ate 10x)
-                    let tentativas = 0;
-                    const tentarPlay = () => {
-                        video.play().then(() => {
-                            console.log('[VIDEO] Reproduzindo (tentativa', tentativas + 1, ')');
-                        }).catch(e => {
-                            tentativas++;
-                            if (tentativas < 10) {
-                                console.log('[VIDEO] Tentativa', tentativas, 'falhou:', e.message);
-                                setTimeout(tentarPlay, 500);
-                            } else {
-                                console.log('[VIDEO] Desistiu apos 10 tentativas');
+                        // Tenta play() com retry a cada 500ms (ate 10x)
+                        let tentativas = 0;
+                        const tentarPlay = () => {
+                            video.play().then(() => {
+                                console.log('[VIDEO] Reproduzindo (tentativa', tentativas + 1, ')');
+                            }).catch(e => {
+                                tentativas++;
+                                if (tentativas < 10) {
+                                    console.log('[VIDEO] Tentativa', tentativas, 'falhou:', e.message);
+                                    setTimeout(tentarPlay, 500);
+                                } else {
+                                    console.log('[VIDEO] Desistiu apos 10 tentativas');
+                                }
+                            });
+                        };
+                        tentarPlay();
+
+                        // Monitora se o video realmente comecou a mostrar quadros
+                        video.addEventListener('timeupdate', function onTime() {
+                            if (video.currentTime > 0) {
+                                console.log('[VIDEO] Primeiro frame reproduzido');
+                                video.removeEventListener('timeupdate', onTime);
                             }
-                        });
-                    };
-                    tentarPlay();
-
-                    // Monitora se o video realmente comecou a mostrar quadros
-                    video.addEventListener('timeupdate', function onTime() {
-                        if (video.currentTime > 0) {
-                            console.log('[VIDEO] Primeiro frame reproduzido');
-                            video.removeEventListener('timeupdate', onTime);
-                        }
-                    }, { once: true });
-                    // timeout: se em 8s nao teve frame, tenta forcar
-                    setTimeout(() => {
-                        if (video.currentTime === 0 && video.paused === false) {
-                            console.log('[VIDEO] Sem frame apos 8s, reiniciando...');
-                            video.play().catch(console.warn);
-                        }
-                    }, 8000);
+                        }, { once: true });
+                        // timeout: se em 8s nao teve frame, tenta forcar
+                        setTimeout(() => {
+                            if (video.currentTime === 0 && video.paused === false) {
+                                console.log('[VIDEO] Sem frame apos 8s, reiniciando...');
+                                video.play().catch(console.warn);
+                            }
+                        }, 8000);
+                    }
                 };
 
                 peerConnection.onicecandidate = (event) => {
-                    if (event.candidate && socket) {
-                        socket.emit('ice-candidate', {
-                            sala: SALA_ID,
-                            candidate: event.candidate
-                        });
+                    if (event.candidate) {
+                        console.log('[DISPLAY-ICE] Candidate:', event.candidate.candidate.substring(0, 100));
+                        console.log('[DISPLAY-ICE] Tipo:', event.candidate.candidate.includes('typ host') ? 'HOST' : event.candidate.candidate.includes('typ srflx') ? 'SRFLX' : event.candidate.candidate.includes('typ relay') ? 'RELAY' : 'OUTRO');
+                        if (socket) {
+                            socket.emit('ice-candidate', {
+                                sala: SALA_ID,
+                                candidate: event.candidate
+                            });
+                        }
+                    } else {
+                        console.log('[DISPLAY-ICE] FIM dos candidates (endOfCandidates)');
                     }
                 };
 
                 peerConnection.oniceconnectionstatechange = () => {
-                    console.log('[WEBRTC] ICE:', peerConnection.iceConnectionState);
+                    console.log('[DISPLAY-ICE] State:', peerConnection.iceConnectionState);
+                    console.log('[DISPLAY-ICE] Gathering:', peerConnection.iceGatheringState);
                     const state = peerConnection.iceConnectionState;
                     if (state === 'failed') {
-                        console.log('[WEBRTC] ICE falhou, resetando...');
+                        console.log('[DISPLAY-ICE] ICE falhou apos', 
+                            performance.now() - (window._iceStart || performance.now()), 'ms');
                         setTimeout(() => {
                             if (peerConnection &&
                                 peerConnection.iceConnectionState === 'failed') {
-                                resetarDisplay();
+                                resetarDisplay('ice-failed');
                             }
                         }, 3000);
                     } else if (state === 'connected') {
+                        console.log('[DISPLAY-ICE] ICE CONECTADO!');
                         setStatusDisplay(
                             'conectado',
                             'Transmitindo',
@@ -412,7 +433,7 @@
         // ─── Sessão encerrada ───
         s.on('session-ended', (data) => {
             console.log('[SOCKET] Sessão encerrada');
-            resetarDisplay();
+            resetarDisplay('session-ended');
         });
 
         // ─── Sessão ativa ───
@@ -425,10 +446,17 @@
         // ─── ICE candidate ───
         s.on('ice-candidate', async (data) => {
             if (peerConnection && data.candidate) {
+                console.log('[DISPLAY-ICE] Recebido candidate:', 
+                    typeof data.candidate === 'object' ? 
+                        (data.candidate.candidate || '').substring(0, 80) : 
+                        String(data.candidate).substring(0, 80));
                 try {
                     await peerConnection.addIceCandidate(
                         new RTCIceCandidate(data.candidate));
-                } catch(e) {}
+                    console.log('[DISPLAY-ICE] addIceCandidate OK');
+                } catch(e) {
+                    console.error('[DISPLAY-ICE] addIceCandidate ERRO:', e.message);
+                }
             }
         });
 
@@ -453,8 +481,16 @@
     }
 
     // ─── Reset / Limpeza ───
-    function resetarDisplay() {
-        console.log('[DISPLAY] Resetando...');
+    function resetarDisplay(motivo) {
+        const agora = Date.now();
+        if (resetting) return;
+        if (agora - lastResetTime < RESET_COOLDOWN) {
+            console.log('[DISPLAY] Reset bloqueado por cooldown');
+            return;
+        }
+        resetting = true;
+        lastResetTime = agora;
+        console.log('[DISPLAY] Resetando...' + (motivo ? ' motivo=' + motivo : ''));
 
         const video = document.getElementById('remoteVideo');
         if (video.srcObject) {
@@ -470,6 +506,7 @@
         document.getElementById('waiting').classList.remove('hidden');
         document.getElementById('connected-overlay').classList.remove('showing');
         connected = false;
+        displayStatus = 'disponivel';
         setStatusDisplay('disponivel', 'Projetor disponível', 'green');
 
         if (!socket || !socket.connected) {
@@ -477,6 +514,8 @@
         } else {
             socket.emit('join', { sala: SALA_ID, tipo: 'display' });
         }
+
+        setTimeout(() => { resetting = false; }, 1000);
     }
 
     function limparPeerConnection() {
