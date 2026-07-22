@@ -85,8 +85,7 @@ CHROMIUM_FLAGS="\
   --kiosk \
   --no-sandbox \
   --no-first-run \
-  --use-gl=egl \
-  --ignore-gpu-blocklist \
+  --disable-gpu-vsync \
   --window-size=$RES \
   --window-position=0,0 \
   --autoplay-policy=no-user-gesture-required \
