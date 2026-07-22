@@ -100,50 +100,39 @@ CHROMIUM_FLAGS="\
   --disable-save-password-bubble \
   --disk-cache-dir=/tmp/chromium-cache \
   --disk-cache-size=1 \
-  --media-cache-size=1 \
-  --disable-software-rasterizer"
+  --media-cache-size=1"
 
-force_resize() {
-    local pid=$1 w=$2 h=$3
-    for i in 1 2 3 4 5 6 7 8 9 10; do
-        sleep 1
-        # lista TODAS as janelas do processo (pai + filhas)
-        local windows
-        windows=$(xdotool search --pid "$pid" 2>/dev/null | sort -u)
-        if [ -n "$windows" ]; then
-            echo "$windows" | while read -r wid; do
-                xdotool windowmap "$wid" 2>/dev/null
-                xdotool windowsize "$wid" "$w" "$h" 2>/dev/null
-                xdotool windowmove "$wid" 0 0 2>/dev/null
-            done
-            echo "✅ xdotool: $(echo "$windows" | wc -l) janela(s) redim p/ ${w}x${h}"
-            return 0
-        fi
-    done
-    echo "⚠️ xdotool: janela não encontrada após 10s"
-    return 1
-}
-
-# ── Helper: redimensiona TODAS as janelas chromium via WM_CLASS ──
-force_xdotool_loop() {
+# ── Helper: redimensiona TODAS as janelas chromium (UMA VEZ) via WM_CLASS ──
+xdotool_resize_una_vez() {
     local w=$1 h=$2
-    # fica monitorando e redimensionando a cada 2s por 20s
-    # usa --class "chromium" em vez de --pid pra pegar janela principal
-    for i in 1 2 3 4 5 6 7 8 9 10; do
-        sleep 2
-        local wins
+    local wins
+    for i in 1 2 3; do
         wins=$(xdotool search --class "chromium" 2>/dev/null | sort -u)
         if [ -n "$wins" ]; then
-            echo "$wins" | while read -r wid; do
-                xdotool windowmap "$wid" 2>/dev/null
-                xdotool windowsize "$wid" "$w" "$h" 2>/dev/null
-                xdotool windowmove "$wid" 0 0 2>/dev/null
+            local count=0
+            for wid in $wins; do
+                local geo cur_w cur_h
+                geo=$(xdotool getwindowgeometry "$wid" 2>/dev/null)
+                cur_w=$(echo "$geo" | sed -n 's/.*Geometry: \([0-9]*\)x.*/\1/p')
+                cur_h=$(echo "$geo" | sed -n 's/.*x\([0-9]*\).*/\1/p')
+                if [ "$cur_w" != "$w" ] || [ "$cur_h" != "$h" ]; then
+                    xdotool windowmap "$wid" 2>/dev/null
+                    xdotool windowsize "$wid" "$w" "$h" 2>/dev/null
+                    xdotool windowmove "$wid" 0 0 2>/dev/null
+                    count=$((count + 1))
+                fi
             done
-            local count
-            count=$(echo "$wins" | wc -l)
-            echo "xdotool: $count janela(s) chromium redim ${w}x${h}"
+            if [ "$count" -gt 0 ]; then
+                echo "xdotool: $count janela(s) redim p/ ${w}x${h}"
+            else
+                echo "xdotool: janelas já em ${w}x${h}"
+            fi
+            return 0
         fi
+        sleep 5
     done
+    echo "⚠️ xdotool: nenhuma janela chromium encontrada"
+    return 1
 }
 
 # ── Se Xorg não rodando: usa xinit ──
@@ -158,17 +147,23 @@ sleep 1
 export DISPLAY=:0
 $CHROMIUM_BIN $CHROMIUM_FLAGS --window-position=0,0 $CHROMIUM_URL &
 CPID=\$!
-# loop xdotool forçando resize de TODAS as janelas chromium (class match)
-for i in 1 2 3 4 5 6 7 8 9 10; do
-  sleep 2
+# espera janela aparecer e redimensiona UMA VEZ (sem loop)
+for i in 1 2 3; do
+  sleep 3
   WINS=\$(xdotool search --class "chromium" 2>/dev/null | sort -u)
   [ -n "\$WINS" ] && {
     echo "\$WINS" | while read W; do
-      xdotool windowmap \$W 2>/dev/null
-      xdotool windowsize \$W $W $H 2>/dev/null
-      xdotool windowmove \$W 0 0 2>/dev/null
+      GEO=\$(xdotool getwindowgeometry \$W 2>/dev/null | grep Geometry | awk '{print \$2}')
+      W_CUR=\$(echo "\$GEO" | cut -dx -f1)
+      H_CUR=\$(echo "\$GEO" | cut -dx -f2)
+      if [ "\$W_CUR" != "$W" ] || [ "\$H_CUR" != "$H" ]; then
+        xdotool windowmap \$W 2>/dev/null
+        xdotool windowsize \$W $W $H 2>/dev/null
+        xdotool windowmove \$W 0 0 2>/dev/null
+      fi
     done
-    echo "xdotool: \$(echo \"\$WINS\" | wc -l) janelas redim ${W}x${H}"
+    echo "xdotool: janelas verificadas/redim"
+    break
   }
 done
 wait \$CPID
@@ -191,8 +186,8 @@ $CHROMIUM_BIN $CHROMIUM_FLAGS $CHROMIUM_URL &
 CHROME_PID=$!
 echo "Chromium PID: $CHROME_PID"
 
-# loop xdotool em background redimensionando
-force_xdotool_loop $W $H &
+# xdotool UMA VEZ em background (sem loop contínuo)
+(sleep 8 && xdotool_resize_una_vez $W $H) &
 
 wait $CHROME_PID 2>/dev/null
 
