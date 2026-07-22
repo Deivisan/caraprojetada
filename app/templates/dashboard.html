@@ -532,13 +532,14 @@
             msg.innerHTML = '<span class="spinner"></span> Estabelecendo canal de vídeo...';
             msg.className = 'status-msg';
 
-            // Offer SEM manipulação de SDP — deixa WebRTC negociar normalmente
             const offer = await pc.createOffer({
                 offerToReceiveVideo: false,
                 offerToReceiveAudio: false
             });
 
-            await pc.setLocalDescription(offer);
+            // Priorizar H.264 no offer (decodificação HW no projetor RK3229)
+            const sdpComH264 = priorizarH264(offer.sdp);
+            await pc.setLocalDescription({ type: 'offer', sdp: sdpComH264 });
 
             // Avisa servidor
             socket.emit('session-start', {
@@ -637,6 +638,29 @@
         if (stop) stop.style.display = 'none';
         document.querySelector('.sala-card[data-sala="' + sala + '"]')
             ?.classList.remove('transmitting');
+    }
+
+    function priorizarH264(sdp) {
+        // Move H.264 para o topo da lista de codecs de video no offer
+        // RK3229 tem decodificação HW de H.264, melhora compatibilidade
+        try {
+            const lines = sdp.split('\r\n');
+            const mLineIdx = lines.findIndex(l => l.startsWith('m=video'));
+            if (mLineIdx === -1) return sdp;
+            const terms = lines[mLineIdx].split(' ');
+            const rtpmapH264 = lines.find(l =>
+                l.startsWith('a=rtpmap:') && l.includes('H264'));
+            if (rtpmapH264) {
+                const pt = rtpmapH264.split(':')[1].split(' ')[0];
+                const filtered = terms.filter(t => t !== pt);
+                filtered.splice(3, 0, pt);
+                lines[mLineIdx] = filtered.join(' ');
+            }
+            return lines.join('\r\n');
+        } catch(e) {
+            console.log('[WEBRTC] priorizarH264 error:', e);
+            return sdp;
+        }
     }
 
     function showSmart(sala, msg, tipo) {

@@ -361,7 +361,7 @@
                 };
 
                 peerConnection.onicecandidate = (event) => {
-                    if (event.candidate && socket && socket.connected) {
+                    if (event.candidate && socket) {
                         socket.emit('ice-candidate', {
                             sala: SALA_ID,
                             candidate: event.candidate
