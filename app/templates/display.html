@@ -15,12 +15,11 @@
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
             cursor: none !important;
         }
-        /* sem cursor em absolutamente tudo */
         *, a, button, input, video, div, span, p, h1, h2, h3, img {
             cursor: none !important;
         }
 
-        /* ─── Waiting Screen - preenche 100% sem cortes ─── */
+        /* ─── Waiting Screen - 100% sem cortes, sem animações ─── */
         #waiting {
             position: fixed;
             top: 0; left: 0;
@@ -39,52 +38,6 @@
             pointer-events: none;
         }
 
-        /* glow animado no fundo */
-        #waiting::before {
-            content: '';
-            position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            background:
-                radial-gradient(ellipse 60% 40% at 30% 40%, rgba(0,153,204,0.06) 0%, transparent 60%),
-                radial-gradient(ellipse 50% 50% at 70% 60%, rgba(106,27,154,0.04) 0%, transparent 60%),
-                radial-gradient(ellipse 30% 20% at 50% 10%, rgba(255,179,0,0.03) 0%, transparent 50%);
-            animation: bgPulse 12s ease-in-out infinite alternate;
-            pointer-events: none;
-        }
-        @keyframes bgPulse {
-            0%   { transform: scale(1); opacity: 0.6; }
-            100% { transform: scale(1.05); opacity: 1; }
-        }
-
-        /* ─── Particles sutis ─── */
-        .particles {
-            position: fixed; inset: 0;
-            pointer-events: none; overflow: hidden;
-            z-index: 0;
-        }
-        .particle {
-            position: absolute;
-            width: 3px; height: 3px;
-            background: rgba(255,255,255,0.06);
-            border-radius: 50%;
-            animation: rise linear infinite;
-        }
-        .particle:nth-child(1)  { left: 10%; animation-duration: 25s; animation-delay: 0s; }
-        .particle:nth-child(2)  { left: 25%; animation-duration: 20s; animation-delay: 2s; width: 2px; height: 2px; }
-        .particle:nth-child(3)  { left: 40%; animation-duration: 28s; animation-delay: 5s; }
-        .particle:nth-child(4)  { left: 55%; animation-duration: 22s; animation-delay: 1s; width: 4px; height: 4px; }
-        .particle:nth-child(5)  { left: 70%; animation-duration: 26s; animation-delay: 3s; }
-        .particle:nth-child(6)  { left: 85%; animation-duration: 18s; animation-delay: 6s; width: 2px; height: 2px; }
-        .particle:nth-child(7)  { left: 15%; animation-duration: 30s; animation-delay: 4s; }
-        .particle:nth-child(8)  { left: 50%; animation-duration: 24s; animation-delay: 7s; }
-        @keyframes rise {
-            0%   { bottom: -10px; opacity: 0; transform: translateX(0); }
-            10%  { opacity: 0.4; }
-            90%  { opacity: 0.4; }
-            100% { bottom: 110%; opacity: 0; transform: translateX(20px); }
-        }
-
-        /* ─── Conteúdo central - SEM CORTES ─── */
         .waiting-content {
             position: relative;
             z-index: 2;
@@ -128,11 +81,6 @@
             font-weight: 200;
             color: rgba(255,255,255,0.7);
             letter-spacing: 4px;
-            animation: softPulse 4s ease-in-out infinite;
-        }
-        @keyframes softPulse {
-            0%, 100% { opacity: 0.5; }
-            50% { opacity: 1; }
         }
 
         .indicator {
@@ -145,27 +93,14 @@
             border: 1px solid rgba(255,255,255,0.06);
             border-radius: 40px;
         }
-        .pulse-dot {
+        .status-dot {
             width: 8px; height: 8px;
             border-radius: 50%;
             flex-shrink: 0;
         }
-        .pulse-dot.green {
-            background: #22c55e;
-            animation: blinkDot 2s ease-in-out infinite;
-        }
-        .pulse-dot.yellow {
-            background: #eab308;
-            animation: blinkDot 1.5s ease-in-out infinite;
-        }
-        .pulse-dot.red {
-            background: #ef4444;
-            animation: blinkDot 1s ease-in-out infinite;
-        }
-        @keyframes blinkDot {
-            0%, 100% { opacity: 1; box-shadow: 0 0 8px currentColor; }
-            50% { opacity: 0.3; box-shadow: 0 0 2px currentColor; }
-        }
+        .status-dot.green { background: #22c55e; }
+        .status-dot.yellow { background: #eab308; }
+        .status-dot.red { background: #ef4444; }
         .indicator-label {
             font-size: clamp(11px, 1.2vw, 15px);
             font-weight: 400;
@@ -234,7 +169,7 @@
             display: block;
         }
 
-        /* ─── Overlay "AO VIVO" ─── */
+        /* ─── Overlay "AO VIVO" (sem pulse) ─── */
         #connected-overlay {
             position: fixed;
             top: clamp(8px, 1.5vh, 20px);
@@ -257,11 +192,6 @@
             background: rgba(239,68,68,0.2);
             color: #fca5a5;
             border: 1px solid rgba(239,68,68,0.2);
-            animation: livePulse 2s ease-in-out infinite;
-        }
-        @keyframes livePulse {
-            0%, 100% { opacity: 0.7; }
-            50% { opacity: 1; }
         }
         #connected-overlay .user-info {
             font-size: clamp(9px, 0.8vw, 11px);
@@ -281,14 +211,7 @@
 </head>
 <body>
 
-    <div class="particles" aria-hidden="true">
-        <div class="particle"></div><div class="particle"></div>
-        <div class="particle"></div><div class="particle"></div>
-        <div class="particle"></div><div class="particle"></div>
-        <div class="particle"></div><div class="particle"></div>
-    </div>
-
-    <!-- ─── Tela de espera (preenche 100%) ─── -->
+    <!-- ─── Tela de espera (estática, sem animações) ─── -->
     <div id="waiting">
         <div class="waiting-content">
             <div class="logo-projetor">
@@ -303,7 +226,7 @@
             <div class="status-text-main" id="statusDisplay">Aguardando conexão...</div>
 
             <div class="indicator">
-                <span class="pulse-dot green" id="statusDot"></span>
+                <span class="status-dot green" id="statusDot"></span>
                 <span class="indicator-label" id="statusLabel">Projetor disponível</span>
             </div>
 
@@ -368,14 +291,21 @@
         s.on('connect', () => {
             console.log('[SOCKET] Conectado:', s.id);
             s.emit('join', { sala: SALA_ID, tipo: 'display' });
-            setStatusDisplay('disponivel', 'Projetor disponível', 'green');
+            // NÃO muda status visual no connect — mantém estável
+            // O status já foi setado como 'disponivel' no resetarDisplay()
             iniciarHeartbeat();
         });
 
         s.on('disconnect', () => {
             console.log('[SOCKET] Desconectado');
-            setStatusDisplay('desconectado', 'Servidor desconectado', 'red');
+            // NÃO muda status visual — evitar flicker verde/vermelho
+            // Socket reconecta automaticamente, status continua "disponivel"
             pararHeartbeat();
+        });
+
+        s.on('connect_error', (err) => {
+            console.log('[SOCKET] Erro conexão:', err.message);
+            // também silencioso — sem mudança visual
         });
 
         // ─── Offer recebida (transmissão chegando) ───
@@ -394,13 +324,10 @@
                     video.srcObject = event.streams[0];
                     video.classList.add('showing');
 
-                    // tenta reproduzir automaticamente
                     video.play().then(() => {
                         console.log('[VIDEO] Reproduzindo');
                     }).catch(e => {
                         console.log('[VIDEO] Erro ao reproduzir:', e.message);
-                        // se falhou, tenta novamente após interação
-                        setStatusDisplay('erro', 'Clique na tela para ativar o vídeo', 'yellow');
                         document.addEventListener('click', function playOnClick() {
                             video.play().catch(console.warn);
                             document.removeEventListener('click', playOnClick);
@@ -414,7 +341,7 @@
                 };
 
                 peerConnection.onicecandidate = (event) => {
-                    if (event.candidate && socket) {
+                    if (event.candidate && socket && socket.connected) {
                         socket.emit('ice-candidate', {
                             sala: SALA_ID,
                             candidate: event.candidate
@@ -426,7 +353,6 @@
                     console.log('[WEBRTC] ICE:', peerConnection.iceConnectionState);
                     const state = peerConnection.iceConnectionState;
                     if (state === 'failed') {
-                        // falha definitiva — reseta após delay
                         console.log('[WEBRTC] ICE falhou, resetando...');
                         setTimeout(() => {
                             if (peerConnection &&
@@ -434,15 +360,6 @@
                                 resetarDisplay();
                             }
                         }, 3000);
-                    } else if (state === 'disconnected') {
-                        // disconnected é TRANSITÓRIO (ICE pode recuperar)
-                        // não resetar — aguarda reconexão automática
-                        console.log('[WEBRTC] ICE desconectado (transitório)');
-                        setStatusDisplay(
-                            'conectando',
-                            'Reconectando...',
-                            'yellow'
-                        );
                     } else if (state === 'connected') {
                         setStatusDisplay(
                             'conectado',
@@ -450,16 +367,13 @@
                             'yellow'
                         );
                     }
+                    // disconnected é TRANSITÓRIO — não muda nada visual
                 };
 
-                // não força codec — deixa a negociação automática
-                // (funciona em Linux e Windows)
                 await peerConnection.setRemoteDescription(
                     new RTCSessionDescription(data.sdp));
 
                 const answer = await peerConnection.createAnswer();
-
-                // usa o SDP original sem modificação
                 await peerConnection.setLocalDescription(answer);
 
                 socket.emit('answer', {
@@ -552,14 +466,14 @@
         }
     }
 
-    // ─── Status ───
+    // ─── Status (sem animação) ───
     function setStatusDisplay(texto, label, cor) {
         const display = document.getElementById('statusDisplay');
         const dot = document.getElementById('statusDot');
         const labelEl = document.getElementById('statusLabel');
         if (display) display.textContent = texto;
         if (dot) {
-            dot.className = 'pulse-dot';
+            dot.className = 'status-dot';
             dot.classList.add(cor === 'green' ? 'green' : cor === 'yellow' ? 'yellow' : 'red');
         }
         if (labelEl) labelEl.textContent = label || texto;
@@ -576,7 +490,7 @@
         }
     });
 
-    console.log('[DISPLAY] Pronto. Sala:', SALA_ID);
+    console.log('[DISPLAY] Pronto (estático). Sala:', SALA_ID);
     </script>
 </body>
 </html>
