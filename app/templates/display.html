@@ -370,38 +370,8 @@
                 await peerConnection.setRemoteDescription(
                     new RTCSessionDescription(data.sdp));
 
-                // Forçar VP8 ou H.264 no answer (decodificação HW no RK3229)
-                // VP9 não tem HW → roda em software → tela roxa
                 const answer = await peerConnection.createAnswer();
-                let sdp = answer.sdp;
-
-                // Coletar payload types do VP9
-                const vp9Regex = /a=rtpmap:(\d+) VP9\/90000/gi;
-                const vp9PTs = [];
-                let m;
-                while ((m = vp9Regex.exec(sdp)) !== null) {
-                    vp9PTs.push(m[1]);
-                }
-
-                if (vp9PTs.length > 0) {
-                    console.log('[WEBRTC] Removendo VP9 (PTs:', vp9PTs.join(','), ')');
-                    // Remove as linhas rtpmap/fmtp do VP9
-                    vp9PTs.forEach(pt => {
-                        sdp = sdp.replace(new RegExp('a=rtpmap:' + pt + ' VP9/90000\\r?\\n', 'gi'), '');
-                        sdp = sdp.replace(new RegExp('a=fmtp:' + pt + ' .*\\r?\\n', 'gi'), '');
-                    });
-                    // Remove PTs do VP9 da linha m=video
-                    sdp = sdp.replace(/^m=video (\d+) (\S+) (.+)$/m, (match, port, proto, pts) => {
-                        const lista = pts.trim().split(/\s+/);
-                        const filtrada = lista.filter(pt => !vp9PTs.includes(pt));
-                        return 'm=video ' + port + ' ' + proto + ' ' + filtrada.join(' ');
-                    });
-                    await peerConnection.setLocalDescription({ type: 'answer', sdp: sdp });
-                    console.log('[WEBRTC] Answer SEM VP9');
-                } else {
-                    await peerConnection.setLocalDescription(answer);
-                    console.log('[WEBRTC] Answer sem VP9 para remover');
-                }
+                await peerConnection.setLocalDescription(answer);
 
                 socket.emit('answer', {
                     sala: SALA_ID,
