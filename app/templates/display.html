@@ -160,7 +160,7 @@
             object-fit: cover;
             z-index: 20;
             display: none;
-            background: #000;
+            background: #001a33;
         }
         #remoteVideo.showing {
             display: block;
@@ -319,22 +319,45 @@
                     console.log('[WEBRTC] Stream recebido!');
                     const video = document.getElementById('remoteVideo');
                     video.srcObject = event.streams[0];
+
+                    // Mostra video IMEDIATAMENTE + tenta play com retry
                     video.classList.add('showing');
-
-                    video.play().then(() => {
-                        console.log('[VIDEO] Reproduzindo');
-                    }).catch(e => {
-                        console.log('[VIDEO] Erro ao reproduzir:', e.message);
-                        document.addEventListener('click', function playOnClick() {
-                            video.play().catch(console.warn);
-                            document.removeEventListener('click', playOnClick);
-                        }, { once: true });
-                    });
-
                     document.getElementById('waiting').classList.add('hidden');
                     connected = true;
                     setStatusDisplay('conectado', 'Transmitindo', 'yellow');
                     document.getElementById('connected-overlay').classList.add('showing');
+
+                    // Tenta play() com retry a cada 500ms (ate 10x)
+                    let tentativas = 0;
+                    const tentarPlay = () => {
+                        video.play().then(() => {
+                            console.log('[VIDEO] Reproduzindo (tentativa', tentativas + 1, ')');
+                        }).catch(e => {
+                            tentativas++;
+                            if (tentativas < 10) {
+                                console.log('[VIDEO] Tentativa', tentativas, 'falhou:', e.message);
+                                setTimeout(tentarPlay, 500);
+                            } else {
+                                console.log('[VIDEO] Desistiu apos 10 tentativas');
+                            }
+                        });
+                    };
+                    tentarPlay();
+
+                    // Monitora se o video realmente comecou a mostrar quadros
+                    video.addEventListener('timeupdate', function onTime() {
+                        if (video.currentTime > 0) {
+                            console.log('[VIDEO] Primeiro frame reproduzido');
+                            video.removeEventListener('timeupdate', onTime);
+                        }
+                    }, { once: true });
+                    // timeout: se em 8s nao teve frame, tenta forcar
+                    setTimeout(() => {
+                        if (video.currentTime === 0 && video.paused === false) {
+                            console.log('[VIDEO] Sem frame apos 8s, reiniciando...');
+                            video.play().catch(console.warn);
+                        }
+                    }, 8000);
                 };
 
                 peerConnection.onicecandidate = (event) => {

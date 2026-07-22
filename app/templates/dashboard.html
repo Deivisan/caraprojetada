@@ -532,35 +532,42 @@
             msg.innerHTML = '<span class="spinner"></span> Estabelecendo canal de vídeo...';
             msg.className = 'status-msg';
 
-            // Forçar VP8 como codec preferido (universal, decodificação HW no RK3229)
-            // VP9 não tem HW no projetor → roda em software → tela roxa
-            try {
-                const transceivers = pc.getTransceivers();
-                for (const t of transceivers) {
-                    if (t.sender && t.sender.track && t.sender.track.kind === 'video') {
-                        const caps = RTCRtpSender.getCapabilities('video');
-                        if (caps && caps.codecs && caps.codecs.length > 0) {
-                            const vp8 = caps.codecs.filter(c => c.mimeType.includes('VP8'));
-                            const h264 = caps.codecs.filter(c => c.mimeType.includes('H264'));
-                            const outros = caps.codecs.filter(c =>
-                                !c.mimeType.includes('VP8') && !c.mimeType.includes('H264'));
-                            const ordenado = [...vp8, ...h264, ...outros];
-                            if (ordenado.length > 0) {
-                                t.setCodecPreferences(ordenado);
-                                console.log('[WEBRTC] Codec order:',
-                                    ordenado.map(c => c.mimeType).join(', '));
-                            }
-                        }
-                    }
-                }
-            } catch(e) {
-                console.log('[WEBRTC] Codec prefs not available:', e.message);
-            }
-
             const offer = await pc.createOffer({
                 offerToReceiveVideo: false,
                 offerToReceiveAudio: false
             });
+
+            // Remove VP9 do offer SDP (não tem decodificação HW no projetor RK3229)
+            // Isso é mais confiável que setCodecPreferences
+            try {
+                let sdp = offer.sdp;
+                const vp9Match = /a=rtpmap:(\d+) VP9\/90000/gi;
+                const vp9PTs = [];
+                let m;
+                while ((m = vp9Match.exec(sdp)) !== null) {
+                    vp9PTs.push(m[1]);
+                }
+                if (vp9PTs.length > 0) {
+                    let novo = sdp;
+                    vp9PTs.forEach(pt => {
+                        novo = novo.replace(new RegExp('a=rtpmap:' + pt + ' VP9/90000\\r?\\n', 'gi'), '');
+                        novo = novo.replace(new RegExp('a=fmtp:' + pt + ' .*\\r?\\n', 'gi'), '');
+                    });
+                    novo = novo.replace(/^m=video (\d+) (\S+) (.+)$/m, (match, port, proto, pts) => {
+                        const lista = pts.trim().split(/\s+/);
+                        const filtrada = lista.filter(pt => !vp9PTs.includes(pt));
+                        return 'm=video ' + port + ' ' + proto + ' ' + filtrada.join(' ');
+                    });
+                    await pc.setLocalDescription({ type: 'offer', sdp: novo });
+                    console.log('[WEBRTC] Offer SEM VP9 (PTs:', vp9PTs.join(','), ')');
+                } else {
+                    await pc.setLocalDescription(offer);
+                    console.log('[WEBRTC] Offer sem VP9 para remover');
+                }
+            } catch(e) {
+                console.log('[WEBRTC] SDP modification failed, using original offer:', e.message);
+                await pc.setLocalDescription(offer);
+            }
 
             await pc.setLocalDescription(offer);
 
