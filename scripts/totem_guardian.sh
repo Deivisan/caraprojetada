@@ -25,9 +25,10 @@ if [ -z "$CHROMIUM_PID" ] || [ "$(ps -p "$CHROMIUM_PID" -o rss= 2>/dev/null)" -l
     --disable-gpu --disable-gpu-compositing \
     --disable-software-rasterizer --disable-accelerated-2d-canvas \
     --disable-accelerated-video-decode --disable-features=VizDisplayCompositor \
+    --autoplay-policy=no-user-gesture-required \
     --process-per-site --no-crashpad --no-first-run \
     --user-data-dir=/tmp/chromium-kiosk \
-    http://localhost/projetor &
+    http://localhost/display &
   CHROME_PID=$!
   log "Chromium iniciado PID: $CHROME_PID"
   sleep 5

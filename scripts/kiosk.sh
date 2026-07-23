@@ -26,7 +26,10 @@ while true; do
     sleep 2
 
     chromium --kiosk --start-maximized --noerrdialogs \
-             --disable-infobars --incognito "${URL}" &
+             --disable-infobars --incognito \
+             --autoplay-policy=no-user-gesture-required \
+             --disable-features=TranslateUI \
+             --no-first-run "${URL}" &
 
     wait $!
     echo "Chromium encerrou. Reiniciando em 5s..."

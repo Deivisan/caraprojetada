@@ -389,7 +389,7 @@ def handle_answer(data):
 
 @socketio.on('ice-candidate')
 def handle_ice(data):
-    """ICE candidate: encaminha para o peer na sala"""
+    """ICE candidate: encaminha para a sala"""
     sala = data.get('sala', SALA_ID)
     logger.info(f'ICE de {request.sid} para sala {sala} (tipo={data.get("candidate", {}).get("candidate", "")[:50]}...)')
     emit('ice-candidate', data['candidate'], room=sala, include_self=False)
@@ -424,8 +424,12 @@ def handle_session_end(data):
     if sala in active_sessions:
         logger.info(f'SESSION_END sala={sala} user={active_sessions[sala]["username"]}')
         del active_sessions[sala]
+    # limpa offer pendente (evita reenvio stale ao display reconectar)
+    if sala in last_offer:
+        del last_offer[sala]
     # avisa o display
     emit('session-ended', {'sala': sala}, room=sala, include_self=False)
+    emit('professor-desconectou', room=sala, include_self=False)
 
 
 @socketio.on('debug-ontrack')
@@ -457,7 +461,10 @@ def handle_disconnect():
         if sessao.get('sid_presenter') == sid:
             logger.info(f'DISCONNECT limpando sessão sala={sala} user={sessao["username"]}')
             del active_sessions[sala]
-            emit('session-ended', {'sala': sala}, room=sala, include_self=False)
+            # limpa offer pendente
+            if sala in last_offer:
+                del last_offer[sala]
+            emit('professor-desconectou', room=sala, include_self=False)
             break
 
     # limpa heartbeat

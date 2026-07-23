@@ -251,8 +251,8 @@
 
     <script>
     const SALA_ID = '{{ sala_id }}';
-    const ICE_CONFIG = {{ ice_servers|safe }};
-    const HEARTBEAT_INTERVAL = 5000;
+    // SIMPLES: sem STUN, conexão local direta (como no legacy que funcionava)
+    const CONFIG = { iceServers: [] };
 
     // ─── QR Code ───
     try {
@@ -270,260 +270,109 @@
     }
 
     // ─── Socket.IO ───
-    let socket = criarSocket();
+    let socket = io();
     let peerConnection = null;
-    let heartbeatTimer = null;
     let connected = false;
-    let displayStatus = 'disponivel';
-    let lastResetTime = 0;
-    const RESET_COOLDOWN = 4000;   // evita reset em loop
-    let resetting = false;
-    let resetCount = 0;
 
-    // Log inicial
-    console.log('[DISPLAY] Pagina carregada. Sala:', SALA_ID);
-    console.log('[DISPLAY] ICE_CONFIG:', ICE_CONFIG);
+    socket.on('connect', () => {
+        console.log('[DISPLAY] Conectado');
+        socket.emit('join', { sala: SALA_ID, tipo: 'display' });
+        setStatusDisplay('disponivel', 'Projetor disponível', 'green');
+    });
 
-    function criarSocket() {
-        const s = io({
-            transports: ['polling', 'websocket'],
-            reconnection: true,
-            reconnectionAttempts: Infinity,
-            reconnectionDelay: 1000,
-            reconnectionDelayMax: 10000,
-            timeout: 10000
-        });
+    socket.on('disconnect', () => {
+        console.log('[DISPLAY] Desconectado');
+    });
 
-        s.on('connect', () => {
-            console.log('[SOCKET] Conectado:', s.id);
-            s.emit('join', { sala: SALA_ID, tipo: 'display' });
-            // NÃO muda status visual no connect — mantém estável
-            // O status já foi setado como 'disponivel' no resetarDisplay()
-            iniciarHeartbeat();
-        });
+    // ─── Offer recebida (igual ao legacy que funcionava) ───
+    socket.on('offer', async (offer) => {
+        console.log('[WEBRTC] Offer recebida');
+        setStatusDisplay('conectando', 'Recebendo transmissão...', 'yellow');
 
-        s.on('disconnect', () => {
-            console.log('[SOCKET] Desconectado');
-            // NÃO muda status visual — evitar flicker verde/vermelho
-            // Socket reconecta automaticamente, status continua "disponivel"
-            pararHeartbeat();
-        });
+        // Fecha conexão anterior se houver
+        if (peerConnection) {
+            peerConnection.close();
+            peerConnection = null;
+        }
 
-        s.on('connect_error', (err) => {
-            console.log('[SOCKET] Erro conexão:', err.message);
-            // também silencioso — sem mudança visual
-        });
+        peerConnection = new RTCPeerConnection(CONFIG);
 
-        // ─── Offer recebida (transmissão chegando) ───
-        s.on('offer', async (data) => {
-            try {
-                console.log('[WEBRTC] Offer recebida');
-                window._iceStart = performance.now();
-                setStatusDisplay('conectando', 'Recebendo transmissão...', 'yellow');
+        peerConnection.ontrack = (event) => {
+            console.log('[WEBRTC] Stream recebido!');
+            const video = document.getElementById('remoteVideo');
+            if (event.streams && event.streams[0]) {
+                video.srcObject = event.streams[0];
+                video.classList.add('showing');
+                document.getElementById('waiting').classList.add('hidden');
+                connected = true;
+                setStatusDisplay('conectado', 'Transmitindo', 'yellow');
+                document.getElementById('connected-overlay').classList.add('showing');
 
-                limparPeerConnection();
-
-                peerConnection = new RTCPeerConnection(ICE_CONFIG);
-
-                peerConnection.ontrack = (event) => {
-                    console.log('[WEBRTC] Stream recebido!');
-                    const video = document.getElementById('remoteVideo');
-                    if (event.streams && event.streams[0]) {
-                        video.srcObject = event.streams[0];
-
-                        // Mostra video IMEDIATAMENTE + tenta play com retry
-                        video.classList.add('showing');
-                        document.getElementById('waiting').classList.add('hidden');
-                        connected = true;
-                        setStatusDisplay('conectado', 'Transmitindo', 'yellow');
-                        document.getElementById('connected-overlay').classList.add('showing');
-
-                        // Tenta play() com retry a cada 500ms (ate 10x)
-                        let tentativas = 0;
-                        const tentarPlay = () => {
-                            video.play().then(() => {
-                                console.log('[VIDEO] Reproduzindo (tentativa', tentativas + 1, ')');
-                            }).catch(e => {
-                                tentativas++;
-                                if (tentativas < 10) {
-                                    console.log('[VIDEO] Tentativa', tentativas, 'falhou:', e.message);
-                                    setTimeout(tentarPlay, 500);
-                                } else {
-                                    console.log('[VIDEO] Desistiu apos 10 tentativas');
-                                }
-                            });
-                        };
-                        tentarPlay();
-
-                        // Monitora se o video realmente comecou a mostrar quadros
-                        video.addEventListener('timeupdate', function onTime() {
-                            if (video.currentTime > 0) {
-                                console.log('[VIDEO] Primeiro frame reproduzido');
-                                video.removeEventListener('timeupdate', onTime);
-                            }
-                        }, { once: true });
-                        // timeout: se em 8s nao teve frame, tenta forcar
-                        setTimeout(() => {
-                            if (video.currentTime === 0 && video.paused === false) {
-                                console.log('[VIDEO] Sem frame apos 8s, reiniciando...');
-                                video.play().catch(console.warn);
-                            }
-                        }, 8000);
-                    }
-                };
-
-                peerConnection.onicecandidate = (event) => {
-                    if (event.candidate) {
-                        console.log('[DISPLAY-ICE] Candidate:', event.candidate.candidate.substring(0, 100));
-                        console.log('[DISPLAY-ICE] Tipo:', event.candidate.candidate.includes('typ host') ? 'HOST' : event.candidate.candidate.includes('typ srflx') ? 'SRFLX' : event.candidate.candidate.includes('typ relay') ? 'RELAY' : 'OUTRO');
-                        if (socket) {
-                            socket.emit('ice-candidate', {
-                                sala: SALA_ID,
-                                candidate: event.candidate
-                            });
-                        }
-                    } else {
-                        console.log('[DISPLAY-ICE] FIM dos candidates (endOfCandidates)');
-                    }
-                };
-
-                peerConnection.oniceconnectionstatechange = () => {
-                    console.log('[DISPLAY-ICE] State:', peerConnection.iceConnectionState);
-                    console.log('[DISPLAY-ICE] Gathering:', peerConnection.iceGatheringState);
-                    const state = peerConnection.iceConnectionState;
-                    if (state === 'failed') {
-                        console.log('[DISPLAY-ICE] ICE falhou apos', 
-                            performance.now() - (window._iceStart || performance.now()), 'ms');
-                        setTimeout(() => {
-                            if (peerConnection &&
-                                peerConnection.iceConnectionState === 'failed') {
-                                resetarDisplay('ice-failed');
-                            }
-                        }, 3000);
-                    } else if (state === 'connected') {
-                        console.log('[DISPLAY-ICE] ICE CONECTADO!');
-                        setStatusDisplay(
-                            'conectado',
-                            'Transmitindo',
-                            'yellow'
-                        );
-                    }
-                    // disconnected é TRANSITÓRIO — não muda nada visual
-                };
-
-                await peerConnection.setRemoteDescription(
-                    new RTCSessionDescription(data.sdp));
-
-                const answer = await peerConnection.createAnswer();
-                await peerConnection.setLocalDescription(answer);
-
-                socket.emit('answer', {
-                    sala: SALA_ID,
-                    sdp: peerConnection.localDescription
+                // SIMPLES: play com fallback muted (igual legacy)
+                video.play().catch(e => {
+                    console.log('[VIDEO] Play falhou, forçando muted:', e.message);
+                    video.muted = true;
+                    video.play().catch(e2 => {
+                        console.warn('[VIDEO] Play muted também falhou:', e2.message);
+                    });
                 });
+            }
+        };
 
-                console.log('[WEBRTC] Answer enviada');
+        peerConnection.onicecandidate = (event) => {
+            if (event.candidate && socket) {
+                socket.emit('ice-candidate', {
+                    sala: SALA_ID,
+                    candidate: event.candidate
+                });
+            }
+        };
+
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+
+        socket.emit('answer', answer);
+        console.log('[WEBRTC] Answer enviada');
+    });
+
+    // ─── ICE candidate ───
+    socket.on('ice-candidate', async (candidate) => {
+        if (peerConnection) {
+            try {
+                await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
             } catch(e) {
-                console.error('[WEBRTC] Erro offer:', e);
-                setStatusDisplay('erro', 'Erro ao receber transmissão', 'red');
-                setTimeout(resetarDisplay, 3000);
+                console.warn('[WEBRTC] addIceCandidate erro:', e.message);
             }
-        });
-
-        // ─── Sessão encerrada ───
-        s.on('session-ended', (data) => {
-            console.log('[SOCKET] Sessão encerrada');
-            resetarDisplay('session-ended');
-        });
-
-        // ─── Sessão ativa ───
-        s.on('session-active', (data) => {
-            console.log('[SOCKET] Sessão ativa:', data.user);
-            document.getElementById('connectedUser').textContent = data.user;
-            setStatusDisplay('conectando', data.user + ' conectou', 'yellow');
-        });
-
-        // ─── ICE candidate ───
-        s.on('ice-candidate', async (data) => {
-            if (peerConnection && data.candidate) {
-                console.log('[DISPLAY-ICE] Recebido candidate:', 
-                    typeof data.candidate === 'object' ? 
-                        (data.candidate.candidate || '').substring(0, 80) : 
-                        String(data.candidate).substring(0, 80));
-                try {
-                    await peerConnection.addIceCandidate(
-                        new RTCIceCandidate(data.candidate));
-                    console.log('[DISPLAY-ICE] addIceCandidate OK');
-                } catch(e) {
-                    console.error('[DISPLAY-ICE] addIceCandidate ERRO:', e.message);
-                }
-            }
-        });
-
-        return s;
-    }
-
-    // ─── Heartbeat ───
-    function iniciarHeartbeat() {
-        pararHeartbeat();
-        heartbeatTimer = setInterval(() => {
-            if (socket && socket.connected) {
-                socket.emit('heartbeat', { sala: SALA_ID });
-            }
-        }, HEARTBEAT_INTERVAL);
-    }
-
-    function pararHeartbeat() {
-        if (heartbeatTimer) {
-            clearInterval(heartbeatTimer);
-            heartbeatTimer = null;
         }
-    }
+    });
 
-    // ─── Reset / Limpeza ───
-    function resetarDisplay(motivo) {
-        const agora = Date.now();
-        if (resetting) return;
-        if (agora - lastResetTime < RESET_COOLDOWN) {
-            console.log('[DISPLAY] Reset bloqueado por cooldown');
-            return;
-        }
-        resetting = true;
-        lastResetTime = agora;
-        console.log('[DISPLAY] Resetando...' + (motivo ? ' motivo=' + motivo : ''));
-
+    // ─── Professor desconectou (reset simples, igual legacy) ───
+    socket.on('professor-desconectou', () => {
+        console.log('[DISPLAY] Professor desconectou');
         const video = document.getElementById('remoteVideo');
+        const waitingDiv = document.getElementById('waiting');
+
         if (video.srcObject) {
             video.srcObject.getTracks().forEach(t => {
                 try { t.stop(); } catch(e) {}
             });
             video.srcObject = null;
         }
-        video.classList.remove('showing');
-
-        limparPeerConnection();
-
-        document.getElementById('waiting').classList.remove('hidden');
-        document.getElementById('connected-overlay').classList.remove('showing');
-        connected = false;
-        displayStatus = 'disponivel';
-        setStatusDisplay('disponivel', 'Projetor disponível', 'green');
-
-        if (!socket || !socket.connected) {
-            socket = criarSocket();
-        } else {
-            socket.emit('join', { sala: SALA_ID, tipo: 'display' });
-        }
-
-        setTimeout(() => { resetting = false; }, 1000);
-    }
-
-    function limparPeerConnection() {
         if (peerConnection) {
-            try { peerConnection.close(); } catch(e) {}
+            peerConnection.close();
             peerConnection = null;
         }
-    }
+
+        video.classList.remove('showing');
+        connected = false;
+        if (waitingDiv) {
+            waitingDiv.classList.remove('hidden');
+        }
+        document.getElementById('connected-overlay').classList.remove('showing');
+        setStatusDisplay('disponivel', 'Projetor disponível', 'green');
+    });
 
     // ─── Status (sem animação) ───
     function setStatusDisplay(texto, label, cor) {
@@ -540,16 +389,16 @@
 
     // ─── Cleanup ───
     window.addEventListener('beforeunload', () => {
-        pararHeartbeat();
         if (socket) socket.close();
-        limparPeerConnection();
+        if (peerConnection) {
+            peerConnection.close();
+            peerConnection = null;
+        }
         const video = document.getElementById('remoteVideo');
         if (video && video.srcObject) {
             video.srcObject.getTracks().forEach(t => t.stop());
         }
     });
-
-    console.log('[DISPLAY] Pronto (estático). Sala:', SALA_ID);
     </script>
 </body>
 </html>
