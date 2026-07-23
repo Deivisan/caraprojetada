@@ -375,6 +375,13 @@ def handle_offer(data):
     """offer WebRTC: encaminha para o display da sala"""
     sala = data.get('sala', SALA_ID)
     logger.info(f'Offer de {request.sid} para sala {sala}')
+    # log codecs do offer
+    sdp = data.get('sdp', {})
+    sdp_str = sdp.get('sdp', '') if isinstance(sdp, dict) else ''
+    if sdp_str:
+        for line in sdp_str.split('\n'):
+            if line.startswith('m=video') or 'rtpmap' in line:
+                logger.info(f'  SDP: {line.strip()}')
     last_offer[sala] = data
     emit('offer', data, room=sala, include_self=False)
 
@@ -384,6 +391,13 @@ def handle_answer(data):
     """answer WebRTC: encaminha para o presenter da sala"""
     sala = data.get('sala', SALA_ID)
     logger.info(f'Answer de {request.sid} para sala {sala}')
+    # log codecs do answer
+    sdp = data.get('sdp', {})
+    sdp_str = sdp.get('sdp', '') if isinstance(sdp, dict) else ''
+    if sdp_str:
+        for line in sdp_str.split('\n'):
+            if line.startswith('m=video') or 'rtpmap' in line:
+                logger.info(f'  SDP: {line.strip()}')
     emit('answer', data, room=sala, include_self=False)
 
 
