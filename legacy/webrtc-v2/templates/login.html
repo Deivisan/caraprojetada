@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Projeções — UFRB · CETENS</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', 'Open Sans', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #003366 0%, #005580 40%, #6A1B9A 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .login-wrapper { max-width: 520px; width: 100%; }
+        .login-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 40px 36px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.25);
+            border-top: 5px solid #FFB300;
+        }
+        .brand {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+        .brand img {
+            max-width: 240px;
+            height: auto;
+            margin-bottom: 14px;
+        }
+        .brand h1 {
+            font-size: 22px;
+            color: #003366;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+        .brand .sub {
+            font-size: 13px;
+            color: #666;
+            margin-top: 2px;
+        }
+        .brand .sub strong {
+            color: #008B9E;
+        }
+        .brand .divider {
+            width: 60px;
+            height: 3px;
+            background: linear-gradient(90deg, #003366, #008B9E, #6A1B9A, #FFB300);
+            margin: 14px auto 0;
+            border-radius: 3px;
+        }
+        .info-box {
+            background: #f0f4f8;
+            border: 1px solid #d0dce8;
+            border-radius: 10px;
+            padding: 16px 18px;
+            margin-bottom: 20px;
+            font-size: 13.5px;
+            color: #2c3e50;
+            line-height: 1.7;
+        }
+        .info-box strong { color: #003366; }
+        .info-box .highlight {
+            display: inline-block;
+            background: #FFB300;
+            color: #003366;
+            font-weight: 700;
+            padding: 0 6px;
+            border-radius: 3px;
+        }
+        .form-group {
+            margin-bottom: 18px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #444;
+            margin-bottom: 6px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 13px 14px;
+            border: 1.5px solid #d0d5dd;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: all 0.2s;
+            outline: none;
+            background: #fafafa;
+        }
+        .form-group input:focus {
+            border-color: #003366;
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(0,51,102,0.10);
+        }
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #003366, #005580);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 4px;
+        }
+        .btn-login:hover {
+            background: linear-gradient(135deg, #004480, #006699);
+            box-shadow: 0 4px 15px rgba(0,51,102,0.3);
+        }
+        .btn-login:active {
+            transform: scale(0.98);
+        }
+        .error-msg {
+            background: #fef2f2;
+            color: #991b1b;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 18px;
+            border: 1px solid #fecaca;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 11.5px;
+            color: #888;
+            line-height: 1.7;
+        }
+        .footer strong { color: #003366; }
+        @media (max-width: 500px) {
+            .login-card { padding: 24px 18px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-wrapper">
+        <div class="login-card">
+            <div class="brand">
+                <div style="display:flex;justify-content:center;align-items:center;margin-bottom:16px;">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Logotipo_UFRB.svg/240px-Logotipo_UFRB.svg.png"
+                         alt="UFRB"
+                         style="max-height:52px;width:auto;">
+                </div>
+                <h1>Sistema de Proje&ccedil;&otilde;es</h1>
+                <div class="sub"><strong>CETENS</strong> &middot; UFRB &middot; Feira de Santana</div>
+                <div class="divider"></div>
+            </div>
+            <div class="info-box">
+                <strong>&#128161; Para que serve este sistema?</strong><br>
+                Este sistema permite que voc&ecirc; <strong>espelhe a tela do seu computador</strong>
+                no projetor multim&iacute;dia da sala, utilizando suas credenciais institucionais.<br><br>
+                <strong>&#128272; Acesso:</strong> informe seu <span class="highlight">SIAPE</span>
+                (nome de usu&aacute;rio da rede UFRB) e sua senha institucional (AD).
+            </div>
+            {% if error %}
+            <div class="error-msg">&#9888; {{ error }}</div>
+            {% endif %}
+            <form method="POST">
+                <div class="form-group">
+                    <label>SIAPE (usu&aacute;rio institucional)</label>
+                    <input type="text" name="username" placeholder="Ex.: joao.silva"
+                           required autofocus autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label>Senha institucional (AD)</label>
+                    <input type="password" name="password" placeholder="Sua senha da rede UFRB"
+                           required autocomplete="off">
+                </div>
+                <button type="submit" class="btn-login">Acessar o Sistema de Proje&ccedil;&otilde;es</button>
+            </form>
+            <div class="footer">
+                <strong>Universidade Federal do Rec&ocirc;ncavo da Bahia</strong><br>
+                Centro de Ci&ecirc;ncia e Tecnologia em Energia e Sustentabilidade &bull; CETENS<br>
+                Sistema de Proje&ccedil;&otilde;es WebRTC
+            </div>
+        </div>
+    </div>
+</body>
+</html>

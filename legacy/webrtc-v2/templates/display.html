@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Display Projetor — UFRB CETENS</title>
+    <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.5/dist/socket.io.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(160deg, #001a33 0%, #003366 30%, #004d80 60%, #002244 100%);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: none;
+            user-select: none;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background:
+                radial-gradient(ellipse at 25% 50%, rgba(0,153,204,0.12) 0%, transparent 60%),
+                radial-gradient(ellipse at 75% 50%, rgba(106,27,154,0.08) 0%, transparent 60%),
+                radial-gradient(ellipse at 50% 0%, rgba(255,179,0,0.04) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        .container {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            padding: 40px;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .logo-wrap { margin-bottom: 56px; }
+        .logo-wrap img {
+            max-width: 380px;
+            width: 90%;
+            height: auto;
+            filter: brightness(1.15);
+        }
+
+        .status-area { margin-bottom: 48px; }
+        .status-text {
+            font-size: 48px;
+            font-weight: 200;
+            letter-spacing: 6px;
+            color: rgba(255,255,255,0.85);
+            animation: softPulse 4s ease-in-out infinite;
+            text-shadow: 0 0 40px rgba(255,255,255,0.06);
+        }
+        @keyframes softPulse {
+            0%, 100% { opacity: 0.6; text-shadow: 0 0 20px rgba(255,255,255,0.03); }
+            50% { opacity: 1; text-shadow: 0 0 60px rgba(255,255,255,0.08); }
+        }
+
+        .indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 24px;
+            padding: 10px 28px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 40px;
+            backdrop-filter: blur(4px);
+        }
+        .pulse-dot {
+            width: 10px;
+            height: 10px;
+            background: #22c55e;
+            border-radius: 50%;
+            animation: blinkLive 2s ease-in-out infinite;
+        }
+        @keyframes blinkLive {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        .indicator .label {
+            font-size: 13px;
+            font-weight: 400;
+            color: rgba(255,255,255,0.5);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .hint {
+            font-size: 13px;
+            color: rgba(255,255,255,0.2);
+            letter-spacing: 1px;
+            margin-top: 16px;
+        }
+
+        .clock {
+            position: absolute;
+            top: 28px;
+            right: 32px;
+            font-size: 13px;
+            font-weight: 300;
+            color: rgba(255,255,255,0.2);
+            font-family: 'Courier New', monospace;
+            letter-spacing: 0.5px;
+            z-index: 3;
+        }
+
+        .footer-bar {
+            position: absolute;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            color: rgba(255,255,255,0.15);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            white-space: nowrap;
+            z-index: 3;
+        }
+
+        video {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            z-index: 4;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            pointer-events: none;
+        }
+
+        @media (max-width: 640px) {
+            .status-text { font-size: 28px; letter-spacing: 3px; }
+            .logo-wrap { margin-bottom: 36px; }
+            .logo-wrap img { max-width: 260px; }
+            .clock { top: 16px; right: 16px; font-size: 11px; }
+            .indicator { padding: 8px 18px; }
+            .indicator .label { font-size: 11px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="waiting" class="container">
+        <div class="logo-wrap">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Logotipo_UFRB.svg/240px-Logotipo_UFRB.svg.png" alt="UFRB">
+        </div>
+
+        <div class="status-area">
+            <div class="status-text" id="status-msg">Aguardando conex&atilde;o...</div>
+            <div class="indicator">
+                <span class="pulse-dot" id="status-dot"></span>
+                <span class="label" id="status-label">Projetor dispon&iacute;vel</span>
+            </div>
+        </div>
+
+        <div class="hint" id="hint-user"></div>
+    </div>
+
+    <div class="clock" id="clock"></div>
+    <div class="footer-bar">UFRB &middot; Universidade Federal do Rec&ocirc;ncavo da Bahia</div>
+
+    <video id="remoteVideo" autoplay playsinline></video>
+
+    <script>
+        // Relógio
+        function pad(n) { return n < 10 ? '0' + n : n; }
+        function updateClock() {
+            var now = new Date();
+            document.getElementById('clock').textContent =
+                pad(now.getDate()) + '/' + pad(now.getMonth() + 1) + '/' + now.getFullYear() + '  ' +
+                pad(now.getHours()) + ':' + pad(now.getMinutes());
+        }
+        updateClock();
+        setInterval(updateClock, 60000);
+
+        // Socket.IO e WebRTC
+        const socket = io();
+        let peerConnection;
+        const config = { iceServers: [] };
+
+        socket.emit('join', { room: 'tvbox' });
+
+        socket.on('offer', async (offer) => {
+            peerConnection = new RTCPeerConnection(config);
+
+            peerConnection.ontrack = event => {
+                console.log("Stream de vídeo recebido com sucesso!");
+                const video = document.getElementById('remoteVideo');
+
+                if (video.srcObject !== event.streams[0]) {
+                    video.srcObject = event.streams[0];
+
+                    video.style.opacity = '1';
+                    document.getElementById('waiting').style.display = 'none';
+
+                    // Atualiza indicador para "em uso"
+                    document.getElementById('status-msg').textContent = 'Projetor em uso';
+                    document.getElementById('status-dot').style.background = '#eab308';
+                    document.getElementById('status-dot').style.animation = 'blinkLive 1.5s ease-in-out infinite';
+                    document.getElementById('status-label').textContent = 'Transmiss\u00e3o ativa';
+
+                    video.play().catch(e => {
+                        console.log("Erro ao dar play automático, tentando forçar:", e);
+                        video.muted = true;
+                        video.play();
+                    });
+                }
+            };
+
+            peerConnection.onicecandidate = event => {
+                if (event.candidate) {
+                    socket.emit('ice-candidate', { target: 'professor', candidate: event.candidate });
+                }
+            };
+
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            socket.emit('answer', answer);
+        });
+
+        socket.on('ice-candidate', async (candidate) => {
+            if (peerConnection) {
+                await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+            }
+        });
+
+        function resetarTela() {
+            const video = document.getElementById('remoteVideo');
+            const waitingDiv = document.getElementById('waiting');
+
+            if (video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+            }
+
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+
+            video.style.opacity = '0';
+            if (waitingDiv) {
+                waitingDiv.style.display = 'block';
+            }
+
+            document.getElementById('status-msg').textContent = 'Aguardando conex\u00e3o...';
+            document.getElementById('status-dot').style.background = '#22c55e';
+            document.getElementById('status-dot').style.animation = 'blinkLive 2s ease-in-out infinite';
+            document.getElementById('status-label').textContent = 'Projetor dispon\u00edvel';
+        }
+
+        socket.on('professor-parou', () => {
+            console.log("Professor parou a transmissão. Resetando tela...");
+            resetarTela();
+        });
+
+        socket.on('professor-desconectou', () => {
+            console.log("Professor desconectou. Resetando tela...");
+            resetarTela();
+        });
+    </script>
+</body>
+</html>
