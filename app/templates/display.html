@@ -251,8 +251,7 @@
 
     <script>
     const SALA_ID = '{{ sala_id }}';
-    // SIMPLES: sem STUN, conexão local direta (como no legacy que funcionava)
-    const CONFIG = { iceServers: [] };
+    const ICE_CONFIG = {{ ice_servers|safe }};
 
     // ─── QR Code ───
     try {
@@ -273,6 +272,7 @@
     let socket = io();
     let peerConnection = null;
     let connected = false;
+    let iceFailedTimer = null;
 
     socket.on('connect', () => {
         console.log('[DISPLAY] Conectado');
@@ -284,21 +284,28 @@
         console.log('[DISPLAY] Desconectado');
     });
 
-    // ─── Offer recebida (igual ao legacy que funcionava) ───
+    // ─── Offer recebida ───
     socket.on('offer', async (offer) => {
         console.log('[WEBRTC] Offer recebida');
         setStatusDisplay('conectando', 'Recebendo transmissão...', 'yellow');
 
-        // Fecha conexão anterior se houver
         if (peerConnection) {
             peerConnection.close();
             peerConnection = null;
         }
+        if (iceFailedTimer) {
+            clearTimeout(iceFailedTimer);
+            iceFailedTimer = null;
+        }
 
-        peerConnection = new RTCPeerConnection(CONFIG);
+        peerConnection = new RTCPeerConnection(ICE_CONFIG);
 
         peerConnection.ontrack = (event) => {
             console.log('[WEBRTC] Stream recebido!');
+            if (iceFailedTimer) {
+                clearTimeout(iceFailedTimer);
+                iceFailedTimer = null;
+            }
             const video = document.getElementById('remoteVideo');
             if (event.streams && event.streams[0]) {
                 video.srcObject = event.streams[0];
@@ -307,8 +314,6 @@
                 connected = true;
                 setStatusDisplay('conectado', 'Transmitindo', 'yellow');
                 document.getElementById('connected-overlay').classList.add('showing');
-
-                // SIMPLES: play com fallback muted (igual legacy)
                 video.play().catch(e => {
                     console.log('[VIDEO] Play falhou, forçando muted:', e.message);
                     video.muted = true;
@@ -328,13 +333,40 @@
             }
         };
 
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(offer.sdp));
+        peerConnection.oniceconnectionstatechange = () => {
+            const state = peerConnection.iceConnectionState;
+            console.log('[WEBRTC] ICE state:', state);
+            if (state === 'connected' || state === 'completed') {
+                if (iceFailedTimer) {
+                    clearTimeout(iceFailedTimer);
+                    iceFailedTimer = null;
+                }
+            } else if (state === 'failed') {
+                console.log('[WEBRTC] ICE falhou');
+                setStatusDisplay('erro', 'Falha na conexão', 'red');
+            }
+        };
 
-        const answer = await peerConnection.createAnswer();
-        await peerConnection.setLocalDescription(answer);
+        // timeout: se ICE nao conectar em 15s
+        iceFailedTimer = setTimeout(() => {
+            if (peerConnection && peerConnection.iceConnectionState !== 'connected'
+                && peerConnection.iceConnectionState !== 'completed') {
+                console.log('[WEBRTC] ICE timeout apos 15s');
+                setStatusDisplay('erro', 'Tempo limite de conexão', 'red');
+            }
+        }, 15000);
 
-        socket.emit('answer', { sala: SALA_ID, sdp: answer });
-        console.log('[WEBRTC] Answer enviada');
+        try {
+            await peerConnection.setRemoteDescription(
+                new RTCSessionDescription(offer.sdp));
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            socket.emit('answer', { sala: SALA_ID, sdp: answer });
+            console.log('[WEBRTC] Answer enviada');
+        } catch(e) {
+            console.error('[WEBRTC] Erro offer/answer:', e.message);
+            setStatusDisplay('erro', 'Erro na conexão', 'red');
+        }
     });
 
     // ─── ICE candidate ───
@@ -348,12 +380,15 @@
         }
     });
 
-    // ─── Professor desconectou (reset simples, igual legacy) ───
+    // ─── Professor desconectou ───
     socket.on('professor-desconectou', () => {
         console.log('[DISPLAY] Professor desconectou');
+        if (iceFailedTimer) {
+            clearTimeout(iceFailedTimer);
+            iceFailedTimer = null;
+        }
         const video = document.getElementById('remoteVideo');
         const waitingDiv = document.getElementById('waiting');
-
         if (video.srcObject) {
             video.srcObject.getTracks().forEach(t => {
                 try { t.stop(); } catch(e) {}
@@ -364,7 +399,6 @@
             peerConnection.close();
             peerConnection = null;
         }
-
         video.classList.remove('showing');
         connected = false;
         if (waitingDiv) {
@@ -374,7 +408,7 @@
         setStatusDisplay('disponivel', 'Projetor disponível', 'green');
     });
 
-    // ─── Status (sem animação) ───
+    // ─── Status ───
     function setStatusDisplay(texto, label, cor) {
         const display = document.getElementById('statusDisplay');
         const dot = document.getElementById('statusDot');
@@ -389,6 +423,7 @@
 
     // ─── Cleanup ───
     window.addEventListener('beforeunload', () => {
+        if (iceFailedTimer) clearTimeout(iceFailedTimer);
         if (socket) socket.close();
         if (peerConnection) {
             peerConnection.close();
