@@ -21,6 +21,17 @@ echo "Porta: $PORT"
 echo "Modo: $CARAPROJETADA_ENV"
 echo ""
 
+# ───────────────────────────────────────────────
+# [0/4] Forca resolucao 1440x900 no HDMI
+# ───────────────────────────────────────────────
+echo "====== [0/4] Forcando resolucao 1440x900 ======"
+if pgrep -x Xorg > /dev/null; then
+    xrandr --newmode "1440x900_60" 106.50 1440 1528 1672 1904 900 903 909 934 -hsync +vsync 2>/dev/null || true
+    xrandr --addmode HDMI-1 1440x900_60 2>/dev/null || true
+    xrandr --output HDMI-1 --mode 1440x900_60 2>/dev/null || true
+    sleep 1
+fi
+
 cd "$APP_DIR"
 
 # ───────────────────────────────────────────────
