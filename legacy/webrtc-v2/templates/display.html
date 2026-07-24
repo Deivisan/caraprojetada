@@ -36,15 +36,14 @@
             text-align: center;
             padding: 40px;
             width: 100%;
-            max-width: 900px;
+            max-width: min(85vw, 1200px);
         }
 
-        .logo-wrap { margin-bottom: 56px; }
-        .logo-wrap img {
-            max-width: 380px;
+        .logo-wrap { margin-bottom: 48px; }
+        .logo-wrap svg {
+            max-width: min(50vw, 500px);
             width: 90%;
             height: auto;
-            filter: brightness(1.15);
         }
 
         .status-area { margin-bottom: 48px; }
@@ -54,11 +53,10 @@
             letter-spacing: 6px;
             color: rgba(255,255,255,0.85);
             animation: softPulse 4s ease-in-out infinite;
-            text-shadow: 0 0 40px rgba(255,255,255,0.06);
         }
         @keyframes softPulse {
-            0%, 100% { opacity: 0.6; text-shadow: 0 0 20px rgba(255,255,255,0.03); }
-            50% { opacity: 1; text-shadow: 0 0 60px rgba(255,255,255,0.08); }
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
         }
 
         .indicator {
@@ -73,8 +71,8 @@
             backdrop-filter: blur(4px);
         }
         .pulse-dot {
-            width: 10px;
-            height: 10px;
+            width: 14px;
+            height: 14px;
             background: #22c55e;
             border-radius: 50%;
             animation: blinkLive 2s ease-in-out infinite;
@@ -104,7 +102,7 @@
             right: 32px;
             font-size: 13px;
             font-weight: 300;
-            color: rgba(255,255,255,0.2);
+            color: rgba(255,255,255,0.7);
             font-family: 'Courier New', monospace;
             letter-spacing: 0.5px;
             z-index: 3;
@@ -116,7 +114,7 @@
             left: 50%;
             transform: translateX(-50%);
             font-size: 11px;
-            color: rgba(255,255,255,0.15);
+            color: rgba(255,255,255,0.35);
             letter-spacing: 2px;
             text-transform: uppercase;
             white-space: nowrap;
@@ -137,7 +135,7 @@
         @media (max-width: 640px) {
             .status-text { font-size: 28px; letter-spacing: 3px; }
             .logo-wrap { margin-bottom: 36px; }
-            .logo-wrap img { max-width: 260px; }
+            .logo-wrap svg { max-width: 260px; }
             .clock { top: 16px; right: 16px; font-size: 11px; }
             .indicator { padding: 8px 18px; }
             .indicator .label { font-size: 11px; }
