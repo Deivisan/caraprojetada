@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sistema de Projeções — {{ instituicao }}</title>
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            height: 100%; width: 100%;
+            font-family: 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+            overflow-x: hidden;
+        }
+
+        /* ─── Hero Layout ─── */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background:
+                linear-gradient(135deg, #003366 0%, #004d80 40%, #6A1B9A 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* animated bg shapes */
+        .hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 600px 400px at 10% 30%, rgba(255,179,0,0.08) 0%, transparent 70%),
+                radial-gradient(ellipse 500px 500px at 80% 70%, rgba(255,255,255,0.04) 0%, transparent 70%),
+                radial-gradient(ellipse 300px 300px at 50% 0%, rgba(0,153,204,0.06) 0%, transparent 70%);
+            animation: heroShift 12s ease-in-out infinite alternate;
+            pointer-events: none;
+        }
+        @keyframes heroShift {
+            0%   { transform: scale(1) translate(0, 0); }
+            100% { transform: scale(1.03) translate(-10px, 10px); }
+        }
+
+        /* floating particles */
+        .particles {
+            position: fixed; inset: 0;
+            pointer-events: none; overflow: hidden;
+            z-index: 0;
+        }
+        .particle {
+            position: absolute;
+            width: 4px; height: 4px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 50%;
+            animation: floatUp linear infinite;
+        }
+        .particle:nth-child(1)  { left: 5%;  animation-duration: 18s; animation-delay: 0s; width: 3px; height: 3px; }
+        .particle:nth-child(2)  { left: 15%; animation-duration: 22s; animation-delay: 3s; }
+        .particle:nth-child(3)  { left: 25%; animation-duration: 16s; animation-delay: 1s; width: 2px; height: 2px; }
+        .particle:nth-child(4)  { left: 35%; animation-duration: 20s; animation-delay: 5s; }
+        .particle:nth-child(5)  { left: 45%; animation-duration: 24s; animation-delay: 2s; width: 5px; height: 5px; }
+        .particle:nth-child(6)  { left: 55%; animation-duration: 19s; animation-delay: 7s; }
+        .particle:nth-child(7)  { left: 65%; animation-duration: 21s; animation-delay: 4s; width: 3px; height: 3px; }
+        .particle:nth-child(8)  { left: 75%; animation-duration: 17s; animation-delay: 8s; }
+        .particle:nth-child(9)  { left: 85%; animation-duration: 23s; animation-delay: 2s; }
+        .particle:nth-child(10) { left: 95%; animation-duration: 15s; animation-delay: 6s; width: 2px; height: 2px; }
+        @keyframes floatUp {
+            0%   { bottom: -10px; opacity: 0; transform: translateX(0); }
+            10%  { opacity: 0.6; }
+            90%  { opacity: 0.6; }
+            100% { bottom: 110%; opacity: 0; transform: translateX(30px); }
+        }
+
+        /* ─── Main Content ─── */
+        .content {
+            position: relative;
+            z-index: 1;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 16px;
+        }
+
+        .card-wrap {
+            width: 100%;
+            max-width: 500px;
+            animation: fadeSlideUp 0.6s ease-out;
+        }
+        @keyframes fadeSlideUp {
+            0%   { opacity: 0; transform: translateY(30px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        .card {
+            background: rgba(255,255,255,0.97);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 36px 32px 28px;
+            box-shadow:
+                0 4px 6px -1px rgba(0,0,0,0.06),
+                0 10px 40px -4px rgba(0,0,0,0.15);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        /* ─── Brand ─── */
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e9edf1;
+        }
+        .brand img {
+            width: 52px;
+            height: auto;
+            flex-shrink: 0;
+        }
+        .brand-text h1 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #003366;
+            letter-spacing: -0.3px;
+            line-height: 1.3;
+        }
+        .brand-text .sub {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 2px;
+        }
+        .brand-text .sub strong {
+            color: #008B9E;
+            font-weight: 600;
+        }
+
+        /* ─── Info Box ─── */
+        .info-system {
+            background: #f0f7ff;
+            border: 1px solid #dbeafe;
+            border-radius: 12px;
+            padding: 16px 18px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #1e40af;
+        }
+        .info-system strong {
+            color: #003366;
+        }
+        .info-system .highlight {
+            display: inline-block;
+            background: #dbeafe;
+            padding: 1px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #1d4ed8;
+            margin-top: 4px;
+        }
+
+        /* ─── Steps ─── */
+        .steps {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .step {
+            flex: 1;
+            min-width: 100px;
+            background: #f8fafc;
+            border: 1px solid #e9edf1;
+            border-radius: 10px;
+            padding: 12px 14px;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        .step:hover {
+            border-color: #cbd5e1;
+            background: #fff;
+        }
+        .step .num {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px; height: 24px;
+            background: #003366;
+            color: #fff;
+            border-radius: 50%;
+            font-size: 11px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .step .desc {
+            font-size: 11.5px;
+            color: #475569;
+            line-height: 1.4;
+        }
+
+        /* ─── Form ─── */
+        .form-group {
+            margin-bottom: 16px;
+            opacity: 0;
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+        .form-group:nth-child(1) { animation-delay: 0.2s; }
+        .form-group:nth-child(2) { animation-delay: 0.3s; }
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 6px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1.5px solid #d0d5dd;
+            border-radius: 10px;
+            font-size: 15px;
+            outline: none;
+            background: #fff;
+            transition: all 0.2s;
+        }
+        .form-group input:focus {
+            border-color: #003366;
+            box-shadow: 0 0 0 3px rgba(0,51,102,0.10);
+        }
+        .form-group input::placeholder {
+            color: #94a3b8;
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            margin-top: 4px;
+            background: linear-gradient(135deg, #003366, #005580);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-login:hover {
+            background: linear-gradient(135deg, #004480, #006699);
+            box-shadow: 0 4px 15px rgba(0,51,102,0.25);
+        }
+        .btn-login:active { transform: scale(0.98); }
+        .btn-login.loading {
+            pointer-events: none;
+            opacity: 0.8;
+        }
+        .btn-login.loading::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+            animation: shimmer 1.5s infinite;
+        }
+        @keyframes shimmer {
+            0%   { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .error-msg {
+            background: #fef2f2;
+            color: #991b1b;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 13px;
+            margin-bottom: 16px;
+            border: 1px solid #fecaca;
+            animation: shakeX 0.4s ease-out;
+        }
+        @keyframes shakeX {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        /* ─── Footer ─── */
+        .footer {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            padding: 20px 16px 24px;
+        }
+        .footer p {
+            font-size: 11.5px;
+            color: rgba(255,255,255,0.4);
+            letter-spacing: 0.5px;
+        }
+        .footer p a {
+            color: rgba(255,255,255,0.5);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        .footer p a:hover { color: rgba(255,255,255,0.8); }
+        .footer .badges {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+        .footer .badge {
+            display: inline-block;
+            padding: 3px 12px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 600;
+            background: rgba(255,255,255,0.06);
+            color: rgba(255,255,255,0.35);
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+
+        /* ─── Responsive ─── */
+        @media (max-width: 540px) {
+            .card { padding: 24px 20px 20px; }
+            .brand img { width: 40px; }
+            .brand-text h1 { font-size: 16px; }
+            .steps { flex-direction: column; }
+            .step { min-width: auto; }
+            .footer p { font-size: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="hero">
+        <div class="particles" aria-hidden="true">
+            <div class="particle"></div><div class="particle"></div>
+            <div class="particle"></div><div class="particle"></div>
+            <div class="particle"></div><div class="particle"></div>
+            <div class="particle"></div><div class="particle"></div>
+            <div class="particle"></div><div class="particle"></div>
+        </div>
+
+        <div class="content">
+            <div class="card-wrap">
+                <div class="card">
+                    <!-- Brand -->
+                    <div class="brand">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/S%C3%ADmbolo_da_UFRB.png/320px-S%C3%ADmbolo_da_UFRB.png"
+                             alt="UFRB"
+                             onerror="this.style.display='none'">
+                        <div class="brand-text">
+                            <h1>Sistema de Projeções</h1>
+                            <div class="sub"><strong>{{ instituicao }}</strong> &middot; UFRB</div>
+                        </div>
+                    </div>
+
+                    <!-- System Info -->
+                    <div class="info-system">
+                        <strong>&#127760; Sobre o sistema</strong><br>
+                        Plataforma de transmissão de tela para projetores institucionais.
+                        Conecte-se a qualquer sala disponível e compartilhe sua tela em tempo real.
+                        <div class="highlight">&#9672; {{ sala_nome }} disponível</div>
+                    </div>
+
+                    <!-- Steps -->
+                    <div class="steps">
+                        <div class="step">
+                            <div class="num">1</div>
+                            <div class="desc">Faça login com seu SIAPE</div>
+                        </div>
+                        <div class="step">
+                            <div class="num">2</div>
+                            <div class="desc">Escolha a sala desejada</div>
+                        </div>
+                        <div class="step">
+                            <div class="num">3</div>
+                            <div class="desc">Compartilhe sua tela</div>
+                        </div>
+                    </div>
+
+                    <!-- Error -->
+                    {% if error %}
+                    <div class="error-msg">&#9888; {{ error }}</div>
+                    {% endif %}
+
+                    <!-- Login Form -->
+                    <form action="/login" method="post" autocomplete="off"
+                          onsubmit="document.getElementById('btn-submit').classList.add('loading')">
+                        <div class="form-group">
+                            <label>SIAPE (usuário institucional)</label>
+                            <input type="text" name="username"
+                                   placeholder="Ex.: joao.silva"
+                                   required autofocus
+                                   autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label>Senha institucional</label>
+                            <input type="password" name="password"
+                                   placeholder="Sua senha da rede UFRB"
+                                   required autocomplete="off">
+                        </div>
+                        <button type="submit" class="btn-login" id="btn-submit">
+                            Acessar Sistema
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>
+                {{ instituicao }} &middot; Universidade Federal do Recôncavo da Bahia
+            </p>
+            <div class="badges">
+                <span class="badge">GTCR</span>
+                <span class="badge">CETENS</span>
+                <span class="badge">v2.0 WebRTC</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // loading state no submit
+        document.querySelector('form').addEventListener('submit', function() {
+            const btn = document.getElementById('btn-submit');
+            btn.classList.add('loading');
+            btn.textContent = 'Entrando...';
+        });
+    </script>
+</body>
+</html>

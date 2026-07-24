@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Display Projetor</title>
+    <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.5/dist/socket.io.min.js"></script>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; font-family: Arial, sans-serif; }
+        
+        /* Centraliza a logo da instituição em background */
+        .waiting-screen {
+            position: absolute; width: 100%; height: 100%; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; color: white; background: #111; z-index: 1;
+        }
+        .logo { font-size: 48px; font-weight: bold; color: #007bff; margin-bottom: 20px; }
+        
+        /* O elemento de vídeo ocupa a tela inteira por cima do background */
+        video { position: absolute; width: 100%; height: 100%; object-fit: contain; z-index: 2; display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="waiting" class="waiting-screen">
+        <div class="logo">Sua Instituição / UFRB</div>
+        <p>Aguardando conexão do professor... Acesse o IP desta máquina para transmitir.</p>
+    </div>
+	<video id="remoteVideo" autoplay playsinline style="width:100vw; height:100vh; display:none; object-fit: contain; transform: translateZ(0);"></video>
+    
+
+    <script>
+        const socket = io();
+        let peerConnection;
+        const config = { iceServers: [] };
+
+        // Entra na sala da TV Box
+        socket.emit('join', { room: 'tvbox' });
+
+        // Recebe a oferta de transmissão do Notebook
+        socket.on('offer', async (offer) => {
+            peerConnection = new RTCPeerConnection(config);
+            
+            // Exibe e injeta o stream de vídeo recebido
+           // peerConnection.ontrack = event => {
+           //     const video = document.getElementById('remoteVideo');
+           ///     video.srcObject = event.streams[0];
+           //     video.style.display = 'block'; // Joga o elemento para frente
+           //     document.getElementById('waiting').style.display = 'none';
+           // };
+		
+
+	peerConnection.ontrack = event => {
+    		console.log("Stream de vídeo recebido com sucesso!");
+    		const video = document.getElementById('remoteVideo');
+    
+    		if (video.srcObject !== event.streams[0]) {
+        		video.srcObject = event.streams[0];
+        
+        		// Força a exibição e o play imediato contornando travas do Xorg
+        		video.style.display = 'block';
+        		document.getElementById('waiting').style.display = 'none';
+        
+        		video.play().catch(e => {
+            		console.log("Erro ao dar play automático, tentando forçar:", e);
+            		video.muted = true; // Navegadores exigem mute para autoplay sem clique
+            		video.play();
+        		});
+    		}
+	};
+
+            peerConnection.onicecandidate = event => {
+                if (event.candidate) {
+                    socket.emit('ice-candidate', { target: 'professor', candidate: event.candidate });
+                }
+            };
+
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+            
+            // Cria a resposta e envia de volta ao professor
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            socket.emit('answer', answer);
+        });
+
+        // Recebe candidatos ICE do notebook do professor
+        socket.on('ice-candidate', async (candidate) => {
+            if (peerConnection) {
+                await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+            }
+        });
+// Ouvir o aviso de que o professor desconectou
+socket.on('professor-desconectou', () => {
+    console.log("Professor desconectou. Resetando tela...");
+    
+    const video = document.getElementById('remoteVideo');
+    const waitingDiv = document.getElementById('waiting');
+    
+    // Para todos os tracks de vídeo que estavam rodando
+    if (video.srcObject) {
+        video.srcObject.getTracks().forEach(track => track.stop());
+        video.srcObject = null;
+    }
+    
+    // Fecha a conexão WebRTC antiga para preparar para a próxima
+    if (peerConnection) {
+        peerConnection.close();
+        peerConnection = null;
+    }
+    
+    // Esconde o vídeo e mostra a mensagem de espera novamente
+    video.style.display = 'none';
+    if (waitingDiv) {
+        waitingDiv.style.display = 'block';
+    }
+});
+
+    </script>
+</body>
+</html>

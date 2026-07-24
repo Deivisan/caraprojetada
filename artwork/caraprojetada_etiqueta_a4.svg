@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="210mm" height="297mm" viewBox="0 0 210 297">
+  <title>CaraProjetada - etiqueta A4 11x11cm + faixa 11x3,4cm</title>
+  <desc>arquivo em tamanho real para impressão em folha A4. etiqueta superior: 110mm x 110mm. faixa frontal: 110mm x 34mm.</desc>
+
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#001a33"/>
+      <stop offset="0.42" stop-color="#003366"/>
+      <stop offset="0.72" stop-color="#005580"/>
+      <stop offset="1" stop-color="#001326"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffd766"/>
+      <stop offset="0.45" stop-color="#ffb300"/>
+      <stop offset="1" stop-color="#ff8f00"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="40%" r="70%">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.16"/>
+      <stop offset="0.45" stop-color="#ffb300" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="1.8" stdDeviation="1.8" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+    <style>
+      .page-bg { fill: #f7f7f7; }
+      .cut { fill: none; stroke: #888; stroke-width: .25; stroke-dasharray: 2 1.5; }
+      .note { font-family: Arial, Helvetica, sans-serif; font-size: 3.2px; fill: #555; }
+      .panel { fill: url(#bg); }
+      .gold { fill: url(#gold); }
+      .white { fill: #fff; }
+      .muted { fill: rgba(255,255,255,.72); }
+      .tiny { font-family: Arial, Helvetica, sans-serif; font-size: 3.2px; letter-spacing: .7px; }
+      .small { font-family: Arial, Helvetica, sans-serif; font-size: 4.2px; letter-spacing: .4px; }
+      .label { font-family: Arial, Helvetica, sans-serif; font-size: 5px; letter-spacing: 1.3px; }
+      .title { font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: 800; letter-spacing: .2px; }
+      .subtitle { font-family: Arial, Helvetica, sans-serif; font-size: 4.9px; letter-spacing: .7px; }
+      .status { font-family: Arial, Helvetica, sans-serif; font-size: 6.8px; font-weight: 600; letter-spacing: .8px; }
+      .front-title { font-family: Arial, Helvetica, sans-serif; font-size: 9px; font-weight: 800; letter-spacing: .1px; }
+      .front-sub { font-family: Arial, Helvetica, sans-serif; font-size: 3.7px; letter-spacing: .6px; }
+    </style>
+  </defs>
+
+  <!-- folha A4 -->
+  <rect class="page-bg" x="0" y="0" width="210" height="297"/>
+  <text class="note" x="15" y="12">imprimir em 100% / tamanho real — não ajustar à página</text>
+
+  <!-- etiqueta superior: 110mm x 110mm -->
+  <g id="etiqueta-superior" transform="translate(15 20)">
+    <rect x="0" y="0" width="110" height="110" rx="6" class="panel"/>
+    <rect x="0" y="0" width="110" height="110" rx="6" fill="url(#glow)"/>
+    <rect x="1.5" y="1.5" width="107" height="107" rx="5" fill="none" stroke="rgba(255,255,255,.18)" stroke-width=".45"/>
+
+    <!-- grafismos tecnológicos -->
+    <g opacity="0.18" stroke="#ffffff" stroke-width=".35" fill="none">
+      <path d="M12 22 H32 V15 H48"/>
+      <path d="M82 20 H96 V36"/>
+      <path d="M15 90 H35 V98 H52"/>
+      <path d="M72 94 H92 V82"/>
+      <circle cx="32" cy="15" r="1.1" fill="#fff"/>
+      <circle cx="96" cy="36" r="1.1" fill="#fff"/>
+      <circle cx="52" cy="98" r="1.1" fill="#fff"/>
+      <circle cx="72" cy="94" r="1.1" fill="#fff"/>
+    </g>
+
+    <!-- selo ufrb 20 anos estilizado -->
+    <g transform="translate(55 24)" filter="url(#softShadow)">
+      <circle r="15.5" class="gold"/>
+      <circle r="12.8" fill="#003366" opacity=".92"/>
+      <text x="0" y="-2.5" text-anchor="middle" class="white" style="font-family:Arial, Helvetica, sans-serif;font-size:7.7px;font-weight:900;letter-spacing:-.4px;">20</text>
+      <text x="0" y="4.7" text-anchor="middle" class="white" style="font-family:Arial, Helvetica, sans-serif;font-size:3.1px;font-weight:700;letter-spacing:.7px;">ANOS</text>
+      <text x="0" y="9.5" text-anchor="middle" fill="#ffb300" style="font-family:Arial, Helvetica, sans-serif;font-size:3.1px;font-weight:800;letter-spacing:.3px;">UFRB</text>
+    </g>
+
+    <!-- nome -->
+    <text x="55" y="51" text-anchor="middle" class="title white" filter="url(#softShadow)">CaraProjetada</text>
+    <text x="55" y="59" text-anchor="middle" class="subtitle" fill="rgba(255,255,255,.80)">SISTEMA DE PROJEÇÃO INTELIGENTE</text>
+
+    <!-- status visual -->
+    <g transform="translate(55 75)">
+      <rect x="-35" y="-7" width="70" height="14" rx="7" fill="rgba(255,255,255,.09)" stroke="rgba(255,255,255,.16)" stroke-width=".4"/>
+      <circle cx="-25" cy="0" r="2" fill="#22c55e"/>
+      <circle cx="-25" cy="0" r="4.1" fill="none" stroke="#22c55e" stroke-width=".45" opacity=".45"/>
+      <text x="-18" y="2.1" class="status white">Aguardando conexão...</text>
+    </g>
+
+    <!-- rodapé -->
+    <text x="55" y="94" text-anchor="middle" class="small" fill="rgba(255,255,255,.73)">UFRB • CETENS • Feira de Santana</text>
+    <text x="55" y="101" text-anchor="middle" class="tiny" fill="rgba(255,255,255,.45)">conexão simples • rápida • segura</text>
+  </g>
+
+  <!-- linha de corte da etiqueta superior -->
+  <rect x="15" y="20" width="110" height="110" class="cut"/>
+  <text class="note" x="130" y="75">etiqueta superior</text>
+  <text class="note" x="130" y="80">110mm × 110mm</text>
+
+  <!-- faixa frontal/lateral: 110mm x 34mm -->
+  <g id="faixa-frontal" transform="translate(15 145)">
+    <rect x="0" y="0" width="110" height="34" rx="3.5" class="panel"/>
+    <rect x="0" y="0" width="110" height="34" rx="3.5" fill="url(#glow)" opacity=".75"/>
+    <rect x="1.2" y="1.2" width="107.6" height="31.6" rx="3" fill="none" stroke="rgba(255,255,255,.18)" stroke-width=".35"/>
+
+    <g transform="translate(15 17)">
+      <circle r="8.8" class="gold"/>
+      <circle r="7.1" fill="#003366" opacity=".92"/>
+      <text x="0" y="-.8" text-anchor="middle" class="white" style="font-family:Arial, Helvetica, sans-serif;font-size:4.5px;font-weight:900;letter-spacing:-.2px;">20</text>
+      <text x="0" y="3.7" text-anchor="middle" class="white" style="font-family:Arial, Helvetica, sans-serif;font-size:1.9px;font-weight:700;letter-spacing:.4px;">ANOS</text>
+      <text x="0" y="6.4" text-anchor="middle" fill="#ffb300" style="font-family:Arial, Helvetica, sans-serif;font-size:1.9px;font-weight:800;">UFRB</text>
+    </g>
+
+    <text x="30" y="15" class="front-title white">CaraProjetada</text>
+    <text x="30" y="21" class="front-sub" fill="rgba(255,255,255,.72)">SISTEMA DE PROJEÇÃO INTELIGENTE</text>
+    <text x="30" y="27" class="front-sub" fill="rgba(255,255,255,.45)">UFRB • CETENS</text>
+
+    <g transform="translate(88 17)">
+      <circle cx="0" cy="0" r="2" fill="#22c55e"/>
+      <text x="5" y="1.4" class="front-sub white">online</text>
+    </g>
+  </g>
+
+  <!-- linha de corte da faixa frontal -->
+  <rect x="15" y="145" width="110" height="34" class="cut"/>
+  <text class="note" x="130" y="160">faixa frontal/lateral</text>
+  <text class="note" x="130" y="165">110mm × 34mm</text>
+
+  <!-- guia inferior -->
+  <text class="note" x="15" y="195">observação: o desenho não contém ip, senha, usuário, qr code ou dado sensível.</text>
+  <text class="note" x="15" y="201">recorte nas linhas tracejadas. use papel adesivo ou papel comum com plastificação/fita dupla-face.</text>
+</svg>

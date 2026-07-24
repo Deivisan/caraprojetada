@@ -1,0 +1,3 @@
+[submodule "android/droidvnc"]
+	path = android/droidvnc
+	url = https://github.com/Deivisan/droidVNC-NG.git

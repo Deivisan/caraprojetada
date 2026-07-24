@@ -1,0 +1,15 @@
+[Unit]
+Description=Servidor WebRTC e Quiosque do Projetor
+After=network.target systemd-user-sessions.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/carapreta/projeto-webrtc
+ExecStart=/home/carapreta/projeto-webrtc/iniciar_tudo.sh
+Restart=always
+RestartSec=5
+Environment=DISPLAY=:0
+
+[Install]
+WantedBy=multi-user.target

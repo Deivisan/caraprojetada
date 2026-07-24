@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel do Professor — UFRB · CETENS</title>
+    <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.5/dist/socket.io.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', 'Open Sans', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #003366 0%, #005580 40%, #6A1B9A 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .panel-wrapper { max-width: 560px; width: 100%; }
+        .panel-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 36px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.25);
+            border-top: 5px solid #FFB300;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .header-left h1 {
+            font-size: 18px;
+            color: #003366;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+        .header-left .sub { font-size: 11px; color: #888; }
+        .user-badge {
+            background: #e8f0f8;
+            color: #003366;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12.5px;
+            font-weight: 600;
+            white-space: nowrap;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .display-box {
+            background: #f0f4f8;
+            border: 1px solid #d0dce8;
+            border-radius: 10px;
+            padding: 14px 18px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .display-box .label { font-size: 13px; color: #666; }
+        .display-box .value {
+            font-size: 14px;
+            font-weight: 700;
+            color: #003366;
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+        }
+        .display-box .hint {
+            width: 100%;
+            font-size: 11px;
+            color: #999;
+            margin-top: 4px;
+        }
+        .connect-area {
+            border: 1.5px dashed #c8d8e8;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 16px;
+            background: #fafcfe;
+            text-align: center;
+        }
+        .status-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 16px;
+        }
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .dot.green { background: #16a34a; box-shadow: 0 0 6px rgba(22,163,74,0.4); }
+        .dot.yellow { background: #eab308; box-shadow: 0 0 6px rgba(234,179,8,0.4); }
+        .dot.red { background: #dc2626; box-shadow: 0 0 6px rgba(220,38,38,0.4); }
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #28a745, #218838);
+            color: #fff;
+        }
+        .btn-primary:hover {
+            box-shadow: 0 4px 15px rgba(40,167,69,0.3);
+            transform: translateY(-1px);
+        }
+        .btn-danger {
+            background: #fff;
+            color: #991b1b;
+            border: 1.5px solid #fecaca;
+        }
+        .btn-danger:hover { background: #fef2f2; }
+        .btn-outline {
+            background: #f3f4f6;
+            color: #555;
+            border: 1px solid #d0d5dd;
+            font-size: 12px;
+            padding: 8px 16px;
+        }
+        .btn-outline:hover { background: #e5e7eb; }
+        #status {
+            margin-top: 16px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #555;
+            line-height: 1.5;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 11px;
+            color: #888;
+            line-height: 1.6;
+        }
+        .footer strong { color: #003366; }
+        @media (max-width: 500px) {
+            .panel-card { padding: 20px; }
+            .header { flex-direction: column; align-items: stretch; }
+            .user-badge { align-self: flex-start; }
+            .btn-group { flex-direction: column; }
+            .btn { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="panel-wrapper">
+        <div class="panel-card">
+            <div class="header">
+                <div class="header-left">
+                    <h1>Sistema de Proje&ccedil;&otilde;es</h1>
+                    <div class="sub">UFRB &middot; CETENS</div>
+                </div>
+                <div class="user-badge" title="{{ username }}">&#128100; {{ username }}</div>
+            </div>
+
+            <div class="display-box">
+                <span class="label">&#127760; Acesse o projetor em:</span>
+                <span class="value" id="displayUrl"></span>
+                <div class="hint">Abra este endereço no navegador da TV Box / projetor para receber a transmiss&atilde;o.</div>
+            </div>
+
+            <div class="connect-area">
+                <div class="status-row">
+                    <span class="dot green" id="statusDot"></span>
+                    <span id="statusLabel">Conectando ao servidor...</span>
+                </div>
+
+                <div class="btn-group">
+                    <button id="startBtn" class="btn btn-primary" onclick="iniciarTransmissao()">&#9654; Compartilhar Tela</button>
+                    <button id="stopBtn" class="btn btn-danger" onclick="pararTransmissao()" style="display:none;">&#9632; Parar Compartilhamento</button>
+                </div>
+
+                <div id="status">Status: Conectando ao servidor...</div>
+            </div>
+
+            <div style="text-align:center;">
+                <a href="/logout" class="btn btn-outline" style="text-decoration:none;">Sair da sess&atilde;o</a>
+            </div>
+
+            <div class="footer">
+                <strong>UFRB</strong> &bull; Universidade Federal do Rec&ocirc;ncavo da Bahia<br>
+                CETENS &bull; Centro de Ci&ecirc;ncia e Tecnologia em Energia e Sustentabilidade
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Monta URL do display automaticamente
+        document.getElementById('displayUrl').textContent = window.location.origin + '/display';
+
+        // Inicializa o socket de forma segura
+        let socket;
+        try {
+            socket = io();
+            socket.emit('join', { room: 'professor' });
+            document.getElementById('status').innerText = "Status: Conectado. Pronto para transmitir.";
+            document.getElementById('statusLabel').innerText = "Conectado. Pronto para transmitir.";
+        } catch (e) {
+            console.error("Erro ao iniciar Socket.IO:", e);
+            document.getElementById('status').innerText = "Status: Erro crítico ao carregar o Socket.IO.";
+            document.getElementById('statusLabel').innerText = "Erro ao conectar.";
+            document.getElementById('statusDot').className = 'dot red';
+        }
+
+        let localStream = null;
+        let peerConnection = null;
+        
+        const config = { iceServers: [] }; 
+
+async function iniciarTransmissao() {
+    try {
+        document.getElementById('status').innerText = "Status: Solicitando permissão de tela...";
+        document.getElementById('statusLabel').innerText = "Solicitando permissão de tela...";
+        document.getElementById('statusDot').className = 'dot yellow';
+
+        localStream = await navigator.mediaDevices.getDisplayMedia({
+            video: { 
+                width: {ideal: 1280}, 
+                height: {ideal: 720}, 
+                frameRate: {max: 15},
+                cursor: 'always'
+            },
+            audio: false
+        });
+
+        document.getElementById('startBtn').style.display = 'none';
+        document.getElementById('stopBtn').style.display = 'inline-block';
+        document.getElementById('status').innerText = "Status: Estabelecendo conexão WebRTC...";
+        document.getElementById('statusLabel').innerText = "Estabelecendo conexão WebRTC...";
+
+        peerConnection = new RTCPeerConnection(config);
+        
+        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+        peerConnection.onicecandidate = event => {
+            if (event.candidate && socket) {
+                socket.emit('ice-candidate', { target: 'tvbox', candidate: event.candidate });
+            }
+        };
+
+        const offer = await peerConnection.createOffer();
+        let sdpWithH264 = priorizarH264(offer.sdp);
+        const modifiedOffer = new RTCSessionDescription({ type: offer.type, sdp: sdpWithH264 });
+
+        await peerConnection.setLocalDescription(modifiedOffer);
+        
+        if (socket) {
+            socket.emit('offer', modifiedOffer);
+        }
+
+        localStream.getVideoTracks()[0].onended = () => pararTransmissao();
+
+    } catch (err) {
+        console.error("Erro ao capturar tela:", err);
+        document.getElementById('status').innerText = "Status: Permissão negada ou erro ao capturar.";
+        document.getElementById('statusLabel').innerText = "Erro ao capturar tela.";
+        document.getElementById('statusDot').className = 'dot red';
+        if (localStream) {
+            localStream.getTracks().forEach(track => track.stop());
+            localStream = null;
+        }
+    }
+}
+
+function priorizarH264(sdp) {
+    let lines = sdp.split('\r\n');
+    let mLineIndex = lines.findIndex(line => line.startsWith('m=video'));
+    if (mLineIndex === -1) return sdp;
+
+    let terms = lines[mLineIndex].split(' ');
+    let rtpmapH264 = lines.find(line => line.startsWith('a=rtpmap:') && line.includes('H264'));
+    
+    if (rtpmapH264) {
+        let payloadType = rtpmapH264.split(':')[1].split(' ')[0];
+        terms = terms.filter(t => t !== payloadType);
+        terms.splice(3, 0, payloadType);
+        lines[mLineIndex] = terms.join(' ');
+    }
+    return lines.join('\r\n');
+}
+    
+        if (socket) {
+            socket.on('answer', async (answer) => {
+                if (peerConnection) {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+                    document.getElementById('status').innerText = "Status: Transmitindo em tempo real!";
+                    document.getElementById('statusLabel').innerText = "Transmitindo em tempo real!";
+                    document.getElementById('statusDot').className = 'dot green';
+                }
+            });
+
+            socket.on('ice-candidate', async (candidate) => {
+                if (peerConnection) {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                }
+            });
+        }
+
+        function pararTransmissao() {
+            if (socket) {
+                socket.emit('stop-sharing');
+            }
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            document.getElementById('startBtn').style.display = 'inline-block';
+            document.getElementById('stopBtn').style.display = 'none';
+            document.getElementById('status').innerText = "Status: Transmissão encerrada.";
+            document.getElementById('statusLabel').innerText = "Pronto para transmitir.";
+            document.getElementById('statusDot').className = 'dot green';
+        }
+    </script>
+</body>
+</html>

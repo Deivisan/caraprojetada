@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Painel do Professor</title>
+    <!-- Alterado para carregar o Socket.IO nativo e local do seu próprio servidor Flask -->
+    <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.5/dist/socket.io.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; background: #fafafa; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: 50px auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        button { padding: 12px 24px; font-size: 16px; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; margin: 10px; }
+        .btn-share { background: #28a745; color: white; }
+        .btn-stop { background: #dc3545; color: white; display: none; }
+        .status { margin-top: 20px; font-weight: bold; color: #555; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Olá, {{ username }}</h2>
+        <p>Clique abaixo para iniciar a projeção no Datashow.</p>
+        
+        <button id="startBtn" class="btn-share" onclick="iniciarTransmissao()">Compartilhar Tela</button>
+        <button id="stopBtn" class="btn-stop" onclick="pararTransmissao()">Parar Compartilhamento</button>
+        
+        <div id="status" class="status">Status: Conectando ao servidor...</div>
+    </div>
+
+    <script>
+        // Inicializa o socket de forma segura
+        let socket;
+        try {
+            socket = io();
+            socket.on('connect', () => {
+                console.log("[SOCKET] Conectado ao servidor. SID:", socket.id);
+                socket.emit('join', { room: 'professor' });
+                document.getElementById('status').innerText = "Status: Conectado. Pronto para transmitir.";
+            });
+            socket.on('disconnect', () => {
+                console.log("[SOCKET] Desconectado do servidor");
+                document.getElementById('status').innerText = "Status: Desconectado. Reconectando...";
+            });
+        } catch (e) {
+            console.error("[SOCKET] Erro ao iniciar Socket.IO:", e);
+            document.getElementById('status').innerText = "Status: Erro crítico ao carregar o Socket.IO.";
+        }
+
+        let localStream = null; // Inicializado explicitamente como null para evitar o ReferenceError
+        let peerConnection = null;
+        
+        const config = { iceServers: [] }; 
+
+async function iniciarTransmissao() {
+    try {
+        document.getElementById('status').innerText = "Status: Solicitando permissão de tela...";
+        console.log("[WEBRTC] Solicitando captura de tela...");
+
+        localStream = await navigator.mediaDevices.getDisplayMedia({
+            video: { 
+                width: {ideal: 1280}, 
+                height: {ideal: 720}, 
+                frameRate: {max: 15},
+                cursor: 'always'
+            },
+            audio: false
+        });
+
+        const settings = localStream.getVideoTracks()[0].getSettings();
+        console.log("[WEBRTC] Resolução capturada:", settings.width + "x" + settings.height, "FPS:", settings.frameRate);
+
+        document.getElementById('startBtn').style.display = 'none';
+        document.getElementById('stopBtn').style.display = 'inline-block';
+        document.getElementById('status').innerText = "Status: Estabelecendo conexão WebRTC...";
+        console.log("[WEBRTC] Criando PeerConnection...");
+
+        peerConnection = new RTCPeerConnection(config);
+        
+        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+        peerConnection.onicecandidate = event => {
+            if (event.candidate && socket) {
+                console.log("[WEBRTC] ICE candidate enviada:", event.candidate.candidate.substring(0, 50));
+                socket.emit('ice-candidate', { target: 'tvbox', candidate: event.candidate });
+            }
+        };
+
+        peerConnection.oniceconnectionstatechange = () => {
+            console.log("[WEBRTC] Estado ICE:", peerConnection.iceConnectionState);
+            document.getElementById('status').innerText = "Status ICE: " + peerConnection.iceConnectionState;
+        };
+
+        peerConnection.onconnectionstatechange = () => {
+            console.log("[WEBRTC] Estado conexão:", peerConnection.connectionState);
+        };
+
+        const offer = await peerConnection.createOffer();
+        console.log("[WEBRTC] Offer criada, manipulando SDP...");
+        
+        let sdpWithH264 = priorizarH264(offer.sdp);
+        const modifiedOffer = new RTCSessionDescription({ type: offer.type, sdp: sdpWithH264 });
+
+        await peerConnection.setLocalDescription(modifiedOffer);
+        console.log("[WEBRTC] Local description definida. Enviando offer via Socket.IO...");
+        
+        if (socket) {
+            socket.emit('offer', modifiedOffer);
+            console.log("[WEBRTC] Offer enviada com sucesso!");
+        } else {
+            console.error("[WEBRTC] Socket.IO não conectado!");
+        }
+
+        localStream.getVideoTracks()[0].onended = () => {
+            console.log("[WEBRTC] Usuário parou a captura de tela");
+            pararTransmissao();
+        };
+
+    } catch (err) {
+        console.error("[WEBRTC] ERRO ao capturar tela:", err.name, err.message);
+        document.getElementById('status').innerText = "Status: Erro - " + err.message;
+        if (localStream) {
+            localStream.getTracks().forEach(track => track.stop());
+            localStream = null;
+        }
+    }
+}
+
+// Função auxiliar para reordenar os codecs no SDP
+function priorizarH264(sdp) {
+    let lines = sdp.split('\r\n');
+    let mLineIndex = lines.findIndex(line => line.startsWith('m=video'));
+    if (mLineIndex === -1) return sdp;
+
+    // Localiza a linha de mapeamento de mídia e coloca o perfil H.264 no topo da lista de prioridades
+    let terms = lines[mLineIndex].split(' ');
+    let rtpmapH264 = lines.find(line => line.startsWith('a=rtpmap:') && line.includes('H264'));
+    
+    if (rtpmapH264) {
+        let payloadType = rtpmapH264.split(':')[1].split(' ')[0];
+        terms = terms.filter(t => t !== payloadType);
+        terms.splice(3, 0, payloadType); // Injeta o H.264 logo após o formato padrão
+        lines[mLineIndex] = terms.join(' ');
+    }
+    return lines.join('\r\n');
+}
+    
+        // Garante que o escopo do socket está ativo antes de ouvir os eventos
+        if (socket) {
+            // Recebe a resposta (Answer) vinda do Chromium da TV Box
+            socket.on('answer', async (answer) => {
+                console.log("[WEBRTC] Answer recebida da TV Box!");
+                if (peerConnection) {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+                    console.log("[WEBRTC] Remote description definida. Conexão WebRTC estabelecida!");
+                    document.getElementById('status').innerText = "Status: Transmitindo em tempo real!";
+                } else {
+                    console.warn("[WEBRTC] Answer recebida mas peerConnection é null");
+                }
+            });
+
+            socket.on('ice-candidate', async (candidate) => {
+                console.log("[WEBRTC] ICE candidate recebida da TV Box");
+                if (peerConnection) {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                }
+            });
+        }
+
+        function pararTransmissao() {
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            document.getElementById('startBtn').style.display = 'inline-block';
+            document.getElementById('stopBtn').style.display = 'none';
+            document.getElementById('status').innerText = "Status: Transmissão encerrada.";
+        }
+    </script>
+</body>
+</html>

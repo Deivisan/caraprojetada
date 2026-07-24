@@ -1,0 +1,43 @@
+name: caraprojetada
+description: app android para transmitir tela para projetor via VNC
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  mobile_scanner: ^6.0.0
+  shared_preferences: ^2.2.0
+  http: ^1.2.0
+  flutter_background_service: ^5.0.0
+  wakelock_plus: ^1.2.0
+  sensors_plus: ^4.0.0
+  permission_handler: ^11.0.0
+  flutter_platform_widgets: ^7.0.0
+  cupertino_icons: ^1.0.6
+  flutter_animate: ^4.5.2
+  google_fonts: ^6.2.1
+  shimmer: ^3.0.0
+  file_picker: ^8.0.0
+  open_filex: ^4.4.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.14.3
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+
+flutter_launcher_icons:
+  android: true
+  adaptive_icon_background: "#1e1b4b"
+  adaptive_icon_foreground: "assets/images/icon_foreground.png"
+  image_path: "assets/images/icon_app.png"
+  min_sdk_android: 21

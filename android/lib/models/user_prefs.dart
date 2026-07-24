@@ -1,0 +1,53 @@
+class UserPrefs {
+  final String? selectedMode;
+  final String? boxIp;
+  final int boxPort;
+  final String? vncPassword;
+  final bool onboarded;
+  final String? userFullname;
+
+  const UserPrefs({
+    this.selectedMode,
+    this.boxIp,
+    this.boxPort = 5900,
+    this.vncPassword,
+    this.onboarded = false,
+    this.userFullname,
+  });
+
+  UserPrefs copyWith({
+    String? selectedMode,
+    String? boxIp,
+    int? boxPort,
+    String? vncPassword,
+    bool? onboarded,
+    String? userFullname,
+  }) {
+    return UserPrefs(
+      selectedMode: selectedMode ?? this.selectedMode,
+      boxIp: boxIp ?? this.boxIp,
+      boxPort: boxPort ?? this.boxPort,
+      vncPassword: vncPassword ?? this.vncPassword,
+      onboarded: onboarded ?? this.onboarded,
+      userFullname: userFullname ?? this.userFullname,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'selectedMode': selectedMode,
+    'boxIp': boxIp,
+    'boxPort': boxPort,
+    'vncPassword': vncPassword,
+    'onboarded': onboarded,
+    'userFullname': userFullname,
+  };
+
+  factory UserPrefs.fromJson(Map<String, dynamic> json) => UserPrefs(
+    selectedMode: json['selectedMode'],
+    boxIp: json['boxIp'],
+    boxPort: json['boxPort'] ?? 5900,
+    vncPassword: json['vncPassword'],
+    onboarded: json['onboarded'] ?? false,
+    userFullname: json['userFullname'],
+  );
+}

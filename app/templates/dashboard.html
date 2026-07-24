@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel — Sistema de Projeções</title>
+    <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.5/dist/socket.io.min.js"></script>
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            height: 100%; width: 100%;
+            font-family: 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
+            background: #f0f4f8;
+            color: #1e293b;
+        }
+
+        .app-bar {
+            background: #fff;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 14px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .app-bar-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .app-bar-left img {
+            width: 36px;
+            height: auto;
+            flex-shrink: 0;
+        }
+        .app-bar-left h1 {
+            font-size: 17px;
+            font-weight: 700;
+            color: #003366;
+            letter-spacing: -0.3px;
+        }
+        .app-bar-left .sub {
+            font-size: 11px;
+            color: #64748b;
+        }
+        .app-bar-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .user-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #f1f5f9;
+            padding: 6px 14px 6px 10px;
+            border-radius: 20px;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: #334155;
+        }
+        .user-avatar {
+            width: 26px; height: 26px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #003366, #008B9E);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .btn-logout {
+            padding: 6px 16px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            background: #fff;
+            font-size: 12px;
+            font-weight: 500;
+            color: #64748b;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.15s;
+        }
+        .btn-logout:hover {
+            border-color: #cbd5e1;
+            color: #334155;
+            background: #f8fafc;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 24px 16px;
+        }
+
+        .section-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .section-title .count {
+            font-size: 11px;
+            font-weight: 500;
+            color: #94a3b8;
+            background: #e9edf1;
+            padding: 1px 10px;
+            border-radius: 12px;
+        }
+
+        .salas-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .sala-card {
+            background: #fff;
+            border-radius: 14px;
+            padding: 22px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+            border: 1px solid #e9edf1;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+        .sala-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #003366, #008B9E, #6A1B9A);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .sala-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border-color: #cbd5e1;
+        }
+        .sala-card:hover::before { opacity: 1; }
+        .sala-card.transmitting::before {
+            opacity: 1;
+            background: linear-gradient(90deg, #22c55e, #16a34a);
+            animation: pulseLine 2s ease-in-out infinite;
+        }
+        @keyframes pulseLine {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+
+        .sala-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+        .sala-nome {
+            font-size: 17px;
+            font-weight: 700;
+            color: #003366;
+        }
+        .sala-inst {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-top: 2px;
+        }
+
+        .status-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+            padding: 8px 12px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border: 1px solid #f1f5f9;
+        }
+        .status-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .dot-green {
+            background: #22c55e;
+            box-shadow: 0 0 6px rgba(34,197,94,0.4);
+        }
+        .dot-yellow {
+            background: #eab308;
+            box-shadow: 0 0 6px rgba(234,179,8,0.4);
+            animation: blink 1.5s ease-in-out infinite;
+        }
+        .dot-red {
+            background: #ef4444;
+            box-shadow: 0 0 6px rgba(239,68,68,0.4);
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .status-text {
+            font-size: 12.5px;
+            color: #475569;
+            font-weight: 500;
+        }
+        .status-detail {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-left: auto;
+        }
+
+        .btn-share {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #003366, #005580);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn-share:hover {
+            background: linear-gradient(135deg, #004480, #006699);
+            box-shadow: 0 4px 12px rgba(0,51,102,0.2);
+        }
+        .btn-share:active { transform: scale(0.98); }
+        .btn-share:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        .btn-share .icon { font-size: 16px; }
+
+        .btn-stop {
+            width: 100%;
+            padding: 12px;
+            background: #fff;
+            color: #991b1b;
+            border: 1.5px solid #fecaca;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.15s;
+        }
+        .btn-stop:hover { background: #fef2f2; }
+        .btn-stop:active { transform: scale(0.98); }
+
+        .status-msg {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #64748b;
+            text-align: center;
+            line-height: 1.5;
+            min-height: 20px;
+            transition: all 0.3s;
+        }
+        .status-msg.active { color: #166534; font-weight: 600; }
+        .status-msg.error { color: #991b1b; }
+        .status-msg .spinner {
+            display: inline-block;
+            width: 14px; height: 14px;
+            border: 2px solid #e2e8f0;
+            border-top-color: #003366;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .smart-msg {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 12px;
+            line-height: 1.5;
+            animation: fadeSlideUp 0.3s ease-out;
+        }
+        .smart-msg.show { display: flex; }
+        .smart-msg.info { background: #f0f7ff; border: 1px solid #dbeafe; color: #1e40af; }
+        .smart-msg.success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+        .smart-msg.warning { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+        .smart-msg.error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+        @keyframes fadeSlideUp {
+            0%   { opacity: 0; transform: translateY(8px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        .mobile-warning {
+            display: none;
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #92400e;
+            line-height: 1.6;
+        }
+        .mobile-warning.show { display: block; }
+        .mobile-warning strong { color: #78350f; }
+
+        .footer {
+            text-align: center;
+            padding: 16px;
+            font-size: 11px;
+            color: #94a3b8;
+            border-top: 1px solid #e2e8f0;
+            margin-top: 8px;
+        }
+
+        @media (max-width: 640px) {
+            .app-bar { padding: 10px 16px; }
+            .app-bar-left h1 { font-size: 15px; }
+            .app-bar-left img { width: 28px; }
+            .salas-grid { grid-template-columns: 1fr; }
+            .container { padding: 16px 12px; }
+        }
+    </style>
+</head>
+<body>
+    <header class="app-bar">
+        <div class="app-bar-left">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/S%C3%ADmbolo_da_UFRB.png/320px-S%C3%ADmbolo_da_UFRB.png"
+                 alt="UFRB" onerror="this.style.display='none'">
+            <div>
+                <h1>Sistema de Projeções</h1>
+                <div class="sub">{{ instituicao }}</div>
+            </div>
+        </div>
+        <div class="app-bar-right">
+            <div class="user-badge">
+                <div class="user-avatar">{{ username[:1]|upper }}</div>
+                {{ username }}
+            </div>
+            <a href="/logout" class="btn-logout">Sair</a>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="mobile-warning" id="mobileWarning">
+            <strong>&#128241; Modo celular detectado</strong><br>
+            O compartilhamento de tela funciona apenas em computadores.
+            Em celulares, escaneie o QR Code na tela do projetor
+            para controlar ou use um computador para transmitir.
+        </div>
+
+        <div class="section-title">
+            &#127760; Salas Disponíveis
+            <span class="count" id="salaCount">{{ salas|length }} sala{{ 's' if salas|length != 1 }}</span>
+        </div>
+
+        <div class="salas-grid" id="salas-grid">
+            {% for sala in salas %}
+            <div class="sala-card" data-sala="{{ sala.id }}">
+                <div class="sala-header">
+                    <div>
+                        <div class="sala-nome">{{ sala.nome }}</div>
+                        <div class="sala-inst">{{ sala.instituicao }}</div>
+                    </div>
+                </div>
+
+                <div class="status-row">
+                    <span class="status-dot dot-green" id="dot-{{ sala.id }}"></span>
+                    <span class="status-text" id="status-{{ sala.id }}">Disponível</span>
+                    <span class="status-detail" id="detail-{{ sala.id }}"></span>
+                </div>
+
+                <button class="btn-share" id="btn-{{ sala.id }}"
+                        onclick="iniciarTransmissao('{{ sala.id }}')">
+                    <span class="icon">&#9654;</span> Compartilhar Tela
+                </button>
+
+                <button class="btn-stop" id="stop-{{ sala.id }}"
+                        onclick="pararTransmissao('{{ sala.id }}')">
+                    <span class="icon">&#9632;</span> Parar Compartilhamento
+                </button>
+
+                <div class="status-msg" id="msg-{{ sala.id }}"></div>
+                <div class="smart-msg" id="smart-{{ sala.id }}"></div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="footer">
+        {{ instituicao }} &middot; UFRB &middot; GTCR &middot; v2.0 WebRTC
+    </div>
+
+    <script>
+    const ICE_CONFIG = {{ ice_servers|safe }};
+    let localStream = null;
+    let peerConnections = {};
+    let smartTimeouts = {};
+
+    // ─── Detecção mobile ───
+    (function() {
+        if (/Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i
+            .test(navigator.userAgent)) {
+            document.getElementById('mobileWarning').classList.add('show');
+        }
+    })();
+
+    // ─── Socket.IO ───
+    const socket = io({
+        transports: ['polling', 'websocket'],
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 1000,
+        timeout: 10000
+    });
+
+    socket.on('connect', () => {
+        console.log('[SOCKET] Conectado:', socket.id);
+        document.querySelectorAll('[data-sala]').forEach(el => {
+            socket.emit('join', { sala: el.dataset.sala, tipo: 'presenter' });
+        });
+    });
+
+    socket.on('disconnect', () => {
+        console.log('[SOCKET] Desconectado');
+    });
+
+    socket.on('session-ended', (data) => {
+        const sala = data.sala;
+        setStatus(sala, 'disponível', 'green', 'Disponível');
+        showSmart(sala, 'Transmissão encerrada pelo outro lado.', 'info');
+        resetBotoes(sala);
+    });
+
+    socket.on('session-active', (data) => {
+        const sala = data.sala;
+        setStatus(sala, 'ocupado', 'yellow', 'Sala em uso');
+        showSmart(sala, data.user + ' está transmitindo nesta sala.', 'warning');
+    });
+
+    // ─── WebRTC ───
+    async function iniciarTransmissao(sala) {
+        try {
+            const btn = document.getElementById('btn-' + sala);
+            const msg = document.getElementById('msg-' + sala);
+            btn.disabled = true;
+
+            // Passo 1: Permissão de tela
+            msg.innerHTML = '<span class="spinner"></span> Solicitando permissão de tela...';
+            msg.className = 'status-msg';
+
+            localStream = await navigator.mediaDevices.getDisplayMedia({
+                video: {
+                    width: { ideal: 1920, max: 1920 },
+                    height: { ideal: 1080, max: 1080 },
+                    frameRate: { ideal: 15, max: 30 }
+                },
+                audio: false
+            });
+
+            const track = localStream.getVideoTracks()[0];
+            console.log('[WEBRTC] Captura iniciada');
+
+            document.getElementById('btn-' + sala).style.display = 'none';
+            document.getElementById('stop-' + sala).style.display = 'flex';
+
+            // Passo 2: Sincronizando
+            msg.innerHTML = '<span class="spinner"></span> Sincronizando com o projetor...';
+            msg.className = 'status-msg';
+
+            const pc = new RTCPeerConnection(ICE_CONFIG);
+            peerConnections[sala] = pc;
+
+            localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+
+            pc.onicecandidate = (event) => {
+                if (event.candidate && socket) {
+                    socket.emit('ice-candidate', {
+                        sala: sala,
+                        candidate: event.candidate
+                    });
+                }
+            };
+
+            pc.oniceconnectionstatechange = () => {
+                const state = pc.iceConnectionState;
+                if (state === 'checking') {
+                    msg.innerHTML = '<span class="spinner"></span> Verificando conexão...';
+                } else if (state === 'connected' || state === 'completed') {
+                    // Passo 4: Conectado!
+                    msg.innerHTML = '✅ Transmitindo em tempo real!';
+                    msg.className = 'status-msg active';
+                    setStatus(sala, 'transmitindo', 'yellow', 'Transmitindo...');
+                    showSmart(sala, 'Transmissão ativa! Sua tela está sendo projetada.', 'success');
+                    document.querySelector('.sala-card[data-sala="' + sala + '"]')
+                        ?.classList.add('transmitting');
+                } else if (state === 'failed') {
+                    msg.innerHTML = '❌ Falha na conexão. Tentando reconectar...';
+                    msg.className = 'status-msg error';
+                    showSmart(sala, 'A conexão caiu. Tentando reconectar automaticamente.', 'warning');
+                } else if (state === 'disconnected') {
+                    msg.innerHTML = '<span class="spinner"></span> Reconectando...';
+                    msg.className = 'status-msg';
+                    showSmart(sala, 'Conexão instável. Reconectando...', 'warning');
+                } else if (state === 'connected') {
+                    msg.innerHTML = '✅ Transmitindo em tempo real!';
+                    msg.className = 'status-msg active';
+                }
+            };
+
+            // Passo 3: Estabelecendo canal
+            msg.innerHTML = '<span class="spinner"></span> Estabelecendo canal de vídeo...';
+            msg.className = 'status-msg';
+
+            const offer = await pc.createOffer({
+                offerToReceiveVideo: false,
+                offerToReceiveAudio: false
+            });
+
+            // Deixa Chrome negociar codec (vp8 default, mais compatível no arm)
+            await pc.setLocalDescription(offer);
+
+            // Avisa servidor
+            socket.emit('session-start', {
+                sala: sala,
+                username: '{{ login_name }}',
+                fullname: '{{ username }}'
+            });
+
+            socket.emit('offer', { sala: sala, sdp: pc.localDescription });
+
+            track.onended = () => pararTransmissao(sala);
+
+        } catch (err) {
+            console.error('[WEBRTC] Erro:', err.name, err.message);
+            const msg = document.getElementById('msg-' + sala);
+            if (err.name === 'NotAllowedError') {
+                msg.textContent = '❌ Permissão negada. Autorize o compartilhamento de tela nas configurações do navegador.';
+                showSmart(sala, 'Você precisa autorizar o compartilhamento de tela.', 'error');
+            } else if (err.name === 'NotFoundError') {
+                msg.textContent = '❌ Nenhuma tela encontrada para compartilhar.';
+                showSmart(sala, 'Conecte um monitor externo ou tente novamente.', 'warning');
+            } else if (err.name === 'NotReadableError') {
+                msg.textContent = '❌ Erro ao acessar a tela. Feche outros programas que estejam usando a tela.';
+                showSmart(sala, 'Feche outros programas e tente novamente.', 'error');
+            } else {
+                msg.textContent = '❌ Erro: ' + err.message;
+            }
+            msg.className = 'status-msg error';
+            resetBotoes(sala);
+        }
+    }
+
+    function pararTransmissao(sala) {
+        if (peerConnections[sala]) {
+            peerConnections[sala].close();
+            delete peerConnections[sala];
+        }
+        if (localStream) {
+            localStream.getTracks().forEach(t => t.stop());
+            localStream = null;
+        }
+        socket.emit('session-end', { sala: sala });
+        resetBotoes(sala);
+        const msg = document.getElementById('msg-' + sala);
+        msg.textContent = '⏹️ Transmissão encerrada.';
+        msg.className = 'status-msg';
+        setStatus(sala, 'disponível', 'green', 'Disponível');
+        showSmart(sala, 'Transmissão encerrada. Pronto para uma nova conexão.', 'info');
+        document.querySelector('.sala-card[data-sala="' + sala + '"]')
+            ?.classList.remove('transmitting');
+    }
+
+    // ─── Socket.IO handlers ───
+    socket.on('answer', async (data) => {
+        const sala = data.sala;
+        const pc = peerConnections[sala];
+        if (pc && data.sdp) {
+            try {
+                await pc.setRemoteDescription(
+                    new RTCSessionDescription(data.sdp));
+                console.log('[WEBRTC] Answer recebida para', sala);
+            } catch(e) {
+                console.error('[WEBRTC] Erro answer:', e);
+            }
+        }
+    });
+
+    socket.on('ice-candidate', async (data) => {
+        console.log('[DASHBOARD-ICE] Recebido candidate:', data.candidate ? data.candidate.substring(0, 80) : 'null');
+        for (const [sala, pc] of Object.entries(peerConnections)) {
+            if (pc && data.candidate) {
+                try {
+                    await pc.addIceCandidate(
+                        new RTCIceCandidate(data.candidate));
+                    console.log('[DASHBOARD-ICE] addIceCandidate OK');
+                } catch(e) {
+                    console.error('[DASHBOARD-ICE] addIceCandidate ERRO:', e.message);
+                }
+                break;
+            }
+        }
+    });
+
+    // ─── Helpers ───
+    function setStatus(sala, texto, cor, descricao) {
+        const dot = document.getElementById('dot-' + sala);
+        const status = document.getElementById('status-' + sala);
+        const detail = document.getElementById('detail-' + sala);
+        if (dot) { dot.className = 'status-dot dot-' + cor; }
+        if (status) {
+            status.textContent = texto.charAt(0).toUpperCase() + texto.slice(1);
+        }
+        if (detail) { detail.textContent = descricao || ''; }
+    }
+
+    function resetBotoes(sala) {
+        const btn = document.getElementById('btn-' + sala);
+        const stop = document.getElementById('stop-' + sala);
+        if (btn) { btn.style.display = 'flex'; btn.disabled = false; }
+        if (stop) stop.style.display = 'none';
+        document.querySelector('.sala-card[data-sala="' + sala + '"]')
+            ?.classList.remove('transmitting');
+    }
+
+    function showSmart(sala, msg, tipo) {
+        const el = document.getElementById('smart-' + sala);
+        if (!el) return;
+        el.className = 'smart-msg ' + tipo + ' show';
+        el.innerHTML = msg;
+        if (smartTimeouts[sala]) clearTimeout(smartTimeouts[sala]);
+        smartTimeouts[sala] = setTimeout(() => {
+            el.classList.remove('show');
+        }, 8000);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if (socket.connected) {
+            document.querySelectorAll('[data-sala]').forEach(el => {
+                socket.emit('join', { sala: el.dataset.sala, tipo: 'presenter' });
+            });
+        }
+    });
+    </script>
+</body>
+</html>
