@@ -4,6 +4,12 @@ export XAUTHORITY=/root/.Xauthority
 
 cd /home/carapreta/projeto-webrtc/
 
+echo "====== [0/2] Desabilitando DPMS e screensaver ======"
+xset -display :0 s off
+xset -display :0 -dpms
+xset -display :0 s noblank
+xset -display :0 dpms force on
+
 echo "====== [1/2] Iniciando o Servidor Web ======"
 python3 app.py > /dev/null 2>&1 &
 FLASK_PID=$!
