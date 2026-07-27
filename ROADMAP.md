@@ -1,37 +1,46 @@
 # Roadmap do CaraProjetada
 
-## Fase 1 — Baseline (CONCLUIDA) ✅
-- [x] Flask app com autenticacao AD
-- [x] Conexao VNC reversa
-- [x] Kiosk Chromium
-- [x] Watchdog e Guardian
-- [x] Streaming RTSP
-- [x] Servicos systemd
+> ⚠️ Arquitetura atual: **WebRTC** (screen capture via navegador).
+> VNC reverso descontinuado em 2026.
 
-## Fase 2 — Estabilizacao
-- [ ] Migrar para kernel 6.6+ (via CaraAzul)
-- [ ] Substituir xfwm4 por window manager mais leve (openbox?)
-- [ ] Adicionar fallback ethernet quando wifi falha
+## ✅ Concluído (arquitetura WebRTC)
+
+- [x] Flask + Socket.IO + WebRTC funcional
+- [x] Login institucional com mock em dev, AD/LDAP em prod
+- [x] Dashboard com captura de tela via `getDisplayMedia()`
+- [x] Tela do projetor `/display` com player WebRTC
+- [x] Multi-sala via socket.io rooms
+- [x] Sinalização WebRTC (offer, answer, ICE)
+- [x] Heartbeat + cleanup de sessões órfãs
+- [x] Openbox como WM padrão (sem compositor)
+- [x] Kiosk Chromium apontando para `/display`
+- [x] Watchdog e Guardian (scripts wm-agnósticos)
+- [x] Documentação atualizada para WebRTC
+
+## 🟡 Em andamento / Pendente
+
+- [ ] Testar WebRTC no hardware real (rk3229)
+- [ ] Medir cpu/ram/temperatura com transmissão ativa
+- [ ] Validar login AD/LDAP real em produção
+- [ ] Verificar compatibilidade socket.io 4.x com chromium do armbian bullseye
+- [ ] Confirmar STUN/TURN para跨 rede
+- [ ] Limpeza do repositório: remover artefatos VNC (`legacy/`, `windows-client/`, `depreciated/`)
+
+## 🔮 Futuro
+
+- [ ] Dashboard central com status de todos os projetores via API
+- [ ] Descobrimento automático na rede (mDNS/Bonjour)
 - [ ] Logs centralizados (syslog remoto)
-- [ ] Script de backup automatico das configuracoes
-
-## Fase 3 — Multi-projetor
-- [ ] Dashboard central com status de todos os projetores
-- [ ] Descobrimento automatico na rede (mDNS/Bonjour)
-- [ ] Configuracao remota via API
-- [ ] Agendamento de horarios (ligar/desligar)
-- [ ] Monitoramento de temperatura do SoC
-
-## Fase 4 — Seguranca e Robustez
+- [ ] Fallback ethernet quando wifi falha
 - [ ] HTTPS com certificado auto-assinado
-- [ ] Rate limiting no login
-- [ ] Logs de auditoria de acesso
-- [ ] Fail2ban para protecao SSH
-- [ ] Atualizacao OTA via git pull
+- [ ] Rate limiting no /login
+- [ ] Fail2ban para SSH
 
-## Fase 5 — Features Avancadas
-- [ ] Suporte a multiple usuarios simultaneos
-- [ ] Streaming de audio via VNC
-- [ ] Modo apresentacao (slides + anotacoes)
-- [ ] Compatibilidade com Miracast/AirPlay
-- [ ] App mobile para controle
+## ❌ Descontinuado (VNC reverso)
+
+- ~~Flask app com autenticação AD + VNC reverso~~
+- ~~Cliente Windows (TightVNC/UltraVNC)~~
+- ~~Cliente Linux (TigerVNC)~~
+- ~~Extensão do navegador~~
+- ~~Streaming RTSP (mantido como opcional independente)~~
+- ~~xfwm4 → migração concluída para openbox~~

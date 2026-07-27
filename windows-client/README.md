@@ -1,4 +1,10 @@
-# 🪟 Cliente Windows — Sistema de Projeções UFRB/CETENS
+# 🪟 ~~Cliente Windows~~ ⚠️ DESCONTINUADO
+
+> **AVISO**: A arquitetura atual do caraprojetada usa **WebRTC** (screen capture via navegador).
+> Cliente VNC para Windows não é mais necessário. Este diretório é mantido apenas para referência histórica.
+> Veja `docs/ARCHITECTURE.md` para a arquitetura atual.
+
+# Cliente Windows — Sistema de Projeções UFRB/CETENS (HISTÓRICO)
 
 Métodos para configurar um servidor VNC no Windows e conectar ao projetor.
 

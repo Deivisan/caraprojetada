@@ -1,127 +1,95 @@
-# Pendências - CaraProjetada
+# Pendências — CaraProjetada (WebRTC)
 
-## 🔴 **RESOLVIDAS**
+> ⚠️ este documento foi atualizado para refletir a arquitetura WebRTC atual.
+> funcionalidades VNC reverso, cliente Windows e extensão navegador foram descontinuadas.
 
-### 1. Instalação do TightVNC no Windows 11
-**Status**: ✅ Resolvido via `windows-client/definitive-tightvnc.bat`  
-**Arquivo**: `windows-client/definitive-tightvnc.bat` — instalador completo que:
-- Auto-eleva para admin
-- Baixa TightVNC 2.8.87 de 3 fontes
-- Instala como serviço com start=auto
-- Configura senha "123456" no registro
-- Abre firewall (portas 5900, 5800)
-- Verifica: serviço, porta, senha, firewall, teste TCP
+## 🟡 EM DESENVOLVIMENTO
 
-### 2. Teste de Conectividade Bidirecional
-**Status**: ✅ Cliente Linux (TigerVNC) funcionando. VM Windows com TightVNC resolvido via .bat
+### Teste WebRTC no hardware real
+- [ ] Testar `/display` no chromium kiosk da box rk3229
+- [ ] Medir cpu/ram/temperatura com transmissão webrtc ativa por 15 min
+- [ ] Validar reconexão após queda de socket
+- [ ] Confirmar que múltiplas salas funcionam via socket.io rooms
+- [ ] Testar login ad/ldap real (produção)
 
----
+### Melhorias na interface
+- [ ] Adicionar indicador de qualidade/força de sinal no dashboard
+- [ ] Feedback visual mais claro quando a transmissão está "conectando"
+- [ ] Timer de sessão no /display
 
-## 🟡 **EM DESENVOLVIMENTO**
+### Documentação
+- [ ] Atualizar `docs/SISTEMA_DE_PROJECOES.md` para webrtc (✅ pendente verificação)
+- [ ] Remover referências a VNC nas docs de arquitetura
+- [ ] Consolidar `docs/` com apenas documentação webrtc
 
-### Extensão do Navegador
-- ✅ Manifest V3 criado
-- ✅ Popup HTML/CSS/JS criado  
-- ✅ Background script criado
-- ⏳ Testar em Chrome/Firefox
-- ⏳ Integração com API REST
+### Limpeza do repositório
+- [ ] Arquivar `legacy/webrtc-v2/` (versão anterior quase idêntica)
+- [ ] Remover `windows-client/` (substituído por webrtc no navegador)
+- [ ] Remover `monitoring/` se não for mais usado
+- [ ] Remover `depreciated/`
 
-### Cliente Windows Python
-- ✅ Script principal criado (`main.py`)
-- ✅ Classe de gerenciamento VNC criada
-- ⏳ Pacote para distribuição (.exe)
-- ⏳ Testes no Windows 11
+### Infraestrutura
+- [ ] Verificar se `flask-socketio` precisa de `eventlet` ou `gevent` no rk3229
+- [ ] Confirmar compatibilidade do socket.io 4.x com chromium do armbian bullseye
+- [ ] Testar sem stun server (só ice host candidates na mesma rede)
 
----
-
-## 🟢 **CONCLUÍDAS**
-
-### ✅ Cliente Linux (TigerVNC)
+## ✅ CONCLUÍDAS (nova arquitetura)
 
 | Item | Status |
 |------|--------|
-| TigerVNC instalado no Arch Linux | ✅ |
-| Senha "123456" configurada | ✅ |
-| Porta 5903 (display :3) liberada no firewall | ✅ |
-| Serviço systemd auto-init (`tigervnc@3`) | ✅ |
-| Conexão VNC testada da box → Arch | ✅ |
-| Documentação atualizada (`docs/CLIENT_LINUX.md`) | ✅ |
+| Flask + Socket.IO + WebRTC | ✅ Funcional em modo dev |
+| Tela de login UFRB/CETENS | ✅ Com logo, passos, formulário |
+| Painel de controle com salas | ✅ Grid de salas, webrtc presenter |
+| Tela do projetor (/display) | ✅ Player webrtc + status ocioso/ativo |
+| Autenticação mock em dev | ✅ admin/admin, user=senha |
+| Autenticação AD/LDAP | ✅ Real (produção) |
+| Multi-sala via socket.io rooms | ✅ Cada box tem sua sala |
+| Heartbeat do display | ✅ Limpa sessões órfãs |
+| Thread de limpeza | ✅ Remove heartbeats antigos a cada 15s |
+| Scripts de watchdog | ✅ Guardian + cron (wm-agnósticos) |
+| Openbox WM | ✅ Ativo, sem compositor |
 
-**Comando de conexão (da box):**
+## ❌ DESCONTINUADO (VNC reverso)
+
+| Funcionalidade | Motivo |
+|---------------|--------|
+| VNC reverso (xtightvncviewer) | Substituído por WebRTC (screen capture no navegador) |
+| Cliente Windows (UltraVNC/TightVNC) | Não é mais necessário — tudo via navegador |
+| Extensão do navegador | Não é mais necessária — screen capture integrado ao dashboard |
+| `/conectar` e `/desconectar` (VNC) | Substituído por webrtc session-start/session-end |
+| `/vnc-view` (emulação dev) | Substituído pelo player webrtc no `/display` |
+| `/api/dev/reset` | Não faz mais sentido (não há sessão "presa" de VNC) |
+| Senha VNC "123456" fixa | Não se aplica — autenticação via AD/LDAP |
+
+## 📋 Arquitetura Atual
+
+```
+Navegador (Professor)                    Projetor (RK3229)
+       │                                      │
+       ├── login (AD/LDAP) ─────────────────→│
+       │                                      │
+       ├── dashboard ───────────────────────→│ /display (chromium kiosk)
+       │    │                                 │
+       │    └── getDisplayMedia()            │
+       │         └── RTCPeerConnection ─────→│ RTCPeerConnection
+       │              ├── offer/answer        │
+       │              └── ICE candidates      │
+       │                                      │
+       │    📡 vídeo via WebRTC (P2P) ──────→│ video.play()
+       │                                      │
+       └── session-end ────────────────────→│ resetarTela()
+```
+
+## Comandos de Teste
+
 ```bash
-echo "123456" | DISPLAY=:0 /usr/bin/xtightvncviewer 172.17.23.130:3 -autopass
+# Dev local
+cd app
+CARAPROJETADA_ENV=dev flask --app app:app run --host 127.0.0.1 --port 5000
+
+# Verificar sintaxe
+python3 -m py_compile app/app.py
+
+# Status
+curl -s http://127.0.0.1:5000/api/v1/status | python3 -m json.tool
 ```
-
-### API Flask Atualizada
-- ✅ Novo endpoint `/api/v1/tab` - recebe aba selecionada
-- ✅ Novo endpoint `/api/v1/register` - registra PC
-- ✅ Novo endpoint `/api/v1/vnc/password` - senha dinâmica
-- ✅ Novo endpoint `/api/v1/computers` - lista PCs
-- ✅ Sessões VNC com expiração automática
-
-### Documentação
-- ✅ `BROWSER_EXTENSION.md` - arquitetura da extensão
-- ✅ `WINDOWS_CLIENT.md` - especificação do cliente
-- ✅ `INTEGRATION_TEST.md` - guia de testes
-- ✅ `ROADMAP.md` - atualizado com Fase 6
-
----
-
-## 📋 **Arquitetura de Comunicação Proposta**
-
-```
-Windows 11 (UltraVNC Server)
-│
-├── Porta 5900/TCP (espelhamento tela)
-├── Cliente Python → registra no projetor
-└── Heartbeat a cada 30s (online status)
-
-           ↓
-
-Projetor (RK3229 + Flask)
-│
-├── POST /api/v1/register ← heartbeat
-├── POST /api/v1/tab ← extensão browser
-├── xtightvncviewer → conecta no Windows:5900
-└── chromium --kiosk → aba escolhida
-
-           ↓
-
-Navegador (Extensão CaraProjetada)
-│
-├── Lista abas disponíveis
-├── Envia seleção via API
-└── Notifica status do projetor
-```
-
----
-
-## 🧪 **Plano de Teste Imediato**
-
-### Etapa 1: VNC no Windows 11
-```bash
-# 1. Conectar na VM
-remote-viewer vnc://localhost:5900 &
-
-# 2. Dentro do Windows, executar:
-# - Download UltraVNC: https://www.uvnc.com/
-# - Instalar como serviço
-# - Configurar senha "123456"
-# - Abrir firewall
-```
-
-### Etapa 2: Teste de Endpoint
-```bash
-# Do host, após instalar Flask:
-python3 -c "
-from app import app
-with app.test_client() as c:
-    r = c.post('/api/v1/tab', json={'url': 'https://google.com', 'title': 'Teste'})
-    print(r.json)
-"
-```
-
-### Etapa 3: Extensão no Navegador
-- Carregar extensão em `chrome://extensions`
-- Testar popup
-- Verificar console para erros de API

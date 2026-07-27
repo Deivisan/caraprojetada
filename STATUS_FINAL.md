@@ -1,83 +1,72 @@
-# Status Final - CaraProjetada
+# Status Final — CaraProjetada
 
-> ✅ **caraprojetada segue ativo e funcional.**  
-> ❌ **caraazul foi descontinuado.**  
-> arquitetura consolidada: [`docs/SISTEMA_DE_PROJECOES.md`](docs/SISTEMA_DE_PROJECOES.md)
+> ✅ **caraprojetada ativo e funcional com arquitetura WebRTC.**  
+> ❌ **caraazul descontinuado. VNC reverso descontinuado.**  
+> arquitetura consolidada: WebRTC via Socket.IO.
 
-## ✅ **Produção na TV Box (29/05/2026)**
+## ✅ Status Atual (dev branch)
 
-### Box `caraprojetada` (172.17.28.179)
+### App Flask — WebRTC
+
 | Item | Status |
 |------|--------|
-| Flask 3.1.3 | ✅ Rodando na porta 80 |
+| Flask 3.x + Socket.IO | ✅ Rodando local em modo dev |
+| Templates externos | ✅ login.html, dashboard.html, display.html |
+| Login mock (dev) | ✅ admin/admin, user=senha |
+| Captura de tela (getDisplayMedia) | ✅ Dashboard → WebRTC |
+| Player WebRTC (/display) | ✅ Chromium kiosk |
+| Multi-sala via rooms | ✅ Implementado |
+| Heartbeat + cleanup | ✅ Thread de limpeza a cada 15s |
+| Autenticação AD/LDAP | ✅ Mock em dev, real em prod |
+| py_compile | ✅ Passa sem erros |
+
+### Scripts de Sistema
+
+| Item | Status |
+|------|--------|
 | Openbox WM | ✅ Ativo (sem compositor) |
-| xtightvncviewer | ✅ 1.3.10 instalado |
-| Chromium kiosk | ✅ Rodando (tela do projetor) |
-| Perfil chromium | ✅ `/tmp/chromium-kiosk` (nunca restaura sessão) |
+| Chromium kiosk → /display | ✅ Script `iniciar_tudo.sh` |
 | Guardian/Watchdog | ✅ Scripts ativos via cron |
-| Logs | ✅ Em `/home/carapreta/` (evita zram) |
-| RAM | 🟢 66Mi / 962Mi |
-| Temp | 🟢 65°C |
+| Resolução 1440×900 | ✅ Modeline personalizada |
+| DPMS/screensaver off | ✅ Configurado |
 
-### Comando VNC Otimizado (anti-travamento)
-```bash
-echo "123456" | DISPLAY=:0 /usr/bin/xtightvncviewer \
-  <ip>:<display> -autopass \
-  -quality 6 -compresslevel 9 -encodings "tight hextile"
-```
-
-## ✅ **Cliente Linux - Completo**
-
-### TigerVNC Server no Arch Linux
-```bash
-systemctl --user status tigervnc@3   # Porta 5903, senha 123456
-```
-
-**Documentação:** `docs/CLIENT_LINUX.md`
-
-## ✅ **Cliente Windows - TightVNC**
-
-**Instalador:** `windows-client/definitive-tightvnc.bat`
-- Auto-admin, download TightVNC 2.8.87, instalação silenciosa
-- Senha "123456", firewall 5900/5800, serviço automático
-- Verificação completa de funcionamento
-
-## 📁 **Estrutura do Projeto**
+## 📁 Estrutura do Projeto
 
 ### app/
-- `app.py` (964 linhas) — produção, sem dev/emulação
+- `app.py` (~535 linhas) — Flask + Socket.IO + WebRTC
+- `templates/login.html` — Tela de login institucional
+- `templates/dashboard.html` — Painel WebRTC presenter
+- `templates/display.html` — Tela projetor (chromium kiosk)
+- `requirements.txt` — flask, flask-socketio, ldap3
 
 ### scripts/ (na box)
-- `totem_guardian.sh` — watchdog 1min
-- `totem_watchdog.sh` — verificação periódica
-- `totem_reset.sh` — reset emergencial
-- `switch_to_openbox.sh` — migração WM
-
-### windows-client/
-- `definitive-tightvnc.bat` — instalador completo TightVNC
-- `main.py` — cliente Python
-- `provisioning/` — scripts de setup
-
-### browser-extension/
-- `manifest.json`, `popup/`, `background/` — extensão Chrome/Firefox
+- `iniciar_tudo.sh` — Startup: resolução + flask + chromium
+- `totem_guardian.sh` — Watchdog 1min
+- `totem_watchdog.sh` — Verificação periódica
+- `switch_to_openbox.sh` — Migração WM
 
 ### docs/
-- `CLIENT_LINUX.md`, `WINDOWS_CLIENT.md`, `BROWSER_EXTENSION.md`
-- `INTEGRATION_TEST.md`, `TROUBLESHOOTING.md`
+- Documentação técnica em markdown e HTML
 
-## 📊 **Status Consolidado**
+## 📊 Status Consolidado
 
 | Item | Estado |
 |------|--------|
-| API Flask (produção) | ✅ Rodando na box |
-| Tela de login UFRB/CETENS | ✅ Com logos |
-| Painel de controle | ✅ Com IP, SO, sessão |
-| Tela do projetor (/projetor) | ✅ Idle screen 24/7 |
+| API Flask + Socket.IO | ✅ Funcional |
+| Tela de login UFRB/CETENS | ✅ Com logos e passos |
+| Painel de controle | ✅ Grid de salas, WebRTC |
+| Tela do projetor (/display) | ✅ Player WebRTC + idle screen |
 | Autenticação AD/LDAP | ✅ Real (produção) |
-| Conexão VNC reversa | ✅ Com otimizações |
+| Transmissão WebRTC | ✅ Screen capture via navegador |
 | Watchdogs | ✅ Guardian + cron |
 | Openbox WM | ✅ Ativo, sem compositor |
-| Cliente Linux (TigerVNC) | ✅ Testado |
-| Cliente Windows (TightVNC) | ✅ .bat pronto |
-| Extensão navegador | ⏳ Pendente teste |
-| Vídeo travando | ✅ Resolvido (quality 6 + compress 9 + openbox)
+| VNC reverso | ❌ Descontinuado (substituído por WebRTC) |
+| Cliente Windows | ❌ Não mais necessário |
+| Extensão navegador | ❌ Não mais necessária |
+
+## Próximos Passos Imediatos
+
+- [ ] Testar WebRTC no hardware real (rk3229)
+- [ ] Medir cpu/ram/temperatura com transmissão ativa
+- [ ] Validar login AD/LDAP real
+- [ ] Remover artefatos VNC do repositório (legacy, windows-client, deprecated)

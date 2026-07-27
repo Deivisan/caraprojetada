@@ -1,27 +1,29 @@
 # sistema de projeções — caraprojetada
 
 > documento autoritativo da arquitetura atual.  
-> **caraazul foi descontinuado. caraprojetada segue ativo e funcional.**
+> **caraazul descontinuado. VNC reverso descontinuado. Arquitetura: WebRTC.**
 
 ## 1. visão executiva
 
-o `caraprojetada` transforma uma tv box rockchip rk3229 em um ponto de projeção institucional: a box fica ligada ao projetor via hdmi, exibe uma tela de instruções 24/7 e permite que usuários da rede institucional conectem a tela do notebook por vnc reverso, autenticando via ad/ldap.
+o `caraprojetada` transforma uma tv box rockchip rk3229 em um ponto de projeção institucional: a box fica ligada ao projetor via hdmi, exibe uma tela de instruções 24/7 e permite que usuários da rede institucional transmitam a tela do navegador via **webrtc**, autenticando via ad/ldap.
 
-o modelo atual é **descentralizado por box**: cada projetor possui sua própria interface flask na porta 80, seu próprio chromium em kiosk no hdmi e seu próprio guardian local.
+o modelo atual é **descentralizado por box**: cada projetor possui sua própria interface flask na porta 80, seu próprio chromium em kiosk no hdmi e seu próprio guardian local. a sinalização webrtc é feita via socket.io.
 
 ```text
-notebook do usuário
-  └─ navegador acessa http://<ip-da-box>
-      └─ flask autentica no ad/ldap
-          └─ usuário clica conectar
-              └─ box executa xtightvncviewer contra o ip do usuário
-                  └─ imagem aparece no hdmi/projetor
+navegador do professor
+  └─ acessa http://<ip-da-box>
+      └─ login (ad/ldap)
+          └─ dashboard → "compartilhar tela"
+              └─ getDisplayMedia() + RTCPeerConnection
+                  └─ socket.io: offer/answer/ice
+                      └─ chromium kiosk: /display
+                          └─ hdmi → projetor
 ```
 
 ## 2. status do projeto
 
 | item | estado |
-|---|---|
+|------|--------|
 | projeto vivo | ✅ `caraprojetada` |
 | projeto descontinuado | ❌ `caraazul` |
 | box real em teste | ✅ `caraprojetada` / `carapreta-box` |
@@ -29,6 +31,7 @@ notebook do usuário
 | modo padrão | produção |
 | branch de trabalho | `dev` |
 | branch estável | `main` |
+| arquitetura de mídia | webrtc (não vnc) |
 
 ## 3. hardware alvo
 
@@ -47,19 +50,19 @@ notebook do usuário
 
 | componente | função |
 |---|---|
-| `projetor.service` | serviço systemd que sobe o flask em `/home/carapreta/app.py` na porta 80 |
-| `app/app.py` | aplicação flask principal com templates inline |
-| `/projetor` | tela idle 24/7 exibida no hdmi pelo chromium |
-| `/api/v1/status` | status json para observabilidade e tela idle |
-| `/conectar` | aciona conexão vnc reversa |
-| `xtightvncviewer` | cliente vnc executado pela box contra o notebook do usuário |
+| `projetor.service` | serviço systemd que sobe o flask na porta 80 |
+| `app/app.py` | aplicação flask principal + socket.io + webrtc (~535 linhas) |
+| `/display` | tela do projetor exibida no hdmi pelo chromium kiosk |
+| `/api/v1/status` | status json |
+| `/dashboard` | painel do professor com captura de tela webrtc |
+| `app/templates/display.html` | template do player webrtc com fallback ocioso |
+| socket.io | sinalização webrtc (offer, answer, ice candidates) |
 | lightdm | gerenciador gráfico com auto-login |
 | openbox | window manager leve sem compositor |
-| chromium kiosk | navegador fullscreen apontado para `/projetor` |
-| cron | agenda guardian, watchdog e monitoramento |
-| `totem_guardian.sh` | garante xorg/openbox/chromium, sem matar chromium se já estiver rodando |
+| chromium kiosk | navegador fullscreen apontado para `/display` |
+| cron | agenda guardian e watchdog |
+| `totem_guardian.sh` | garante xorg/openbox/chromium |
 | `totem_watchdog.sh` | verificação periódica leve |
-| `monitoring/` | coleta de estabilidade 24/7 |
 
 ## 5. fluxo operacional
 
@@ -71,185 +74,105 @@ energia ligada
       ├─ lightdm active
       │   └─ auto-login usuário carapreta
       │       └─ openbox
-      ├─ projetor.service → flask :80
+      ├─ projetor.service → flask :80 (com socket.io)
       └─ cron
           └─ totem_guardian.sh
-              └─ chromium --kiosk http://localhost/projetor
+              └─ chromium --kiosk http://localhost/display
 ```
 
 ### 5.2 tela hdmi em repouso
 
-o chromium abre:
+a tela `/display` exibe:
+- logo ufrb (svg inline, viewBox 600x140)
+- status "disponível" com dot verde pulsante
+- relógio no canto superior direito
+- footer "ufrb · universidade federal do recôncavo da bahia"
+- gradiente azul-escuro de fundo (sem animações pesadas)
 
-```text
-http://localhost/projetor
+### 5.3 transmissão ativa
+
+1. professor acessa `http://<ip-da-box>` no navegador
+2. faz login com credenciais institucionais (ad/ldap)
+3. dashboard lista salas disponíveis
+4. clica "compartilhar tela"
+5. navegador solicita permissão de captura de tela via `getDisplayMedia()`
+6. sinalização webrtc via socket.io:
+   - display (chromium) envia sdp offer
+   - dashboard (navegador) responde com sdp answer
+   - ice candidates trocados via servidor
+7. vídeo em tempo real aparece na tela do projetor
+8. botão "parar compartilhamento" encerra a transmissão
+
+### 5.4 fallback de desconexão
+
+se o socket do professor cair (perdeu rede, fechou navegador), o servidor detecta via `disconnect` e:
+1. remove a sessão ativa
+2. emite `session-ended` + `professor-desconectou` para a sala
+3. o display reseta a tela (volta ao estado ocioso)
+
+## 6. implementação técnica
+
+### app.py — estrutura
+
+```
+app.py (~535 linhas)
+├── configuração (ambiente, ad, logging)
+├── app factory + socket.io
+├── estado global: active_sessions, last_offer, heartbeats
+├── funções auxiliares: get_ip(), registrar_log(), autenticar_ad(), get_salas()
+├── rotas web: /, /login, /dashboard, /display
+├── eventos socket.io: join, offer, answer, ice-candidate, session-start/end, heartbeat, disconnect
+└── thread de limpeza: _cleanup_loop()
 ```
 
-mas a tela mostra ao usuário o ip real da box:
+### configuração por ambiente
 
-```text
-http://172.17.28.179
+```python
+DEV_MODE = os.environ.get('CARAPROJETADA_ENV', 'prod') == 'dev'
+HOST = '127.0.0.1' if DEV_MODE else '0.0.0.0'
+PORT = int(os.environ.get('PORT', 5000 if DEV_MODE else 80))
 ```
 
-a tela informa:
+### templates
 
-1. endereço para acessar;
-2. autenticação com siape/senha institucional;
-3. botão de conectar tela;
-4. status livre/ocupado;
-5. relógio.
+- `login.html`: formulário com logo ufrb, passos, brand, info do sistema, partículas animadas
+- `dashboard.html`: app bar, grid de salas, botões compartilhar/parar, socket.io + webrtc js
+- `display.html`: player webrtc, overlay de status, relógio, fundo gradiente
 
-o status é atualizado via `fetch('/api/v1/status')` a cada 30 segundos **sem recarregar a página**. o antigo `location.reload()` foi removido porque causava tela preta/branca/flicker.
+## 7. segurança
 
-### 5.3 conexão vnc reversa
+- ✅ Autenticação ad/ldap
+- ✅ Sessões flask com cookie assinado
+- ✅ WebRTC (sem expor senha vnc)
+- ⚠️ http (sem https)
+- ❌ sem rate limiting no login
 
-1. usuário acessa `http://<ip-da-box>` no navegador;
-2. faz login via ad/ldap;
-3. painel detecta ip do usuário;
-4. usuário clica em conectar;
-5. box registra a sessão atual antes de executar o viewer;
-6. box executa `xtightvncviewer` no display `:0`;
-7. tela do notebook aparece no hdmi.
+## 8. desempenho
 
-comando atual otimizado:
+metas para o rk3229:
+- cpu idle flask: `< 5%`
+- memória sem stream: `< 120 mb`
+- memória com webrtc: `< 180 mb`
+- temperatura: `< 75°c`
+- conexão webrtc: `< 5s`
 
-```bash
-echo "123456" | DISPLAY=:0 XAUTHORITY=/var/run/lightdm/root/:0 \
-  /usr/bin/xtightvncviewer <ip_usuario>:<display> \
-  -autopass -quality 6 -compresslevel 9
-```
+ver checklist detalhada em `PERFORMANCE.md`.
 
-## 6. rotas principais
+## 9. observabilidade
 
-| rota | método | função |
-|---|---|---|
-| `/` | get | login ou painel de controle |
-| `/login` | post | autenticação ad/ldap |
-| `/logout` | post | encerra sessão web |
-| `/conectar` | post | inicia conexão vnc reversa |
-| `/desconectar` | post | encerra viewer e libera projetor |
-| `/projetor` | get | tela idle 24/7 no hdmi |
-| `/api/v1/status` | get | status json de sessão/saúde |
+- logs em `/tmp/caraprojetada-{user}.log`
+- `GET /api/v1/status` → json com status da sessão
+- monitoring legado (descontinuado, aguardando remoção)
 
-rotas dev/emulação foram removidas da produção. `CARAPROJETADA_ENV` padrão deve continuar sendo `prod`.
+## 10. histórico de migração
 
-## 7. decisões técnicas consolidadas
-
-### 7.1 openbox em vez de xfce/xfwm4
-
-motivo: menor consumo, sem compositor e menos travamentos na box rk3229.
-
-### 7.2 tightvnc no windows
-
-o caminho atual para cliente windows é tightvnc, não ultravnc. existe script de instalação em `windows-client/definitive-tightvnc.bat`.
-
-### 7.3 chromium com perfil temporário
-
-o kiosk usa:
-
-```bash
---user-data-dir=/tmp/chromium-kiosk
-```
-
-isso evita restauração de sessão antiga, cache permanente e retorno da página uol do totem antigo.
-
-### 7.4 kiosk antigo removido
-
-o antigo `kiosk.sh` e o autostart `totem-kiosk.desktop` foram removidos/desativados. eles reiniciavam chromium com uol e sabotavam a tela do projetor.
-
-### 7.5 guardian não mata chromium se já está rodando
-
-bug corrigido: o guardian tinha `pkill -9 -f chrom` e reiniciava o chromium a cada minuto, gerando tela preta/branca. agora apenas inicia se não encontrar chromium kiosk rodando.
-
-## 8. observabilidade e teste 24/7
-
-a box possui monitoramento local em:
-
-```text
-/home/carapreta/monitoring/
-```
-
-coleta:
-
-```cron
-*/5 * * * * /home/carapreta/monitoring/bin/collect_metrics.sh >/dev/null 2>&1
-7 */6 * * * /home/carapreta/monitoring/bin/generate_report.sh >/dev/null 2>&1
-11 */6 * * * /home/carapreta/monitoring/bin/inventory_files.sh >/dev/null 2>&1
-```
-
-arquivos importantes:
-
-| arquivo | função |
-|---|---|
-| `data/metrics.csv` | série temporal a cada 5 min |
-| `data/alerts.log` | alertas de temperatura/disco/http/serviços/restart chromium |
-| `reports/latest_report.txt` | relatório consolidado mais recente |
-| `reports/latest_new_files.txt` | arquivos novos desde baseline |
-
-resultado do primeiro teste de fim de semana:
-
-| métrica | resultado |
-|---|---|
-| período | 29/05/2026 16:57 → 01/06/2026 09:02 |
-| uptime | 2 dias, 19h43 |
-| amostras | 773 |
-| http `/projetor` | 0 falhas |
-| serviços | 0 falhas |
-| chromium restarts | 0 |
-| disco `/` | estável em 70% |
-| swap | praticamente zero |
-| crescimento logs | +1.4 mb |
-| crescimento `/home/carapreta` | +2.2 mb |
-| temperatura média | 79.2 °c |
-| temperatura máxima | 83.0 °c |
-| amostras >=80 °c | 335 / 43.3% |
-
-conclusão: **software estável; ponto de atenção é temperatura**.
-
-## 9. riscos e próximos cuidados
-
-| risco | nível | mitigação |
-|---|---|---|
-| temperatura alta | médio/alto | melhorar ventilação, dissipador, elevar box, reduzir animações |
-| chromium pesado | médio | simplificar tela `/projetor`, reduzir animações/efeitos |
-| disco 70% | médio | limpar pacotes/cache antigos antes de produção longa |
-| dependência ad/ldap | operacional | validar em rede real antes de levar para sala |
-| cliente windows | operacional | padronizar tightvnc e script de instalação |
-
-## 10. comandos úteis
-
-### estado atual
-
-```bash
-ssh caraprojetada 'systemctl is-active projetor lightdm cron; uptime; free -h; df -h / /var/log /tmp'
-```
-
-### relatório 24/7
-
-```bash
-ssh caraprojetada '/home/carapreta/monitoring/bin/package_reports.sh'
-```
-
-### copiar relatório
-
-```bash
-scp caraprojetada:/home/carapreta/monitoring/reports/caraprojetada_monitoring_*.tar.gz .
-```
-
-### reiniciar app flask
-
-```bash
-ssh caraprojetada 'sudo systemctl restart projetor'
-```
-
-### verificar janela no hdmi
-
-```bash
-ssh caraprojetada 'DISPLAY=:0 XAUTHORITY=/var/run/lightdm/root/:0 wmctrl -l'
-```
-
-## 11. regra de continuidade
-
-o repositório `caraprojetada` é o projeto ativo para o sistema de projeções. qualquer migração futura para outro nome/repo deve preservar esta arquitetura, scripts e histórico operacional.
-
-`caraazul` não deve ser usado como base desta solução.
+- **2025**: arquitetura vnc reverso (xtightvncviewer)
+  - `/conectar`, `/desconectar`, `/projetor`, `/vnc-view`
+  - templates inline no app.py
+  - cliente windows (ultravnc/tightvnc)
+  - extensão de navegador
+- **2026**: migração para webrtc
+  - `/dashboard` + `/display` com socket.io
+  - screen capture via `getDisplayMedia()`
+  - templates em arquivos separados
+  - todas as funcionalidades vnc removidas

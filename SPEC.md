@@ -22,19 +22,16 @@
 - **OS**: Armbian 21.08.8 (Debian Bullseye)
 - **Kernel**: 4.4.194-rk322x (legacy branch)
 - **Init**: systemd
-- **Display**: Xorg + LightDM + xfwm4
+- **Display**: Xorg + LightDM + openbox
 - **Shell**: bash 5.x
 
 ### Dependências Core
 ```bash
 # Web server + auth
-python3 python3-flask python3-ldap3
-
-# VNC
-xtightvncviewer
+python3 python3-flask python3-flask-socketio python3-ldap3
 
 # Display
-xserver-xorg-core xfwm4 lightdm x11-utils
+xserver-xorg-core openbox lightdm x11-utils
 
 # Kiosk
 chromium
@@ -49,7 +46,7 @@ x11-xserver-utils
 ### Serviços Ativos
 | Serviço | Porta | Status | Descrição |
 |---------|-------|--------|-----------|
-| `projetor` | 80 | ✅ Ativo | Flask: controle VNC + AD |
+| `projetor` | 80 | ✅ Ativo | Flask: WebRTC + AD auth + Socket.IO |
 | `sshd` | 22 | ✅ Ativo | Acesso remoto |
 | `lightdm` | — | ✅ Ativo | Gerenciador de display |
 | `stream-cam` | 8554 | ✅ Ativo | Streaming RTSP (câmera) |
@@ -59,43 +56,31 @@ x11-xserver-utils
 
 ### `GET /`
 - **Descrição**: Página inicial
-- **Resposta**: HTML (tela de login ou painel de controle)
+- **Resposta**: Redirect para `/login` ou `/dashboard`
+
+### `GET /login`
+- **Descrição**: Tela de login institucional
+- **Resposta**: HTML com formulário de login
 
 ### `POST /login`
 - **Parâmetros**: `username` (string), `password` (string)
-- **Autenticação**: LDAP bind contra Active Directory
-- **Resposta sucesso**: Redirect para `/`
+- **Autenticação**: LDAP bind contra Active Directory (mock em dev)
+- **Resposta sucesso**: Redirect para `/dashboard`
 - **Resposta erro**: HTML com mensagem de erro
 
-### `POST /logout`
-- **Descrição**: Encerra sessão
-- **Resposta**: Redirect para `/`
+### `GET /dashboard`
+- **Descrição**: Painel do professor com salas disponíveis
+- **Resposta**: HTML com grid de salas e interface WebRTC (getDisplayMedia)
 
-### `POST /conectar`
-- **Parâmetros**: `pin` (string, 4 dígitos — senha do servidor VNC do usuário)
-- **IP do cliente**: autodetectado via `request.remote_addr` (não é mais campo de formulário)
-- **Ação**: Executa `echo "<pin>" | xtightvncviewer <ip>:0 -autopass` usando o PIN digitado como senha VNC
-- **Validação de conexão**: o viewer é lançado e o app aguarda até ~6s; se o processo sai (PIN/senha errado ou servidor VNC off) a sessão **não** é marcada como ativa e um erro é retornado ao usuário. Só marca "conectado" quando o viewer continua rodando (conexão estabelecida de verdade).
-
-### `POST /desconectar`
-- **Ação**: Mata processo `xtightvncviewer`
-
-### `GET /projetor`
-- **Descrição**: Tela idle do projetor, desenhada para ficar 24/7 em fullscreen no hdmi.
-- **Conteúdo**: Identidade do sistema, instruções de conexão, URL de acesso, relógio e status livre/ocupado.
-- **Atualização**: Polling de `/api/v1/status` a cada 30 segundos.
-
-### `GET /vnc-view`
-- **Descrição**: Emulação visual da experiência TightVNC no modo desenvolvimento.
-- **Disponibilidade**: Somente quando `CARAPROJETADA_ENV=dev`; em produção redireciona para `/`.
-- **Uso**: Após `POST /conectar` em modo dev, a aplicação redireciona para esta tela.
+### `GET /display`
+- **Descrição**: Tela do projetor (chromium kiosk no HDMI)
+- **Resposta**: HTML com player WebRTC e status do projetor
+- **Conteúdo**: Identidade UFRB, relógio, status livre/ocupado, vídeo remoto via WebRTC
+- **Atualização**: Eventos socket.io em tempo real
 
 ### `GET /api/v1/status`
-- **Descrição**: Retorna status JSON do projetor, modo, sessão ativa, usuário atual, IP e display.
-
-### `POST /api/dev/reset`
-- **Descrição**: Reseta `current_session` em modo dev.
-- **Disponibilidade**: Somente quando `CARAPROJETADA_ENV=dev`.
+- **Descrição**: Retorna status JSON do projetor
+- **Resposta**: JSON com modo, sessão ativa, sala
 
 ## 4. LDAP / Active Directory
 
@@ -112,32 +97,58 @@ x11-xserver-utils
 ```python
 user_principal = f"{username}@{AD_DOMAIN}"
 server = Server(AD_SERVER, get_info=ALL)
-conn = Connection(server, user=user_principal, 
+conn = Connection(server, user=user_principal,
                   password=password, authentication='SIMPLE')
 return conn.bind()
 ```
 
-## 5. VNC (Remote Framebuffer)
+## 5. WebRTC (Screen Capture via Navegador)
 
-### Modelo: VNC Reverso
-- O projetor é **cliente** VNC (não servidor)
-- O usuário deve ter um **servidor** VNC rodando em sua máquina
-- O projetor conecta no IP do usuário porta 5900 (:0)
+### Modelo: Transmissão via Navegador
+- O professor acessa o dashboard pelo navegador
+- O navegador captura a tela via `getDisplayMedia()` (Screen Capture API)
+- A sinalização WebRTC é feita via Socket.IO
+- O projetor (chromium kiosk em `/display`) recebe e exibe o vídeo
 
-### Comando Executado
-```bash
-echo "<pin>" | DISPLAY=:0 XAUTHORITY=/var/run/lightdm/root/:0 \
-  /usr/bin/xtightvncviewer -autopass -quality 6 -compresslevel 9 \
-  -fullscreen <user_ip>:<display>
+### Fluxo de Sinalização
+```text
+Dashboard (Presenter)              Display (Projetor)
+       │                                │
+       │──── socket.io: join(sala) ────→│
+       │←── socket.io: join(tvbox) ────│
+       │←────── offer (SDP) ───────────│
+       │────── answer (SDP) ──────────→│
+       │←── ice-candidate (candidates) →│
+       │── ice-candidate (candidates) →│
+       │                                │
+       │    📡 mídia via RTCDataChannel │
+       │         (peer-to-peer)         │
+       │                                │
 ```
-- O `<pin>` é o valor digitado na interface (a própria senha do servidor VNC do usuário).
-- `<display>` é `:0` (Windows/macOS) ou `:3` (Linux), detectado pelo `User-Agent`.
-- Não há mais senha VNC fixa no código — ela vem do campo PIN da interface.
 
-### Display
-- `:0` — Display Xorg principal
-- Resolução atual: **1360×768** (nativa do projetor conectado)
-- Suporta: 1920×1080i, 1280×720, 1024×768, 800×600, 640×480
+### Eventos Socket.IO
+| Evento | Dados | Quem emite | Descrição |
+|--------|-------|------------|-----------|
+| `join` | `{sala, tipo}` | ambos | Entrar na sala de sinalização |
+| `offer` | `{type, sdp, sala}` | Display | SDP offer do receptor |
+| `answer` | `{type, sdp, sala}` | Dashboard | SDP answer do apresentador |
+| `ice-candidate` | `{candidate, sala}` | ambos | ICE candidate para NAT traversal |
+| `session-start` | `{sala, username, fullname}` | Dashboard | Marcar sala como ocupada |
+| `session-end` | `{sala}` | Dashboard | Liberar sala |
+| `session-active` | `{sala, user, since}` | Servidor | Notificar display que sessão iniciou |
+| `session-ended` | `{sala}` | Servidor | Notificar display que sessão encerrou |
+| `professor-desconectou` | `{sala}` | Servidor | Fallback se socket do presenter cai |
+| `heartbeat` | `{sala}` | Display | Keep-alive (a cada ~15s) |
+
+### Configuração ICE
+```python
+STUN_SERVERS = '["stun:stun.l.google.com:19302","stun:stun1.l.google.com:19302"]'
+```
+
+### Qualidade de Vídeo
+- Resolução: ideal 1920×1080, max 1920×1080
+- Frame rate: ideal 15fps, max 30fps
+- Áudio: desabilitado
 
 ## 6. Sistema de Watchdog
 
@@ -151,20 +162,19 @@ echo "<pin>" | DISPLAY=:0 XAUTHORITY=/var/run/lightdm/root/:0 \
 ### totem_guardian.sh (1 minuto)
 1. Verifica IP da wlan0 → dhclient se necessário
 2. Verifica Xorg → restart lightdm
-3. Verifica xfwm4 → reinstala/inicia
-4. Remove painéis XFCE
-5. Força resolução 1920×1080
-6. Verifica Chromium kiosk
-7. Desliga screensaver
+3. Verifica openbox → reinstala/inicia
+4. Força resolução 1440×900 (modeline personalizada)
+5. Verifica Chromium kiosk apontando para `/display`
+6. Desliga screensaver
 
 ### totem_watchdog.sh (30 minutos)
 1. Verifica rede
 2. Verifica lightdm
-3. Verifica xfwm4/xfce4-session
+3. Verifica openbox
 4. Verifica Chromium
 5. Verifica resolução
 
-## 7. Streaming RTSP
+## 7. Streaming RTSP (opcional)
 
 ### Especificação
 | Parâmetro | Valor |
@@ -218,8 +228,7 @@ zram1 (log)     50M   48M  /var/log
 ### Atual
 - ✅ Autenticação LDAP/AD (credenciais institucionais)
 - ✅ Sessões Flask com cookie assinado
-- ✅ PIN/senha VNC informado pelo usuário na interface (sem valor fixo no código)
-- ✅ Validação real de conexão VNC (não marca "conectado" se a senha estiver errada)
+- ✅ Transmissão via WebRTC (sem senha VNC fixa)
 - ⚠️ HTTP (sem HTTPS)
 - ❌ Sem rate limiting no login
 
@@ -227,31 +236,26 @@ zram1 (log)     50M   48M  /var/log
 - [ ] HTTPS com certificado auto-assinado
 - [ ] Rate limiting no /login
 - [ ] Fail2ban para SSH
-- [ ] Senha VNC configurável por sessão
 - [ ] Logs de auditoria
 
 ## 11. Modo de Desenvolvimento
 
 ### Ativação
-
 ```bash
 CARAPROJETADA_ENV=dev
 ```
 
 ### Diferenças para produção
-
 | item | dev | prod |
 |------|-----|------|
 | host padrão | `127.0.0.1` | `0.0.0.0` |
 | porta padrão | `5000` | `80` |
 | autenticação | mock | ad/ldap |
 | ldap3 | opcional | obrigatório |
-| vnc | simulado | real via `xtightvncviewer` |
-| `/api/dev/reset` | disponível | indisponível |
-| `/vnc-view` | disponível | redireciona |
+| webrtc | normal | normal |
+| socket.io debug | ativo | desligado |
 
 ### Credenciais mock
-
 | usuário | senha |
 |---------|-------|
 | `admin` | `admin` |
@@ -263,12 +267,11 @@ CARAPROJETADA_ENV=dev
 O alvo real é limitado. Toda evolução visual ou de serviço deve ser validada no RK3229.
 
 Metas iniciais:
-
 - Flask idle abaixo de 5% CPU.
-- Memória do app abaixo de 120 MB sem VNC.
-- Memória total adicional abaixo de 180 MB com VNC ativo.
+- Memória do app abaixo de 120 MB sem stream.
+- Memória total adicional abaixo de 180 MB com WebRTC ativo.
 - Temperatura abaixo de 75°C em uso contínuo.
-- Tempo de conexão VNC abaixo de 3 segundos.
-- Tela `/projetor` sem uso excessivo de CPU mesmo rodando 24/7.
+- Conexão WebRTC abaixo de 5 segundos para estabelecer.
+- Tela `/display` sem uso excessivo de CPU mesmo rodando 24/7.
 
 Detalhes e checklist: `PERFORMANCE.md`.

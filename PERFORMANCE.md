@@ -10,7 +10,7 @@ este documento registra os pontos que precisamos acompanhar para manter o sistem
 | cpu | 4× cortex-a7, armv7 32-bit |
 | ram | ~1 gb |
 | storage | emmc ~8 gb |
-| vídeo | hdmi, resolução real observada 1360×768 |
+| vídeo | hdmi, resolução real observada 1360×768 (script força 1440×900) |
 | sistema | armbian bullseye, kernel 4.4 legacy |
 
 ## orçamento de recursos
@@ -18,34 +18,40 @@ este documento registra os pontos que precisamos acompanhar para manter o sistem
 | componente | meta inicial |
 |---|---|
 | flask app idle | `< 120 mb` rss |
-| flask + sessão vnc | `< 180 mb` total adicional |
+| flask + webrtc ativo | `< 180 mb` total adicional |
 | cpu idle geral | `< 5%` |
-| cpu com idle screen | `< 10%` |
-| cpu com vnc ativo | aceitável até `30%`, observar picos |
+| cpu com display / display room | `< 10%` |
+| cpu com webrtc ativo | aceitável até `30%`, observar picos |
 | temperatura | ideal `< 75°c`, investigar acima disso |
 | espaço livre `/` | manter `> 1 gb` |
 | logs zram | não saturar `/var/log` |
 
 ## pontos sensíveis
 
-### 1. tela `/projetor`
+### 1. tela `/display`
 
 - fica 24/7 no hdmi.
-- tem animações css e partículas.
-- precisa ser visual, mas não pode aquecer a box.
-- se cpu subir demais no hardware real, reduzir partículas, sombras, blur e polling.
+- fundo gradiente + svg ufrb + dot pulsante.
+- sem animações css pesadas (sem partículas, sem blur).
+- relógio atualiza a cada 60s (setinterval leve).
+- quando ocioso, só o background estático + svg + relógio.
+- quando ativo, video element + webrtc pc.
+- se cpu subir demais no hardware real, reduzir gradiente para cor sólida.
 
-### 2. vnc viewer
+### 2. webrtc
 
-- `xtightvncviewer` consome ram/cpu enquanto ativo.
-- depende da qualidade da rede e do servidor vnc no notebook.
-- prioridade: conexão rápida e estabilidade, não efeitos visuais.
+- `rtcpeerconnection` consome ram/cpu enquanto ativo.
+- frame rate ideal 15fps (não 30) no `getDisplayMedia`.
+- resolução ideal 1920×1080 (downscale se necessário).
+- dependência crítica: stun server (google stun público).
+- sem turn server — só funciona na mesma rede (172.17.x.x).
+- prioridade: conexão rápida e estabilidade, não qualidade máxima.
 
 ### 3. window manager
 
 - openbox é preferível por ser mais leve que xfwm4.
 - scripts atuais são wm-agnósticos para não quebrar fallback.
-- medir ganho real após migração no hardware.
+- sem compositor (--compositor=off no openbox) para economizar gpu.
 
 ### 4. logs
 
@@ -65,33 +71,32 @@ ssh caraprojetada 'ps -eo pid,ppid,comm,%cpu,%mem,rss --sort=-%mem | head -20'
 # flask/projetor
 ssh caraprojetada 'systemctl status projetor --no-pager'
 
-# processos gráficos/vnc
-ssh caraprojetada 'pgrep -a "Xorg|openbox|xfwm4|chromium|xtightvncviewer"'
+# processos gráficos
+ssh caraprojetada 'pgrep -a "Xorg|openbox|chromium"'
 
 # logs recentes
 ssh caraprojetada 'tail -n 100 /var/log/projetor-acessos.log'
 ```
 
-## validação amanhã na rede
+## validação na rede 172
 
 checklist para quando estiver na rede 172:
 
 - [ ] abrir `http://172.17.28.179/`.
 - [ ] validar login ad/ldap real.
-- [ ] abrir `/projetor` no hdmi da box.
-- [ ] medir cpu com `/projetor` parado por 5 minutos.
-- [ ] conectar notebook real via vnc.
-- [ ] medir tempo até aparecer a tela no projetor.
+- [ ] abrir `/display` no hdmi da box.
+- [ ] medir cpu com `/display` parado por 5 minutos.
+- [ ] conectar notebook real via webrtc (compartilhar tela).
+- [ ] medir tempo até aparecer o vídeo no projetor.
 - [ ] desconectar e confirmar volta para idle screen.
-- [ ] medir temperatura após 15 minutos.
+- [ ] medir temperatura após 15 minutos de transmissão.
 - [ ] testar guardian/watchdog sem interromper usuário.
 - [ ] decidir quais commits da `dev` migram para `main`.
 
 ## decisões de otimização pendentes
 
-- reduzir ou manter partículas da idle screen.
-- mover templates inline para arquivos separados quando estabilizar ui.
-- decidir se flask puro basta em produção ou se vale usar gunicorn leve.
-- revisar intervalo de polling da tela `/projetor`.
-- confirmar openbox como padrão definitivo.
+- confirmar se gradiente no `/display` impacta cpu no rk3229 (testar cor sólida).
+- reduzir resolução de captura se cpu do display ficar alta.
+- revisar necessidade de stun/turn para跨 rede.
+- confirmar openbox como padrão definitivo (vs xfwm4).
 - manter kernel 4.4 por enquanto; kernel 6.6/caraazul fica fora do escopo imediato.
