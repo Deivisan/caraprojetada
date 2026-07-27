@@ -18,6 +18,19 @@ if [ -z "$CHROMIUM_PID" ] || [ "$(ps -p "$CHROMIUM_PID" -o rss= 2>/dev/null)" -l
   # Mata processos fantasmas
   pkill -f "chromium.*--kiosk" 2>/dev/null; sleep 1
   log "Chromium nao encontrado ou RSS baixo. Iniciando..."
+
+  # Verifica se Flask está rodando antes de iniciar Chromium
+  FLASK_PORTA="${PORT:-5000}"
+  if ! curl -sf "http://localhost:${FLASK_PORTA}/api/health" > /dev/null 2>&1; then
+    log "ALERTA: Flask nao responde em :${FLASK_PORTA}. Tentando reiniciar..."
+    cd /home/carapreta && /usr/bin/python3 /home/carapreta/app.py > /tmp/flask-webrtc.log 2>&1 &
+    sleep 3
+    if ! curl -sf "http://localhost:${FLASK_PORTA}/api/health" > /dev/null 2>&1; then
+      log "ERRO: Flask nao subiu. Chromium sera iniciado mesmo assim (pode mostrar erro)"
+    else
+      log "Flask reiniciado com sucesso na porta ${FLASK_PORTA}"
+    fi
+  fi
   rm -rf /tmp/chromium-kiosk
   DISPLAY=:0 XAUTHORITY=/var/run/lightdm/root/:0 \
   chromium --kiosk --start-maximized --noerrdialogs \
