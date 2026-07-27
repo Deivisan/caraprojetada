@@ -28,7 +28,7 @@ if [ -z "$CHROMIUM_PID" ] || [ "$(ps -p "$CHROMIUM_PID" -o rss= 2>/dev/null)" -l
     --autoplay-policy=no-user-gesture-required \
     --process-per-site --no-crashpad --no-first-run \
     --user-data-dir=/tmp/chromium-kiosk \
-    http://localhost/display &
+    "http://localhost:${PORT:-5000}/display" &
   CHROME_PID=$!
   log "Chromium iniciado PID: $CHROME_PID"
   sleep 5

@@ -193,8 +193,14 @@
         const socket = io();
         let peerConnection;
         const config = { iceServers: [] };
+        const salaId = '{{ sala_id }}';
 
-        socket.emit('join', { room: 'tvbox' });
+        // Heartbeat a cada 15s para manter sessão viva
+        setInterval(() => {
+            socket.emit('heartbeat', { sala: salaId });
+        }, 15000);
+
+        socket.emit('join', { sala: salaId, tipo: 'display' });
 
         socket.on('offer', async (offer) => {
             peerConnection = new RTCPeerConnection(config);
@@ -212,7 +218,7 @@
                     document.getElementById('status-msg').textContent = 'Projetor em uso';
                     document.getElementById('status-dot').style.background = '#eab308';
                     document.getElementById('status-dot').style.animation = 'blinkLive 1.5s ease-in-out infinite';
-                    document.getElementById('status-label').textContent = 'Transmiss\u00e3o ativa';
+                    document.getElementById('status-label').textContent = 'Transmissão ativa';
 
                     video.play().catch(e => {
                         console.log("Erro ao dar play automático, tentando forçar:", e);
@@ -224,7 +230,7 @@
 
             peerConnection.onicecandidate = event => {
                 if (event.candidate) {
-                    socket.emit('ice-candidate', { target: 'professor', candidate: event.candidate });
+                    socket.emit('ice-candidate', { sala: salaId, candidate: event.candidate });
                 }
             };
 
@@ -232,7 +238,7 @@
 
             const answer = await peerConnection.createAnswer();
             await peerConnection.setLocalDescription(answer);
-            socket.emit('answer', answer);
+            socket.emit('answer', { sala: salaId, sdp: answer });
         });
 
         socket.on('ice-candidate', async (candidate) => {
@@ -260,14 +266,14 @@
                 waitingDiv.style.display = 'block';
             }
 
-            document.getElementById('status-msg').textContent = 'Aguardando conex\u00e3o...';
+            document.getElementById('status-msg').textContent = 'Aguardando conexão...';
             document.getElementById('status-dot').style.background = '#22c55e';
             document.getElementById('status-dot').style.animation = 'blinkLive 2s ease-in-out infinite';
-            document.getElementById('status-label').textContent = 'Projetor dispon\u00edvel';
+            document.getElementById('status-label').textContent = 'Projetor disponível';
         }
 
-        socket.on('professor-parou', () => {
-            console.log("Professor parou a transmissão. Resetando tela...");
+        socket.on('session-ended', () => {
+            console.log("Sessão encerrada pelo professor. Resetando tela...");
             resetarTela();
         });
 
