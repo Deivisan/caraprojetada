@@ -165,6 +165,7 @@ if ! $XORG_RODANDO; then
 
     cat > /tmp/xinitrc-webrtc << XINITRC
 #!/bin/sh
+CHROMIUM_BIN=/usr/bin/chromium
 xrandr --output HDMI-1 --auto 2>/dev/null
 sleep 1
 export DISPLAY=:0
