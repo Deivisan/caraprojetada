@@ -1,0 +1,5 @@
+[Desktop Entry]
+Name=CaraProjetada Kiosk
+Comment=Only Chromium kiosk for projector
+Exec=/home/carapreta/iniciar_kiosk.sh
+Type=Application
