@@ -1,153 +1,113 @@
-# Troubleshooting - Projetor VNC
+# Troubleshooting — WebRTC / Projetor
 
-## ❌ Tela preta apos boot
+## Tela preta ou azul no `/display`
 
-**Causas possiveis:**
-- Xorg nao iniciou
-- LightDM falhou
-- Resolucao incorreta
-
-**Solucao:**
+**Solução:**
 ```bash
-# Verificar se Xorg esta rodando
-pgrep -x Xorg || sudo systemctl restart lightdm
+# Verificar se chromium está rodando
+pgrep -a chromium || pkill -9 -f "chromium"
 
-# Verificar resolucao
+# Verificar resolução
 DISPLAY=:0 xrandr | grep connected
 
-# Forcar resolucao
-DISPLAY=:0 xrandr --output HDMI-1 --mode 1920x1080
+# Forçar resolução 1440x900
+xrandr --newmode "1440x900_60" 106.50 1440 1528 1672 1904 900 903 909 934 -hsync +vsync
+xrandr --addmode HDMI-1 1440x900_60
+xrandr --output HDMI-1 --mode 1440x900_60
 ```
 
-## ❌ Cursor aparece como "X"
+## WebRTC n conecta (após autorizar)
 
-**Causa:** xfwm4 (window manager) nao esta rodando.
-
-**Solucao:**
+**Solução:**
 ```bash
-# Verificar se xfwm4 esta instalado
-which xfwm4 || sudo apt install -y xfwm4
+# Verificar logs do flask
+tail -f /var/log/projetor-acessos.log
 
-# Iniciar manualmente
-DISPLAY=:0 xfwm4 --replace --compositor=off &
+# Verificar se o display entrou na sala
+tail -f /tmp/caraprojetada.log | grep -i display
+
+# Verificar socket.io
+curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5000/socket.io/?EIO=4&transport=polling
+
+# Nat / firewall: se professor e projetor estão na mesma rede 172.17.x.x, stun deve resolver automaticamente
 ```
 
-O `totem_guardian.sh` faz isso automaticamente.
+## Flask não inicia na porta 80
 
-## ❌ Chromium nao abre em kiosk
+**Solução:**
+```bash
+# Verificar se outra coisa ocupa a porta
+sudo ss -tlnp | grep ':80'
 
-**Solucao:**
+# Verificar permissão do serviço (porta <1024)
+sudo setcap 'cap_net_bind_service=+ep' $(which python3)
+
+# Verificar configuração do systemd
+cat /etc/systemd/system/projetor.service
+```
+
+## Chromium não abre em kiosk
+
+**Solução:**
 ```bash
 # Matar processos antigos
-killall chromium 2>/dev/null
+pkill -9 -f "chromium"
 
-# Iniciar manualmente
-DISPLAY=:0 chromium --kiosk --start-maximized \
-  --noerrdialogs --disable-infobars \
-  --incognito https://www.uol.com.br/ &
-```
-
-## ❌ "No route to host" no VNC
-
-**Causa:** wlan0 sem IP ou rede instavel.
-
-**Solucao:**
-```bash
-# Verificar IP
-ip addr show wlan0
-
-# Forcar DHCP
-sudo dhclient wlan0
-
-# Verificar conectividade com o cliente
-ping <ip_do_cliente>
-```
-
-## ❌ Autenticacao AD falhando
-
-**Verificacoes:**
-```bash
-# Testar conectividade com AD
-nc -zv 10.198.1.2 389
-
-# Testar bind LDAP
-python3 -c "
-from ldap3 import Server, Connection, ALL
-server = Server('ldap://10.198.1.2', get_info=ALL)
-conn = Connection(server, user='teste@intranet.ufrb.edu.br', password='senha', authentication='SIMPLE')
-print('Bind OK' if conn.bind() else 'Bind FALHOU')
-"
-```
-
-**Configuracoes no app.py:**
-```python
-AD_SERVER = 'ldap://10.198.1.2'       # IP do Domain Controller
-AD_DOMAIN = 'intranet.ufrb.edu.br'     # Dominio correto
-```
-
-## ❌ xtightvncviewer nao conecta
-
-**Causa:** Cliente não tem servidor VNC rodando.
-
-**Solucao (no notebook do usuario):**
-```bash
-# Linux - Iniciar servidor VNC (compartilhando tela atual)
-x11vnc -display :0 -usepw -forever
-
-# Windows - Usar TightVNC Server ou TigerVNC
-```
-
-## ❌ Erro "glamor initialization failed"
-
-**Causa:** Driver de video Mali-400 nao carregou corretamente.
-
-**Solucao:** Geralmente nao afeta a operacao. O X11 funciona em modo fallback.
-
-## 🔄 Reset de emergencia
-
-```bash
-# Reset completo do totem
-/home/carapreta/totem_reset.sh
-
-# Ou manualmente:
-sudo systemctl restart lightdm
-killall chromium
+# Garantir DISPLAY e XAUTHORITY corretos
 export DISPLAY=:0
-chromium --kiosk --start-maximized --noerrdialogs \
-  --disable-infobars --incognito https://www.uol.com.br/ &
+export XAUTHORITY=/home/carapreta/.Xauthority
+
+# Testar sem kiosk primeiro (depuração)
+chromium --no-sandbox http://localhost/display
+
+# Se Xorg não estiver rodando, o script deve usar xinit
+pgrep -x Xorg || (o script deve cair para xinit)
 ```
 
-## 📊 Logs
+## Guitarra: cursor visível
 
+**Solução:**
 ```bash
-# Log do guardian
-tail -f /var/log/totem_guardian.log
+# Verificar se openbox está rodando
+pgrep -x openbox || openbox --replace &
 
-# Log do watchdog
-tail -f /home/carapreta/watchdog.log
-
-# Log do projetor
-journalctl -u projetor -f
-
-# Log do streaming
-journalctl -u stream-cam -f
-
-# Log do sistema
-dmesg | tail -20
-sudo tail -f /var/log/syslog
+# Verificar se compositor está ativo (deve estar OFF)
+pgrep -a compton || pkill -f compton
 ```
 
-## 🛡️ Watchdog nao esta executando
+## Temperatura acima de 75°c
+
+**Solução:**
+```bash
+# Verificar processos consumindo cpu
+ps -eo pid,ppid,comm,%cpu,%mem,rss --sort=-%cpu | head -15
+
+# Reduzir carga do chromium
+pkill -9 -f "chromium" && sleep 2
+# editar --renderer-process-limit=1 no iniciar_tudo.sh
+```
+
+## Socket não conecta após mudança de rede do professor
+
+**Solução:**
+- feche o navegador e abra o dashboard novamente
+- verifique se o ip do professor mudou e se o stun publico foi alcançado
+- o app não usa turn — só funciona na mesma rede institucional
+
+## Debug socket.io
 
 ```bash
-# Verificar cron
-crontab -l
+# No console do chromium (projetor)
+sudo DISPLAY=:0 XAUTHORITY=/home/carapreta/.Xauthority chromium --no-sandbox http://localhost/display
+# Abra DevTools (Ctrl+Shift+I) e vá para a aba Network
+# Filtre por socket.io para ver conexões e mensagens
+```
 
-# Forcar execucao manual
-bash /home/carapreta/totem_guardian.sh
-bash /home/carapreta/totem_watchdog.sh
+## Desligar websocket para debugging
 
-# Verificar permissoes
-ls -la /home/carapreta/*.sh
-chmod +x /home/carapreta/*.sh
+`CARAPROJETADA_ENV=dev` habilita logs detalhados. Para produção, remova essas linhas no `app.py`:
+
+```python
+logger=DEV_MODE,
+engineio_logger=DEV_MODE
 ```

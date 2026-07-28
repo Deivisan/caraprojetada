@@ -1,4 +1,10 @@
-# 🐧 Cliente VNC para Linux - Guia Futuro
+# 🐧 ~~Cliente VNC para Linux~~ ⚠️ DESCONTINUADO
+
+> **AVISO**: A arquitetura atual do caraprojetada usa **WebRTC** (screen capture via navegador).
+> Cliente VCN não é mais necessário. Este documento é mantido apenas para referência histórica.
+> Veja `ARCHITECTURE.md` para a arquitetura atual.
+
+# Cliente VNC para Linux - Guia Futuro (HISTÓRICO)
 
 ## Ferramentas Recomendadas
 

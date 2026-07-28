@@ -1,4 +1,10 @@
-# Cliente VNC para Windows - Guia e Cenarios
+# ~~Cliente VNC para Windows~~ ⚠️ DESCONTINUADO
+
+> **AVISO**: A arquitetura atual do caraprojetada usa **WebRTC** (screen capture via navegador).
+> Cliente VNC para Windows não é mais necessário. Este documento é mantido apenas para referência histórica.
+> Veja `ARCHITECTURE.md` para a arquitetura atual.
+
+# Cliente VNC para Windows - Guia e Cenários (HISTÓRICO)
 
 ## Objetivo
 

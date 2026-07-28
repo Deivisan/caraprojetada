@@ -1,0 +1,21 @@
+# CaraProjetada — Openbox autostart
+# Copie para ~/.config/openbox/autostart (do usuário carapreta)
+#
+# Executado automaticamente após o LightDM fazer auto-login
+# O guardian (cron) cuida de manter Flask + Chromium vivos;
+# este autostart só garante que as configurações de display estejam corretas
+
+# Desliga screensaver e DPMS
+xset s off
+xset -dpms
+xset s noblank &
+
+# Oculta o cursor (idle=0 = sempre oculto)
+unclutter -idle 0 -root &
+
+# Força resolução 1440x900 se possível
+if command -v xrandr &>/dev/null; then
+  xrandr --newmode "1440x900_60" 106.50 1440 1528 1672 1904 900 903 909 934 -hsync +vsync 2>/dev/null || true
+  xrandr --addmode HDMI-1 1440x900_60 2>/dev/null || true
+  xrandr --output HDMI-1 --mode 1440x900_60 2>/dev/null || true
+fi

@@ -1,153 +1,134 @@
-# 🏗️ Arquitetura do CaraProjetada - Multi-Sala
+# 🏗️ Arquitetura do CaraProjetada — WebRTC Multi-Sala
 
 ## Visão do Sistema
 
-O CaraProjetada é um **sistema de projetores multi-sala** que permite a transmissão de tela via VNC com autenticação institucional.
+O CaraProjetada é um **sistema de projetores multi-sala** que permite a transmissão de tela via **WebRTC** com autenticação institucional (AD/LDAP).
 
----
+> ⚠️ A arquitetura VNC reverso foi substituída por WebRTC em 2026. Esta documentação reflete o sistema atual.
 
 ## Arquitetura Central
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           DASHBOARD CENTRAL                                  │
-│                    (http://projetores.intranet.ufrb.edu.br)                   │
+│                            PROJETOR (RK3229)                                 │
+│                    (http://172.17.28.179 ou http://<ip-da-box>)              │
 │                                                                             │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │                          Portal Web                                   │   │
+│  │                          Flask + Socket.IO                           │   │
 │  │                                                                     │   │
-│  │  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌────────────┐       │   │
-│  │  │   SALA 1   │  │   SALA 2   │  │   SALA 3   │  │   SALA N   │       │   │
-│  │  │ [ONLINE]   │  │ [OFFLINE]  │  │ [ONLINE]   │  │ [ONLINE]   │       │   │
-│  │  │ 172.17.x.x │  │ 172.17.x.x │  │ 172.17.x.x │  │ 172.17.x.x │       │   │
-│  │  │ [CONECTAR] │  │ [CONECTAR] │  │ [CONECTAR] │  │ [CONECTAR] │       │   │
-│  │  └────────────┘  └────────────┘  └────────────┘  └────────────┘       │   │
+│  │  ┌────────────┐  ┌────────────┐  ┌────────────┐                     │   │
+│  │  │   /login    │  │ /dashboard │  │  /display  │                     │   │
+│  │  │  (auth AD)  │  │ (webrtc    │  │ (chromium  │                     │   │
+│  │  │             │  │  presenter)│  │  kiosk)    │                     │   │
+│  │  └────────────┘  └────────────┘  └────────────┘                     │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                    │                                       │
+│                                    │ Socket.IO + WebRTC                     │
+│                                    ▼                                       │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                        Chromium --kiosk                               │   │
+│  │                        http://localhost/display                       │   │
+│  │                        (HDMI → Projetor)                              │   │
 │  └─────────────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────────────┘
                                     │
-                                    │ HTTP API (JSON)
+                                    │ Rede 172.17.x.x
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                              REGISTRO PROJETORES                             │
-│                          (registry/projetores.json)                            │
+│                        NAVEGADOR DO PROFESSOR                                │
 │                                                                             │
-│  {                                                                        │
-│    "salas": {                                                             │
-│      "sala-1": {"ip": "172.17.28.179", "status": "online",  │
-│      "sala-2": {"ip": "172.17.28.180", "status": "offline"} │
-│    }                                                                        │
-│  }                                                                        │
+│  1. GET /login                         → autentica AD/LDAP                  │
+│  2. GET /dashboard                     → painel, lista salas               │
+│  3. getDisplayMedia()                  → captura tela                      │
+│  4. RTCPeerConnection + Socket.IO      → sinalização + mídia               │
+│  5. POST /logout                       → encerra sessão                   │
 └─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    │ Multicast/Broadcast
-                                    ▼
-┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
-│PROJETOR A   │ │PROJETOR B   │ │PROJETOR C   │ │PROJETOR N   │
-│(RK3229)    │ │(RK3229)    │ │(RK3229)    │ │(RK3229)    │
-│             │ │             │ │             │ │             │
-│             │ │             │ │             │ │             │
-│xtightvncviewer │ │xtightvncviewer │ │xtightvncviewer │ │xtightvncviewer │
-│Flask :80      │ │Flask :80      │ │Flask :80      │ │Flask :80      │
-│LightDM/Xorg   │ │LightDM/Xorg   │ │LightDM/Xorg   │ │LightDM/Xorg   │
-└─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘
 ```
-
----
 
 ## Fluxo Detalhado
 
-### 1. Autenticação (Dashboard)
+### 1. Autenticação
 
 ```
-Browser -> GET /
-        <- HTML Login
+Browser → GET /login
+       ← HTML Login
 POST /login (username, password)
-        -> LDAP Bind: user@intranet.ufrb.edu.br
-        <- Session Cookie
-        -> Redirect /dashboard
+       → LDAP Bind: user@intranet.ufrb.edu.br
+       ← Session Cookie
+       → Redirect /dashboard
 ```
 
-### 2. Descoberta de Salas
+### 2. WebRTC Sinalização
 
 ```
-Dashboard -> GET /api/salas
-         <- JSON:
-         {
-           "salas": [
-             {"id": "sala-1", "ip": "172.17.28.179", "status": "online"},
-             {"id": "sala-2", "ip": "172.17.28.180", "status": "offline"}
-           ]
-         }
+Dashboard (Presenter)              Display (Chromium Kiosk)
+       │                                │
+       │── socket.io: join(sala) ─────→│
+       │←── socket.io: join(tvbox) ────│
+       │←────── offer (SDP) ───────────│
+       │────── answer (SDP) ──────────→│
+       │←── ice-candidate (candidates) →│
+       │── ice-candidate (candidates) →│
+       │                                │
+       │    📡 WebRTC P2P Video        │
 ```
 
-### 3. Conexão VNC
+### 3. Fluxo do Display
 
 ```
-Dashboard -> POST /sala/sala-1/conectar
-         <- Redirect para tela de conexão
-         -> Executa no projetor:
-         xtightvncviewer <IP_USUARIO>:0 -autopass
+/display carregado no chromium
+  └─ socket.io connect
+      └─ join('tvbox') no servidor
+      └─ aguarda offer do presenter
+          └─ RTCPeerConnection criada
+              └─ vídeo exibido no <video>
+              └─ status "Em transmissão"
+                  └─ session-ended → resetarTela()
 ```
 
----
+## Eventos Socket.IO
 
-## API Endpoints
+| Evento | Quem emite | Quem recebe | Descrição |
+|--------|-----------|-------------|-----------|
+| `join` `{sala, tipo}` | Ambos | Servidor | Entra na sala/sala de sinalização |
+| `offer` `{type, sdp, sala}` | Display | Dashboard | SDP offer |
+| `answer` `{type, sdp, sala}` | Dashboard | Display | SDP answer |
+| `ice-candidate` `{candidate, sala}` | Ambos | Ambos | ICE candidates via servidor |
+| `session-start` `{sala, username, fullname}` | Dashboard | Servidor | Marca sala ocupada |
+| `session-end` `{sala}` | Dashboard | Servidor | Libera sala |
+| `session-active` `{sala, user, since}` | Servidor | Display | Avisa que sessão iniciou |
+| `session-ended` `{sala}` | Servidor | Display | Avisa que sessão encerrou |
+| `professor-desconectou` | Servidor | Display | Fallback se socket do presenter cai |
+| `heartbeat` `{sala}` | Display | Servidor | Keep-alive (~15s) |
+
+## API REST
 
 | Rota | Método | Descrição |
 |------|--------|-----------|
-| `/` | GET | Login page |
-| `/login` | POST | Autentica LDAP |
-| `/dashboard` | GET | Lista de salas |
-| `/api/salas` | GET | JSON com projetores |
-| `/sala/{id}/status` | GET | Status de uma sala |
-| `/sala/{id}/conectar` | POST | Conecta VNC |
-| `/sala/{id}/desconectar` | POST | Desconecta VNC |
+| `/` | GET | Redireciona conforme sessão |
+| `/login` | GET/POST | Tela de login / autenticação |
+| `/dashboard` | GET | Painel WebRTC presenter |
+| `/display` | GET | Tela do projetor (chromium kiosk) |
+| `/api/v1/status` | GET | JSON com status do sistema |
 
----
+## Stack
 
-## Cliente Windows - UltraVNC
-
-### Instalação Silenciosa
-
-```powershell
-# MSI UltraVNC com senha pré-definida
-msiexec.exe /i UltraVNC-2.8.87.msi /VERYSILENT /SUPPRESSMSGBOXES
-
-# Configurar senha headless
-# (via registry ou arquivo .reg)
-reg import vnc-config.reg
-```
-
-### Configuração Registry (UltraVNC)
-
-```registry
-[HKEY_LOCAL_MACHINE\SOFTWARE\UltraVNC]
-"VNCpassword"=hex:61,e4,ff,...  ; hash do password 123456
-"HTTPPortNumber"=dword:00000016  ; 22 decimal
-"PortNumber"=dword:00001744        ; 5900 decimal
-```
-
-### Operação
-
-1. Usuário instala cliente Windows (UltraVNC service)
-2. Usuário acessa dashboard
-3. Usuário clica "CONECTAR" em uma sala
-4. Projetor executa `xtightvncviewer <IP_USUARIO>:0`
-5. Tela do Windows aparece no projetor
-
----
+- **Web Server**: Flask 3.x (Python 3.11)
+- **Sinalização**: Flask-Socket.IO
+- **Mídia**: WebRTC (RTCPeerConnection, getDisplayMedia)
+- **Auth**: AD/LDAP (via ldap3), mock em dev
+- **Display**: Xorg + LightDM + Openbox + Chromium kiosk
+- **Hardware**: Rockchip RK3229, 1GB RAM, Armbian Bullseye
 
 ## Segurança
 
 | Camada | Implementação |
 |--------|---------------|
 | Autenticação | AD/LDAP (institucional) |
-| Autorização | Sessão Flask + tokens |
+| Autorização | Sessão Flask + cookie assinado |
 | Rede | Firewall 172.17.0.0/16 |
-| VNC | Senha pré-compartilhada |
-| Logs | Windows Event + syslog |
-
----
+| Mídia | WebRTC P2P (sem servidor intermediário) |
+| Stun | Google STUN público (fallback para host candidates) |
 
 ## Deployment
 
@@ -155,17 +136,16 @@ reg import vnc-config.reg
 
 ```bash
 # Instalar dependências
-sudo apt install -y python3-flask python3-ldap3 xtightvncviewer
+sudo apt install -y python3-flask python3-flask-socketio python3-ldap3 chromium
 
 # Copiar app
-sudo cp app/app.py /home/carapreta/
+cp -r app/* /home/carapreta/app/
 sudo cp systemd/projetor.service /etc/systemd/system/
 sudo systemctl enable --now projetor
+
+# O chromium kiosk abre http://localhost/display automaticamente
 ```
 
-### Cliente Windows
+### Navegador (Professor)
 
-1. Executar instalador UltraVNC silencioso
-2. Configurar senha `123456`
-3. Iniciar serviço VNC
-4. Acessar dashboard institucional
+Nenhuma instalação necessária — apenas um navegador moderno (Chrome, Edge, Firefox) que suporte `getDisplayMedia()`.

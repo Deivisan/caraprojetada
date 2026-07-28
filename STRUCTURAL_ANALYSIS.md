@@ -1,7 +1,10 @@
 # 📊 ANÁLISE ESTRUTURAL - CaraProjetada
 
+> **Arquitetura atual (2026)**: WebRTC via Socket.IO. VNC reverso descontinuado.
+> Este documento é uma análise estrutural completa do repositório; partes que mencionam VNC são históricas.
+
 ## 🎯 O Projeto em Uma Frase
-**Sistema embarcado inteligente de projetor RK3229 que expõe API REST para controle remoto via VNC com autenticação AD/LDAP institucional**
+**Sistema embarcado inteligente de projetor RK3229 que expõe interface WebRTC para transmissão de tela com autenticação AD/LDAP institucional**
 
 ---
 

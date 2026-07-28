@@ -2,9 +2,16 @@
 # caraprojetada — Startup Script (WebRTC)
 # Inicia o servidor Flask-SocketIO e o Chromium Kiosk
 # Projetado para rodar como root (systemd) ou user carapreta (dev)
+#
+# NOTA: O mecanismo primário de auto-start é:
+#   - systemd: projetor.service (Flask no boot)
+#   - cron:    totem_guardian.sh (watchdog a cada 1min)
+#   - lightdm: auto-login + openbox autostart (X + Chromium)
+#
+# Este script é fallback para debug manual ou setups sem systemd.
 
 export DISPLAY=:0
-export XAUTHORITY="${XAUTHORITY:-/root/.Xauthority}"
+export XAUTHORITY="${XAUTHORITY:-/home/carapreta/.Xauthority}"
 export CARAPROJETADA_ENV="${CARAPROJETADA_ENV:-prod}"
 
 # Configurações da sala (customize por box)
@@ -13,7 +20,35 @@ export SALA_NOME="${SALA_NOME:-Sala 101}"
 export PORT="${PORT:-5000}"
 
 # Path base
-APP_DIR="/home/carapreta/projeto-webrtc"
+APP_DIR="/home/carapreta"
+
+# ───────────────────────────────────────────────
+# FLAGS DO CHROMIUM (compartilhadas com totem_guardian.sh)
+# ───────────────────────────────────────────────
+CHROMIUM_FLAGS="\
+  --kiosk \
+  --no-sandbox \
+  --no-first-run \
+  --disable-gpu-vsync \
+  --window-size=1440,900 \
+  --window-position=0,0 \
+  --autoplay-policy=no-user-gesture-required \
+  --check-for-update-interval=31536000 \
+  --disable-infobars \
+  --renderer-process-limit=2 \
+  --disable-extensions \
+  --disable-component-extensions-with-background-pages \
+  --disable-default-apps \
+  --no-default-browser-check \
+  --disable-sync \
+  --disable-translate \
+  --disable-save-password-bubble \
+  --disable-features=VizDisplayCompositor \
+  --disk-cache-dir=/tmp/chromium-cache \
+  --disk-cache-size=1 \
+  --media-cache-size=1 \
+  --process-per-site \
+  --no-crashpad"
 
 echo "====== 🚀 caraprojetada WebRTC ======"
 echo "Sala: $SALA_ID ($SALA_NOME)"
@@ -21,7 +56,18 @@ echo "Porta: $PORT"
 echo "Modo: $CARAPROJETADA_ENV"
 echo ""
 
-cd "$APP_DIR"
+# ───────────────────────────────────────────────
+# [0/4] Forca resolucao 1440x900 no HDMI
+# ───────────────────────────────────────────────
+echo "====== [0/4] Forcando resolucao 1440x900 ======"
+if pgrep -x Xorg > /dev/null; then
+    xrandr --newmode "1440x900_60" 106.50 1440 1528 1672 1904 900 903 909 934 -hsync +vsync 2>/dev/null || true
+    xrandr --addmode HDMI-1 1440x900_60 2>/dev/null || true
+    xrandr --output HDMI-1 --mode 1440x900_60 2>/dev/null || true
+    sleep 1
+fi
+
+cd "$APP_DIR" || { echo "ERRO: $APP_DIR nao existe"; exit 1; }
 
 # ───────────────────────────────────────────────
 # [1/3] Inicia servidor Flask-SocketIO
@@ -36,7 +82,7 @@ python3 app.py > /tmp/flask-webrtc.log 2>&1 &
 FLASK_PID=$!
 sleep 3
 
-if ! ss -tlnp | grep -q ":${PORT}"; then
+if ! ss -tlnp 2>/dev/null | grep -q ":${PORT}"; then
     echo "❌ ERRO: Flask não subiu na porta ${PORT}. Log:"
     tail -5 /tmp/flask-webrtc.log
     cat /tmp/caraprojetada-*.log 2>/dev/null | tail -5
@@ -59,10 +105,9 @@ echo "URL: http://localhost:${PORT}/display"
 pkill -9 -f "chromium" 2>/dev/null
 sleep 1
 
-# ── Detecta resolução ──
+# ── Heap de resolucao ──
 RES=""
-XORG_RODANDO=false
-pgrep -x Xorg > /dev/null && XORG_RODANDO=true
+pgrep -x Xorg > /dev/null && XORG_RODANDO=true || XORG_RODANDO=false
 
 if $XORG_RODANDO; then
     xrandr --output HDMI-1 --auto 2>/dev/null
@@ -74,36 +119,13 @@ if [ -z "$RES" ]; then
     RES="1440x900"  # fallback
 fi
 
-W="${RES%x*}"  # largura (ex: 1440)
-H="${RES#*x}"  # altura (ex: 900)
+W="${RES%x*}"
+H="${RES#*x}"
 echo "Resolução: $RES (${W}x${H})"
 
-# ── Monta comando chromium ──
-CHROMIUM_BIN=/usr/bin/chromium
 CHROMIUM_URL="http://localhost:${PORT}/display"
-CHROMIUM_FLAGS="\
-  --kiosk \
-  --no-sandbox \
-  --no-first-run \
-  --disable-gpu-vsync \
-  --window-size=$RES \
-  --window-position=0,0 \
-  --autoplay-policy=no-user-gesture-required \
-  --check-for-update-interval=31536000 \
-  --disable-infobars \
-  --renderer-process-limit=2 \
-  --disable-extensions \
-  --disable-component-extensions-with-background-pages \
-  --disable-default-apps \
-  --no-default-browser-check \
-  --disable-sync \
-  --disable-translate \
-  --disable-save-password-bubble \
-  --disk-cache-dir=/tmp/chromium-cache \
-  --disk-cache-size=1 \
-  --media-cache-size=1"
 
-# ── Helper: redimensiona TODAS as janelas chromium (UMA VEZ) via WM_CLASS ──
+# ── Helper: redimensiona janelas chromium (UMA VEZ) ──
 xdotool_resize_una_vez() {
     local w=$1 h=$2
     local wins
@@ -143,31 +165,36 @@ if ! $XORG_RODANDO; then
 
     cat > /tmp/xinitrc-webrtc << XINITRC
 #!/bin/sh
+CHROMIUM_BIN=/usr/bin/chromium
 xrandr --output HDMI-1 --auto 2>/dev/null
 sleep 1
 export DISPLAY=:0
+
+# xset + unclutter
+xset s off; xset -dpms; xset s noblank
+unclutter -idle 0 -root &
+
 $CHROMIUM_BIN $CHROMIUM_FLAGS --window-position=0,0 $CHROMIUM_URL &
-CPID=\$!
-# espera janela aparecer e redimensiona UMA VEZ (sem loop)
+CPID=\\$!
 for i in 1 2 3; do
   sleep 3
-  WINS=\$(xdotool search --class "chromium" 2>/dev/null | sort -u)
-  [ -n "\$WINS" ] && {
-    echo "\$WINS" | while read W; do
-      GEO=\$(xdotool getwindowgeometry \$W 2>/dev/null | grep Geometry | awk '{print \$2}')
-      W_CUR=\$(echo "\$GEO" | cut -dx -f1)
-      H_CUR=\$(echo "\$GEO" | cut -dx -f2)
-      if [ "\$W_CUR" != "$W" ] || [ "\$H_CUR" != "$H" ]; then
-        xdotool windowmap \$W 2>/dev/null
-        xdotool windowsize \$W $W $H 2>/dev/null
-        xdotool windowmove \$W 0 0 2>/dev/null
+  WINS=\\$(xdotool search --class "chromium" 2>/dev/null | sort -u)
+  [ -n "\\$WINS" ] && {
+    echo "\\$WINS" | while read W; do
+      GEO=\\$(xdotool getwindowgeometry \\$W 2>/dev/null | grep Geometry | awk '{print \\$2}')
+      W_CUR=\\$(echo "\\$GEO" | cut -dx -f1)
+      H_CUR=\\$(echo "\\$GEO" | cut -dx -f2)
+      if [ "\\$W_CUR" != "$W" ] || [ "\\$H_CUR" != "$H" ]; then
+        xdotool windowmap \\$W 2>/dev/null
+        xdotool windowsize \\$W $W $H 2>/dev/null
+        xdotool windowmove \\$W 0 0 2>/dev/null
       fi
     done
     echo "xdotool: janelas verificadas/redim"
     break
   }
 done
-wait \$CPID
+wait \\$CPID
 XINITRC
     chmod +x /tmp/xinitrc-webrtc
 
@@ -183,11 +210,11 @@ fi
 
 # ── Xorg já rodando: inicia direto ──
 echo "Iniciando chromium (PID background)..."
-$CHROMIUM_BIN $CHROMIUM_FLAGS $CHROMIUM_URL &
+chromium $CHROMIUM_FLAGS --window-size=${W},${H} $CHROMIUM_URL &
 CHROME_PID=$!
 echo "Chromium PID: $CHROME_PID"
 
-# xdotool UMA VEZ em background (sem loop contínuo)
+# xdotool UMA VEZ em background
 (sleep 8 && xdotool_resize_una_vez $W $H) &
 
 wait $CHROME_PID 2>/dev/null
