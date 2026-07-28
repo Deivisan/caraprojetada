@@ -13,9 +13,9 @@ import sys
 from logging.handlers import RotatingFileHandler
 from datetime import datetime
 
-# Usar threading mode para compatibilidade com python3.9 + flask 1.1.2
-# eventlet funciona mas tem warning de depreciação
-ASYNC_MODE = os.environ.get('ASYNC_MODE', 'threading')
+# Usar eventlet para suporte completo a WebSocket (produção)
+# Em dev, pode forçar ASYNC_MODE=polling para debug, mas prod é eventlet
+ASYNC_MODE = os.environ.get('ASYNC_MODE', 'eventlet')
 if ASYNC_MODE == 'eventlet':
     try:
         import eventlet
