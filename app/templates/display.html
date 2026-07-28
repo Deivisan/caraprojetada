@@ -305,6 +305,10 @@
 
         peerConnection = new RTCPeerConnection(ICE_CONFIG);
 
+        // Declara que este lado quer receber vídeo (essencial para
+        // que o Chrome inclua H264 no answer e ontrack dispare)
+        peerConnection.addTransceiver('video', { direction: 'recvonly' });
+
         peerConnection.ontrack = (event) => {
             console.log('[WEBRTC] Stream recebido!');
             if (iceFailedTimer) {
