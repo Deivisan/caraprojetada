@@ -1,14 +1,19 @@
 [Unit]
-Description=Servico Web de Controle do Projetor VNC
+Description=CaraProjetada — Servidor WebRTC de Projeções
 After=network.target
+Wants=network.target
 
 [Service]
 Type=simple
-User=root
-WorkingDirectory=/home/carapreta
-ExecStart=/usr/bin/python3 /home/carapreta/app.py
+User=carapreta
+WorkingDirectory=/home/carapreta/projeto-webrtc
+Environment="PORT=5000"
+Environment="CARAPROJETADA_ENV=prod"
+ExecStart=/usr/bin/python3 /home/carapreta/projeto-webrtc/app.py
 Restart=always
 RestartSec=5
+StandardOutput=append:/tmp/flask-webrtc.log
+StandardError=append:/tmp/flask-webrtc.log
 
 [Install]
 WantedBy=multi-user.target

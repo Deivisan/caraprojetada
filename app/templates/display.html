@@ -284,6 +284,11 @@
         console.log('[DISPLAY] Desconectado');
     });
 
+    // ─── Heartbeat ───
+    const HEARTBEAT_INTERVAL = setInterval(() => {
+        socket.emit('heartbeat', { sala: SALA_ID });
+    }, 15000);
+
     // ─── Offer recebida ───
     socket.on('offer', async (offer) => {
         console.log('[WEBRTC] Offer recebida');
@@ -381,8 +386,18 @@
     });
 
     // ─── Professor desconectou ───
+    socket.on('session-ended', () => {
+        console.log('[DISPLAY] Sessão encerrada');
+        resetDisplay();
+    });
+
     socket.on('professor-desconectou', () => {
         console.log('[DISPLAY] Professor desconectou');
+        resetDisplay();
+    });
+
+    // ─── Reset display ───
+    function resetDisplay() {
         if (iceFailedTimer) {
             clearTimeout(iceFailedTimer);
             iceFailedTimer = null;
@@ -406,7 +421,7 @@
         }
         document.getElementById('connected-overlay').classList.remove('showing');
         setStatusDisplay('disponivel', 'Projetor disponível', 'green');
-    });
+    }
 
     // ─── Status ───
     function setStatusDisplay(texto, label, cor) {
