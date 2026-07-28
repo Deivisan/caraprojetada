@@ -6,10 +6,10 @@ Wants=network.target
 [Service]
 Type=simple
 User=carapreta
-WorkingDirectory=/home/carapreta
+WorkingDirectory=/home/carapreta/projeto-webrtc
 Environment="PORT=5000"
 Environment="CARAPROJETADA_ENV=prod"
-ExecStart=/usr/bin/python3 /home/carapreta/app.py
+ExecStart=/usr/bin/python3 /home/carapreta/projeto-webrtc/app.py
 Restart=always
 RestartSec=5
 StandardOutput=append:/tmp/flask-webrtc.log

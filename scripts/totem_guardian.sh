@@ -23,7 +23,7 @@ if [ -z "$CHROMIUM_PID" ] || [ "$(ps -p "$CHROMIUM_PID" -o rss= 2>/dev/null)" -l
   FLASK_PORTA="${PORT:-5000}"
   if ! curl -sf "http://localhost:${FLASK_PORTA}/api/health" > /dev/null 2>&1; then
     log "ALERTA: Flask nao responde em :${FLASK_PORTA}. Tentando reiniciar..."
-    cd /home/carapreta && /usr/bin/python3 /home/carapreta/app.py > /tmp/flask-webrtc.log 2>&1 &
+    cd /home/carapreta/projeto-webrtc && /usr/bin/python3 app.py > /tmp/flask-webrtc.log 2>&1 &
     sleep 3
     if ! curl -sf "http://localhost:${FLASK_PORTA}/api/health" > /dev/null 2>&1; then
       log "ERRO: Flask nao subiu. Chromium sera iniciado mesmo assim (pode mostrar erro)"
