@@ -276,7 +276,6 @@ def display():
         sala_id=sala_atual['id'],
         sala_nome=sala_atual['nome'],
         instituicao=INSTITUICAO,
-        qr_url=box_ip,
         ice_servers=ICE_SERVERS
     )
 
